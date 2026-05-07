@@ -1,40 +1,31 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&display=swap');
 
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  -webkit-tap-highlight-color: transparent;
-}
-
-html {
-  font-size: 16px;
-}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 html, body, #root {
   min-height: 100%;
   background: #050505;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   font-family: 'DM Mono', 'Courier New', monospace;
   color: #f0f0f0;
+  font-size: 16px;
 }
-
 body { overscroll-behavior: none; }
 button { font-family: inherit; cursor: pointer; }
+::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #0a0a0a; } ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
 
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: #0a0a0a; }
-::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
-
-@keyframes slideDown  { from { opacity:0; transform:translateY(-16px) scale(.97); } to { opacity:1; transform:translateY(0) scale(1); } }
-@keyframes slideUp    { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
-@keyframes fadeIn     { from { opacity:0; } to { opacity:1; } }
-@keyframes pulseGlow  { 0%,100% { filter:drop-shadow(0 0 4px var(--c,#4ade80)); } 50% { filter:drop-shadow(0 0 18px var(--c,#4ade80)); } }
-@keyframes setBounce  { 0%{transform:scale(1)} 30%{transform:scale(.80)} 60%{transform:scale(1.18)} 80%{transform:scale(.95)} 100%{transform:scale(1)} }
-@keyframes shimmer    { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-@keyframes exerciseFlip    { 0%,38%{opacity:1;transform:scale(1)} 48%{opacity:0;transform:scale(1.025)} 62%,100%{opacity:0;transform:scale(1)} }
-@keyframes exerciseFlipAlt { 0%,38%{opacity:0;transform:scale(1)} 48%{opacity:0;transform:scale(.975)} 62%,100%{opacity:1;transform:scale(1)} }
-@keyframes coachSlide { from{opacity:0;transform:translateX(18px)} to{opacity:1;transform:translateX(0)} }
-@keyframes streakPop  { 0%{transform:scale(1)} 50%{transform:scale(1.22)} 100%{transform:scale(1)} }
-@keyframes completePulse { 0%{box-shadow:0 0 0 0 var(--glow,rgba(74,222,128,.4))} 70%{box-shadow:0 0 0 14px rgba(0,0,0,0)} 100%{box-shadow:0 0 0 0 rgba(0,0,0,0)} }
+/* ── KEYFRAMES ── */
+@keyframes slideDown     { from{opacity:0;transform:translateY(-18px) scale(.96)} to{opacity:1;transform:translateY(0) scale(1)} }
+@keyframes slideUp       { from{opacity:0;transform:translateY(28px)} to{opacity:1;transform:translateY(0)} }
+@keyframes fadeIn        { from{opacity:0} to{opacity:1} }
+@keyframes setBounce     { 0%{transform:scale(1)} 25%{transform:scale(.75)} 55%{transform:scale(1.22)} 80%{transform:scale(.95)} 100%{transform:scale(1)} }
+@keyframes shimmer       { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+@keyframes xpFloat       { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-52px)} }
+@keyframes prBurst       { 0%{transform:scale(0.5);opacity:0} 60%{transform:scale(1.15);opacity:1} 100%{transform:scale(1);opacity:1} }
+@keyframes coachSlide    { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+@keyframes completePulse { 0%{box-shadow:0 0 0 0 var(--glow,rgba(74,222,128,.5))} 70%{box-shadow:0 0 0 18px rgba(0,0,0,0)} 100%{box-shadow:0 0 0 0 rgba(0,0,0,0)} }
+@keyframes levelUp       { 0%{transform:scale(0.7) rotate(-6deg);opacity:0} 60%{transform:scale(1.1) rotate(1deg);opacity:1} 100%{transform:scale(1) rotate(0);opacity:1} }
+@keyframes exerciseFlip    { 0%,38%{opacity:1;transform:scale(1)} 48%{opacity:0;transform:scale(1.02)} 62%,100%{opacity:0} }
+@keyframes exerciseFlipAlt { 0%,38%{opacity:0} 48%{opacity:0;transform:scale(.98)} 62%,100%{opacity:1;transform:scale(1)} }
+@keyframes pulseGlow     { 0%,100%{filter:drop-shadow(0 0 4px var(--c,#4ade80))} 50%{filter:drop-shadow(0 0 18px var(--c,#4ade80))} }
+@keyframes streakPop     { 0%{transform:scale(1)} 50%{transform:scale(1.25)} 100%{transform:scale(1)} }
