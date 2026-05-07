@@ -147,6 +147,7 @@ export function getExerciseHistory(exerciseName, history) {
     .slice(-16);
 }
 
+export function computeStats({ history, progression, settings }) {
   const totalSessions = history.length;
   const sorted = [...history].sort((a,b) => b.timestamp - a.timestamp);
   let streak = 0;
