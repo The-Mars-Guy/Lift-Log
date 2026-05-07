@@ -112,7 +112,41 @@ export function calcNextLoad(setLogs, targetReps, currentWeight, increment=2.5) 
   return { action:"maintain", nextWeight:currentWeight, note:"Almost there — same weight" };
 }
 
-export function computeStats({ history, progression, settings }) {
+// ─── DYNAMIC PROGRESSION ─────────────────────────────────────────────────────
+// feedback: 'too_easy' | 'good' | 'hard' | 'too_hard'
+export function calcDynamicTarget(currentTarget, feedback, maxTest) {
+  const floor   = Math.max(3, maxTest ? Math.ceil(maxTest * 0.35) : 3);
+  const ceiling = maxTest ? maxTest + 10 : currentTarget + 20;
+  const adj = { too_easy: +2, good: +1, hard: 0, too_hard: -1 }[feedback] ?? 0;
+  return Math.max(floor, Math.min(ceiling, currentTarget + adj));
+}
+
+// Starting target from initial assessment (65% of max, minimum 3)
+export function assessmentTarget(maxReps) {
+  return Math.max(3, Math.ceil(maxReps * 0.65));
+}
+
+// Pull per-exercise session history for graphing
+// Returns [{ date, totalReps, avgWeight, timestamp }] sorted oldest→newest
+export function getExerciseHistory(exerciseName, history) {
+  return history
+    .filter(h => h.exercises?.some(e => e.name === exerciseName))
+    .map(h => {
+      const ex = h.exercises.find(e => e.name === exerciseName);
+      if (!ex) return null;
+      const totalReps = ex.setLog?.length
+        ? ex.setLog.reduce((s, l) => s + (l.reps || 0), 0)
+        : (ex.reps || 0) * (ex.sets || 3);
+      const avgWeight = ex.setLog?.length
+        ? Math.round((ex.setLog.reduce((s, l) => s + (l.weight || 0), 0) / ex.setLog.length) * 10) / 10
+        : null;
+      return { date: h.date, totalReps, avgWeight, timestamp: h.timestamp };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.timestamp - b.timestamp)
+    .slice(-16);
+}
+
   const totalSessions = history.length;
   const sorted = [...history].sort((a,b) => b.timestamp - a.timestamp);
   let streak = 0;

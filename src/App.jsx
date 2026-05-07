@@ -25,7 +25,7 @@ export default function App() {
   const [xp,          setXp]          = useLocalStorage("wt_xp",          0);
   const [checkIns,    setCheckIns]    = useLocalStorage("wt_checkins",    []);
 
-  const [achievementToast, setAchievementToast] = useState(null);
+  const [assessmentDone, setAssessmentDone] = useLocalStorage("wt_assessment_done", false);
 
   const playSound = makePlay(settings);
   const vibrate   = (p) => vib(settings, p);
@@ -99,7 +99,7 @@ export default function App() {
             exConfig={exConfig} setExConfig={setExConfig}
             xp={xp} addXp={addXp} level={level}
             checkIns={checkIns} setCheckIns={setCheckIns}
-            playSound={playSound} vibrate={vibrate}
+            assessmentDone={assessmentDone} setAssessmentDone={setAssessmentDone}
             setActiveView={setActiveView}
           />
         )}

@@ -1,5 +1,7 @@
-import { WORKOUTS, ACHIEVEMENTS, computeStats, isoWeek, getLevel, epley1RM } from "../data.js";
+import { useState } from "react";
+import { WORKOUTS, ACHIEVEMENTS, computeStats, isoWeek, getLevel, epley1RM, getExerciseHistory } from "../data.js";
 import { BarChart } from "../components/shared.jsx";
+import { MiniGraph } from "./WorkoutView.jsx";
 import { fmtDuration } from "../hooks.js";
 
 export default function StatsView({ history, progression, settings, achievements, accent, xp, level, exConfig, checkIns }) {
@@ -164,6 +166,19 @@ export default function StatsView({ history, progression, settings, achievements
         })}
       </Section>
 
+      {/* EXERCISE PROGRESS GRAPHS */}
+      <Section title="Exercise Progress" sub="total reps per session · tap to expand">
+        {allExercises.map(ex=>{
+          const histData = getExerciseHistory(ex.name, history);
+          const exColor  = WORKOUTS.A.exercises.some(e=>e.name===ex.name)?WORKOUTS.A.color:WORKOUTS.B.color;
+          const latestTotal = histData.length ? histData[histData.length-1].totalReps : null;
+          const trend = histData.length>=2 ? histData[histData.length-1].totalReps - histData[0].totalReps : null;
+          return(
+            <ExGraphCard key={ex.name} name={ex.name} data={histData} color={exColor} latestTotal={latestTotal} trend={trend}/>
+          );
+        })}
+      </Section>
+
       {/* ACHIEVEMENTS */}
       <Section title="Achievements" sub={`${achievements.length} of ${ACHIEVEMENTS.length} unlocked`}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:10}}>
@@ -187,6 +202,33 @@ export default function StatsView({ history, progression, settings, achievements
             <div style={{fontSize:12,color:"#aaa",letterSpacing:".14em",marginTop:4}}>PER WORKOUT</div>
           </div>
         </Section>
+      )}
+    </div>
+  );
+}
+
+function ExGraphCard({ name, data, color, latestTotal, trend }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{background:"#0d0d0d",borderRadius:11,border:"1px solid #1c1c1c",marginBottom:10,overflow:"hidden"}}>
+      <button onClick={()=>setOpen(o=>!o)}
+        style={{width:"100%",padding:"14px 16px",background:"transparent",border:"none",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",textAlign:"left"}}>
+        <div>
+          <div style={{fontSize:15,color:"#f0f0f0",fontWeight:500}}>{name}</div>
+          {latestTotal!=null&&<div style={{fontSize:12,color:"#888",marginTop:2}}>{latestTotal} total reps last session {data.length>=2&&<span style={{color:trend>=0?"#4ade80":"#fb923c",marginLeft:6}}>{trend>=0?"+":""}{trend} since start</span>}</div>}
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          {data.length<2&&<span style={{fontSize:11,color:"#555",letterSpacing:".06em"}}>2+ sessions needed</span>}
+          <span style={{color:open?color:"#666",fontSize:12,transform:open?"rotate(180deg)":"none",transition:"all .2s"}}>{data.length>=2?"▼":"·"}</span>
+        </div>
+      </button>
+      {open&&data.length>=2&&(
+        <div style={{padding:"0 16px 16px",animation:"slideDown .2s ease-out"}}>
+          <MiniGraph data={data} color={color} height={100}/>
+        </div>
+      )}
+      {open&&data.length<2&&(
+        <div style={{padding:"0 16px 16px",fontSize:13,color:"#666"}}>Complete more sessions to see your progress graph here.</div>
       )}
     </div>
   );
