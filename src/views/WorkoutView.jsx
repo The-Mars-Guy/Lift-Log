@@ -590,8 +590,11 @@ export default function WorkoutView({
         )}
       </div>
 
-      {/* RECENT HISTORY */}
-      {history.length > 0 && (
+      {/* THIS WEEK SCHEDULE STRIP */}
+      <ThisWeek completed={completed} setActiveTab={setActiveTab} />
+
+      {/* HISTORY / EMPTY STATE */}
+      {history.length > 0 ? (
         <div style={{ padding:"32px 20px 0" }}>
           <div style={{ fontSize:12, color:"#999", letterSpacing:"0.14em", marginBottom:14, textTransform:"uppercase", fontWeight:500 }}>
             Recent Sessions
@@ -621,9 +624,47 @@ export default function WorkoutView({
             </button>
           )}
         </div>
+      ) : (
+        /* First-use guide — fills the empty space */
+        <div style={{ padding:"28px 20px 0" }}>
+          <div style={{ fontSize:12, color:"#888", letterSpacing:"0.12em", textTransform:"uppercase", marginBottom:14 }}>
+            How It Works
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            {[
+              { n:"01", title:"Check off each set", desc:"Tap the numbered buttons as you complete each set. A rest timer starts automatically." },
+              { n:"02", title:"Expand for guidance", desc:"Tap any exercise name to see a live animation, muscle map, and form cue." },
+              { n:"03", title:"Auto-progression", desc:`Every ${settings.sessionsPerProgression} sessions, reps increase by 1. You earn it — it tracks automatically.` },
+              { n:"04", title:"Mon / Wed / Fri", desc:"Workout A on Monday & Friday, Workout B on Wednesday. Three days, one pair of dumbbells." },
+            ].map(({ n, title, desc }) => (
+              <div key={n} style={{
+                display:"flex", gap:14, padding:"14px 16px",
+                background:"#0d0d0d", borderRadius:11, border:"1px solid #1c1c1c",
+                alignItems:"flex-start",
+              }}>
+                <div style={{
+                  fontFamily:"'Bebas Neue',sans-serif", fontSize:22,
+                  color:accent, opacity:0.5, lineHeight:1, flexShrink:0, marginTop:2,
+                }}>{n}</div>
+                <div>
+                  <div style={{ fontSize:14, color:"#e8e8e8", fontWeight:500, marginBottom:4 }}>{title}</div>
+                  <div style={{ fontSize:12, color:"#888", lineHeight:1.6 }}>{desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{
+            marginTop:20, padding:"16px", textAlign:"center",
+            background:`${accent}0a`, borderRadius:11, border:`1px solid ${accent}22`,
+          }}>
+            <div style={{ fontSize:26, marginBottom:8 }}>💪</div>
+            <div style={{ fontSize:13, color:accent, fontWeight:500, letterSpacing:"0.08em" }}>Ready when you are.</div>
+            <div style={{ fontSize:12, color:"#888", marginTop:4 }}>Check your first set to start the session timer.</div>
+          </div>
+        </div>
       )}
 
-      <div style={{ height:40 }}/>
+      <div style={{ height:32 }}/>
 
       {/* OVERLAYS */}
       {restState && (
@@ -656,6 +697,44 @@ function Label({ children, small }) {
   return (
     <div style={{ fontSize: small?10:11, color:"#aaa", letterSpacing:"0.16em", textTransform:"uppercase", fontWeight:500, marginBottom: small?0:8 }}>
       {children}
+    </div>
+  );
+}
+
+// "This Week" schedule strip — always shown below finish button
+function ThisWeek({ completed, setActiveTab }) {
+  const today = todayName();
+  return (
+    <div style={{ padding:"28px 20px 16px" }}>
+      <div style={{ fontSize:12, color:"#999", letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:12, fontWeight:500 }}>
+        This Week
+      </div>
+      <div style={{ display:"flex", gap:8 }}>
+        {DAYS.map(day => {
+          const wk      = WORKOUTS[SCHEDULE[day]];
+          const isDone  = !!completed[day];
+          const isToday = day === today;
+          return (
+            <button key={day} onClick={() => setActiveTab(day)}
+              style={{
+                flex:1, padding:"14px 8px", borderRadius:12, border:"none",
+                background: isDone ? `${wk.color}22` : isToday ? "#141414" : "#0d0d0d",
+                outline: isToday ? `1.5px solid ${wk.color}88` : isDone ? `1px solid ${wk.color}44` : "1px solid #1e1e1e",
+                cursor:"pointer", transition:"all .2s", textAlign:"center",
+              }}>
+              <div style={{ fontSize:11, color: isToday ? wk.color : isDone ? wk.color : "#666", letterSpacing:"0.1em", fontWeight:500, textTransform:"uppercase", marginBottom:5 }}>
+                {day.slice(0,3)}
+              </div>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color: isDone ? wk.color : isToday ? "#fff" : "#888", letterSpacing:"0.06em" }}>
+                {wk.label.split(" ")[1]}
+              </div>
+              <div style={{ fontSize:17, marginTop:4 }}>
+                {isDone ? <span style={{ color:wk.color }}>✓</span> : isToday ? "→" : <span style={{ color:"#444" }}>·</span>}
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
