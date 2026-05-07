@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { WORKOUTS, ACHIEVEMENTS, computeStats, isoWeek, getLevel, epley1RM, getExerciseHistory } from "../data.js";
-import { BarChart } from "../components/shared.jsx";
-import { MiniGraph } from "./WorkoutView.jsx";
+import { BarChart, MiniGraph } from "../components/shared.jsx";
 import { fmtDuration } from "../hooks.js";
 
 export default function StatsView({ history, progression, settings, achievements, accent, xp, level, exConfig, checkIns }) {

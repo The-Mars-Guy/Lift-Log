@@ -5,7 +5,7 @@ import {
   getExerciseHistory, XP_VALUES, getLevel
 } from "../data.js";
 import { useSessionTimer, fmtDuration } from "../hooks.js";
-import { ExerciseAnimation, RestTimer, Toast } from "../components/shared.jsx";
+import { ExerciseAnimation, RestTimer, Toast, MiniGraph } from "../components/shared.jsx";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
 
 // ── CONFETTI ──────────────────────────────────────────────────────────────────
@@ -60,77 +60,20 @@ function XpFloat({ amount, onDone }) {
   );
 }
 
-// ── MINI PROGRESS GRAPH ───────────────────────────────────────────────────────
-export function MiniGraph({ data, color = "#4ade80", height = 80 }) {
-  if (!data || data.length < 2) return (
-    <div style={{ padding:"16px 0 8px", textAlign:"center", color:"#666", fontSize:13, letterSpacing:".06em" }}>
-      Complete 2+ sessions to see your progress graph
-    </div>
-  );
-  const max = Math.max(...data.map(d=>d.totalReps), 1);
-  const min = Math.min(...data.map(d=>d.totalReps));
-  const range = Math.max(max - min, 1);
-  const W = 100, H = height;
-  const pad = 6;
-  const pts = data.map((d,i)=>({
-    x: pad + (i / (data.length-1)) * (W - pad*2),
-    y: (H - 18) - ((d.totalReps - min) / range) * (H - 30),
-    d,
-  }));
-  const path  = pts.map((p,i)=>`${i===0?"M":"L"} ${p.x} ${p.y}`).join(" ");
-  const area  = `${path} L ${pts[pts.length-1].x} ${H-12} L ${pts[0].x} ${H-12} Z`;
-  const trend = data[data.length-1].totalReps - data[0].totalReps;
-
-  return (
-    <div>
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontSize:12}}>
-        <span style={{color:"#aaa"}}>{data[0].date}</span>
-        <span style={{color:trend>=0?"#4ade80":"#fb923c",fontWeight:500}}>
-          {trend>=0?"+":""}{trend} reps total {trend>=0?"↑":"↓"}
-        </span>
-        <span style={{color:"#aaa"}}>{data[data.length-1].date}</span>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height,overflow:"visible"}}>
-        <defs>
-          <linearGradient id={`g-${color.replace("#","")}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.35"/>
-            <stop offset="100%" stopColor={color} stopOpacity="0"/>
-          </linearGradient>
-        </defs>
-        <path d={area} fill={`url(#g-${color.replace("#","")})`}/>
-        <path d={path} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        {pts.map((p,i)=>(
-          <g key={i}>
-            <circle cx={p.x} cy={p.y} r="2.5" fill={color}/>
-            {(i===0||i===pts.length-1||(pts.length<=6))&&(
-              <text x={p.x} y={p.y-7} textAnchor="middle" fontSize="4.5" fill={color} fontFamily="DM Mono,monospace">{p.d.totalReps}</text>
-            )}
-          </g>
-        ))}
-        {/* x-axis labels — show up to 5 */}
-        {pts.filter((_,i)=>i%(Math.ceil(pts.length/5))===0).map((p,i)=>(
-          <text key={i} x={p.x} y={H-2} textAnchor="middle" fontSize="4" fill="#777" fontFamily="DM Mono,monospace">
-            {p.d.date?.split(" ")[1]||""}
-          </text>
-        ))}
-      </svg>
-    </div>
-  );
-}
-
 // ── INITIAL ASSESSMENT FLOW ───────────────────────────────────────────────────
 const ALL_EXERCISES = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
 
 function AssessmentFlow({ onComplete, accent }) {
-  const [step, setStep] = useState(-1); // -1 = intro
+  const [step, setStep] = useState(-1);
   const [results, setResults] = useState({});
   const [count, setCount] = useState(10);
 
   const total = ALL_EXERCISES.length;
 
+  // ── INTRO ──
   if (step === -1) return (
-    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",padding:"40px 24px",background:"#050505"}}>
-      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:58,color:accent,letterSpacing:".06em",lineHeight:.9,marginBottom:16,filter:`drop-shadow(0 0 20px ${accent}66)`}}>
+    <div style={{minHeight:"100vh",overflowY:"auto",padding:"44px 24px 40px",background:"#050505"}}>
+      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:54,color:accent,letterSpacing:".06em",lineHeight:.9,marginBottom:20,filter:`drop-shadow(0 0 20px ${accent}55)`}}>
         STRENGTH<br/>ASSESSMENT
       </div>
       <div style={{fontSize:16,color:"#ccc",lineHeight:1.65,marginBottom:28}}>
@@ -138,37 +81,37 @@ function AssessmentFlow({ onComplete, accent }) {
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:36}}>
         {[
-          {n:"01", t:"Do each exercise", d:"One at a time — as many reps as you can without stopping, to failure."},
-          {n:"02", t:"Log your count", d:"Just tap + until you hit your number. No pressure."},
-          {n:"03", t:"We do the math", d:"Your starting targets are set at a sustainable 65% of your max. They adapt weekly from there."},
+          {n:"01", t:"Do each exercise", d:"As many reps as you can without stopping, to failure."},
+          {n:"02", t:"Log your count",   d:"Just tap + until you hit your number. No pressure."},
+          {n:"03", t:"We do the math",   d:"Targets start at 65% of your max and adapt weekly."},
         ].map(s=>(
           <div key={s.n} style={{display:"flex",gap:16,padding:"16px 18px",background:"#0d0d0d",borderRadius:13,border:"1px solid #1c1c1c",alignItems:"flex-start"}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:accent,opacity:.6,flexShrink:0,lineHeight:1,marginTop:2}}>{s.n}</div>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:accent,opacity:.6,flexShrink:0,lineHeight:1,marginTop:2}}>{s.n}</div>
             <div>
-              <div style={{fontSize:15,color:"#f0f0f0",fontWeight:500,marginBottom:4}}>{s.t}</div>
+              <div style={{fontSize:15,color:"#f0f0f0",fontWeight:500,marginBottom:3}}>{s.t}</div>
               <div style={{fontSize:13,color:"#888",lineHeight:1.55}}>{s.d}</div>
             </div>
           </div>
         ))}
       </div>
-      <div style={{fontSize:13,color:"#888",marginBottom:24,textAlign:"center"}}>Takes about 5–10 minutes · done only once</div>
+      <div style={{fontSize:13,color:"#888",marginBottom:20,textAlign:"center"}}>Takes about 5–10 minutes · done only once</div>
       <button onClick={()=>{setStep(0);setCount(10);}}
-        style={{padding:"22px",background:accent,border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#050505",letterSpacing:".1em",boxShadow:`0 0 50px ${accent}88`}}>
+        style={{width:"100%",padding:"22px",background:accent,border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#050505",letterSpacing:".1em",boxShadow:`0 0 50px ${accent}66`}}>
         BEGIN ASSESSMENT
       </button>
     </div>
   );
 
+  // ── SUMMARY ──
   if (step >= total) {
-    // Summary screen
     const targets = Object.entries(results).map(([name, max]) => ({ name, max, target: assessmentTarget(max) }));
     return (
-      <div style={{minHeight:"100vh",padding:"40px 24px",background:"#050505",display:"flex",flexDirection:"column"}}>
-        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:48,color:"#4ade80",letterSpacing:".06em",lineHeight:.9,marginBottom:8}}>
+      <div style={{minHeight:"100vh",overflowY:"auto",padding:"44px 24px 40px",background:"#050505"}}>
+        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:44,color:"#4ade80",letterSpacing:".06em",lineHeight:.9,marginBottom:12}}>
           ASSESSMENT<br/>COMPLETE ✓
         </div>
         <div style={{fontSize:14,color:"#bbb",marginBottom:24,lineHeight:1.55}}>Your personalized starting targets. They'll adjust each week based on how each session feels.</div>
-        <div style={{flex:1,display:"flex",flexDirection:"column",gap:8,marginBottom:24}}>
+        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:28}}>
           {targets.map(t=>(
             <div key={t.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 18px",background:"#0d0d0d",borderRadius:11,border:"1px solid #1c1c1c"}}>
               <div>
@@ -183,54 +126,58 @@ function AssessmentFlow({ onComplete, accent }) {
           ))}
         </div>
         <button onClick={()=>onComplete(results)}
-          style={{padding:"22px",background:"#4ade80",border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#050505",letterSpacing:".1em",boxShadow:"0 0 50px #4ade8088"}}>
+          style={{width:"100%",padding:"22px",background:"#4ade80",border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#050505",letterSpacing:".1em",boxShadow:"0 0 50px #4ade8066"}}>
           START TRAINING →
         </button>
       </div>
     );
   }
 
+  // ── PER-EXERCISE ──
   const ex = ALL_EXERCISES[step];
   const exColor = WORKOUTS.A.exercises.some(e=>e.name===ex.name) ? WORKOUTS.A.color : WORKOUTS.B.color;
 
   return (
-    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",background:"#050505",padding:"32px 20px 24px"}}>
-      {/* Progress bar */}
-      <div style={{marginBottom:20}}>
-        <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#888",marginBottom:7,letterSpacing:".1em"}}>
-          <span>EXERCISE {step+1} OF {total}</span>
-          <span style={{color:exColor}}>{ex.name.toUpperCase()}</span>
+    <div style={{minHeight:"100vh",overflowY:"auto",padding:"32px 20px 40px",background:"#050505"}}>
+      {/* Progress */}
+      <div style={{marginBottom:22}}>
+        <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#888",marginBottom:7,letterSpacing:".1em",textTransform:"uppercase"}}>
+          <span>Exercise {step+1} of {total}</span>
+          <span style={{color:exColor}}>{ex.name}</span>
         </div>
         <div style={{height:5,background:"#1a1a1a",borderRadius:3,overflow:"hidden"}}>
-          <div style={{height:"100%",width:`${((step)/(total))*100}%`,background:exColor,transition:"width .4s",boxShadow:`0 0 8px ${exColor}`}}/>
+          <div style={{height:"100%",width:`${(step/total)*100}%`,background:exColor,transition:"width .4s",boxShadow:`0 0 8px ${exColor}`}}/>
         </div>
       </div>
 
-      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:38,color:"#fafafa",letterSpacing:".06em",lineHeight:.95,marginBottom:6}}>{ex.name}</div>
+      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:36,color:"#fafafa",letterSpacing:".06em",lineHeight:.95,marginBottom:5}}>{ex.name}</div>
       <div style={{fontSize:14,color:"#888",marginBottom:16,lineHeight:1.45}}>→ {ex.tip}</div>
 
-      {/* Animation preview */}
-      <div style={{marginBottom:20}}>
+      {/* Animation */}
+      <div style={{marginBottom:16}}>
         <ExerciseAnimation folder={ex.folder} accent={exColor}/>
       </div>
 
+      {/* Instruction */}
       <div style={{padding:"14px 18px",background:"#0d0d0d",borderRadius:12,border:`1.5px solid ${exColor}44`,marginBottom:24}}>
         <div style={{fontSize:14,color:"#ccc",lineHeight:1.55}}>
-          Do as many <strong style={{color:exColor}}>{ex.name}</strong> reps as you can <strong style={{color:"#fff"}}>without stopping</strong> — go to failure. Then log your count below.
+          Do as many <strong style={{color:exColor}}>{ex.name}</strong> reps as you can <strong style={{color:"#fff"}}>without stopping</strong>. Go to failure, then log your count.
         </div>
       </div>
 
       {/* Counter */}
-      <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16}}>
-        <div style={{fontSize:14,color:"#aaa",letterSpacing:".14em",textTransform:"uppercase"}}>How many did you do?</div>
-        <div style={{display:"flex",alignItems:"center",gap:0,background:"#141414",borderRadius:16,border:`2px solid ${exColor}55`,overflow:"hidden",width:"100%",maxWidth:280}}>
+      <div style={{marginBottom:10}}>
+        <div style={{fontSize:12,color:"#aaa",letterSpacing:".14em",textTransform:"uppercase",textAlign:"center",marginBottom:12}}>How many did you do?</div>
+        <div style={{display:"flex",alignItems:"center",background:"#141414",borderRadius:16,border:`2px solid ${exColor}55`,overflow:"hidden"}}>
           <button onClick={()=>setCount(c=>Math.max(1,c-1))}
-            style={{width:70,height:72,background:"transparent",border:"none",color:"#ccc",fontSize:32,fontWeight:300}}>−</button>
-          <div style={{flex:1,textAlign:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:52,color:"#fff",letterSpacing:".04em"}}>{count}</div>
+            style={{width:72,height:76,background:"transparent",border:"none",color:"#ccc",fontSize:34,fontWeight:300}}>−</button>
+          <div style={{flex:1,textAlign:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:56,color:"#fff",letterSpacing:".04em"}}>{count}</div>
           <button onClick={()=>setCount(c=>c+1)}
-            style={{width:70,height:72,background:"transparent",border:"none",color:"#ccc",fontSize:32,fontWeight:300}}>+</button>
+            style={{width:72,height:76,background:"transparent",border:"none",color:"#ccc",fontSize:34,fontWeight:300}}>+</button>
         </div>
-        <div style={{fontSize:12,color:"#666",letterSpacing:".06em"}}>Starting target will be <strong style={{color:exColor}}>×{assessmentTarget(count)}</strong> per set</div>
+        <div style={{fontSize:13,color:"#888",letterSpacing:".06em",textAlign:"center",marginTop:10}}>
+          Starting target → <strong style={{color:exColor}}>×{assessmentTarget(count)}</strong> per set
+        </div>
       </div>
 
       <button onClick={()=>{
@@ -238,7 +185,7 @@ function AssessmentFlow({ onComplete, accent }) {
         setCount(10);
         setStep(s=>s+1);
       }}
-        style={{padding:"20px",background:exColor,border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#050505",letterSpacing:".1em",marginTop:16,boxShadow:`0 0 40px ${exColor}77`}}>
+        style={{width:"100%",padding:"20px",background:exColor,border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#050505",letterSpacing:".1em",marginTop:16,boxShadow:`0 0 40px ${exColor}66`}}>
         {step < total-1 ? "NEXT EXERCISE →" : "SEE MY RESULTS →"}
       </button>
     </div>

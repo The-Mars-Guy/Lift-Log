@@ -269,3 +269,56 @@ export function Heatmap({ history }) {
     </div>
   );
 }
+
+// ── MINI PROGRESS GRAPH ───────────────────────────────────────────────────────
+export function MiniGraph({ data, color = "#4ade80", height = 80 }) {
+  if (!data || data.length < 2) return (
+    <div style={{ padding:"16px 0 8px", textAlign:"center", color:"#666", fontSize:13, letterSpacing:".06em" }}>
+      Complete 2+ sessions to see your progress graph
+    </div>
+  );
+  const max = Math.max(...data.map(d=>d.totalReps), 1);
+  const min = Math.min(...data.map(d=>d.totalReps));
+  const range = Math.max(max - min, 1);
+  const W = 100, H = height, pad = 6;
+  const pts = data.map((d,i)=>({
+    x: pad + (i / (data.length-1)) * (W - pad*2),
+    y: (H - 18) - ((d.totalReps - min) / range) * (H - 30),
+    d,
+  }));
+  const path = pts.map((p,i)=>`${i===0?"M":"L"} ${p.x} ${p.y}`).join(" ");
+  const area = `${path} L ${pts[pts.length-1].x} ${H-12} L ${pts[0].x} ${H-12} Z`;
+  const trend = data[data.length-1].totalReps - data[0].totalReps;
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontSize:12}}>
+        <span style={{color:"#aaa"}}>{data[0].date}</span>
+        <span style={{color:trend>=0?"#4ade80":"#fb923c",fontWeight:500}}>{trend>=0?"+":""}{trend} reps {trend>=0?"↑":"↓"}</span>
+        <span style={{color:"#aaa"}}>{data[data.length-1].date}</span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height,overflow:"visible"}}>
+        <defs>
+          <linearGradient id={`g-${color.replace("#","")}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.35"/>
+            <stop offset="100%" stopColor={color} stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d={area} fill={`url(#g-${color.replace("#","")})`}/>
+        <path d={path} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        {pts.map((p,i)=>(
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r="2.5" fill={color}/>
+            {(i===0||i===pts.length-1||pts.length<=6)&&(
+              <text x={p.x} y={p.y-7} textAnchor="middle" fontSize="4.5" fill={color} fontFamily="DM Mono,monospace">{p.d.totalReps}</text>
+            )}
+          </g>
+        ))}
+        {pts.filter((_,i)=>i%(Math.ceil(pts.length/5))===0).map((p,i)=>(
+          <text key={i} x={p.x} y={H-2} textAnchor="middle" fontSize="4" fill="#777" fontFamily="DM Mono,monospace">
+            {p.d.date?.split(" ")[1]||""}
+          </text>
+        ))}
+      </svg>
+    </div>
+  );
+}
