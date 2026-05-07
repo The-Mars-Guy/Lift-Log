@@ -12,7 +12,7 @@ export default function SettingsView({ settings, setSettings, resetAllData, expo
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 44, letterSpacing: "0.06em", lineHeight: 0.9, color: "#fafafa" }}>
           SETTINGS
         </div>
-        <div style={{ fontSize: 11, color: "#999", marginTop: 6, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+        <div style={{ fontSize: 15, color: "#999", marginTop: 6, letterSpacing: "0.14em", textTransform: "uppercase" }}>
           customize your experience
         </div>
       </div>
@@ -54,17 +54,17 @@ export default function SettingsView({ settings, setSettings, resetAllData, expo
         <Action label="Reset to Defaults" desc="Restore default settings (keeps workout history)" onClick={() => setSettings(DEFAULT_SETTINGS)} />
         {confirming ? (
           <div style={{ padding: 16, background: "#1a0a0a", border: "1px solid #ff444466", borderRadius: 10, marginTop: 8 }}>
-            <div style={{ fontSize: 12, color: "#ff8888", marginBottom: 12 }}>This permanently deletes all sessions, progression, and achievements. Continue?</div>
+            <div style={{ fontSize: 14, color: "#ff8888", marginBottom: 12 }}>This permanently deletes all sessions, progression, and achievements. Continue?</div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => { resetAllData(); setConfirming(false); }} style={{
                 flex: 1, padding: "10px 14px", background: "#ff4444", color: "#fff",
                 border: "none", borderRadius: 7, cursor: "pointer",
-                fontFamily: "DM Mono, monospace", fontSize: 11, letterSpacing: "0.1em",
+                fontFamily: "DM Mono, monospace", fontSize: 15, letterSpacing: "0.1em",
               }}>YES, DELETE ALL</button>
               <button onClick={() => setConfirming(false)} style={{
                 flex: 1, padding: "10px 14px", background: "transparent", color: "#aaa",
                 border: "1px solid #333", borderRadius: 7, cursor: "pointer",
-                fontFamily: "DM Mono, monospace", fontSize: 11, letterSpacing: "0.1em",
+                fontFamily: "DM Mono, monospace", fontSize: 15, letterSpacing: "0.1em",
               }}>CANCEL</button>
             </div>
           </div>
@@ -75,17 +75,17 @@ export default function SettingsView({ settings, setSettings, resetAllData, expo
 
       <Section title="About">
         <div style={{ padding: 16, background: "#0d0d0d", borderRadius: 10, border: "1px solid #1c1c1c" }}>
-          <div style={{ fontSize: 13, color: "#e0e0e0", marginBottom: 6 }}>Lift Log <span style={{ color: "#888", fontSize: 11 }}>v2.0</span></div>
-          <div style={{ fontSize: 11, color: "#aaa", lineHeight: 1.6 }}>
+          <div style={{ fontSize: 15, color: "#e0e0e0", marginBottom: 6 }}>Lift Log <span style={{ color: "#888", fontSize: 11 }}>v2.0</span></div>
+          <div style={{ fontSize: 15, color: "#aaa", lineHeight: 1.6 }}>
             Built for the user with two 15lb dumbbells and limited time. Auto-progression, exercise demos from the public-domain Free Exercise DB, and zero accounts.
           </div>
-          <div style={{ fontSize: 10, color: "#666", marginTop: 12, letterSpacing: "0.06em" }}>
+          <div style={{ fontSize: 14, color: "#666", marginTop: 12, letterSpacing: "0.06em" }}>
             All data stored locally in your browser. No tracking, no servers.
           </div>
         </div>
       </Section>
 
-      <div style={{ padding: 20, textAlign: "center", fontSize: 9, color: "#444", letterSpacing: "0.14em" }}>
+      <div style={{ padding: 20, textAlign: "center", fontSize: 15, color: "#444", letterSpacing: "0.14em" }}>
         — STAY CONSISTENT —
       </div>
     </div>
@@ -96,7 +96,7 @@ function Section({ title, children }) {
   return (
     <div style={{ padding: "0 20px 24px" }}>
       <div style={{
-        fontSize: 11, color: "#ddd", letterSpacing: "0.16em", textTransform: "uppercase",
+        fontSize: 15, color: "#ddd", letterSpacing: "0.16em", textTransform: "uppercase",
         fontWeight: 500, marginBottom: 12,
       }}>{title}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{children}</div>
@@ -108,8 +108,8 @@ function Row({ label, desc, children }) {
   return (
     <div style={{ padding: "14px 16px", background: "#0d0d0d", borderRadius: 10, border: "1px solid #1c1c1c" }}>
       <div style={{ marginBottom: 10 }}>
-        <div style={{ fontSize: 13, color: "#f0f0f0" }}>{label}</div>
-        {desc && <div style={{ fontSize: 10, color: "#888", marginTop: 2, lineHeight: 1.4 }}>{desc}</div>}
+        <div style={{ fontSize: 15, color: "#f0f0f0" }}>{label}</div>
+        {desc && <div style={{ fontSize: 14, color: "#888", marginTop: 2, lineHeight: 1.4 }}>{desc}</div>}
       </div>
       {children}
     </div>
@@ -128,7 +128,7 @@ function SegControl({ options, value, onChange, accent }) {
               background: active ? accent : "transparent",
               color: active ? "#050505" : "#bbb",
               border: "none", borderRadius: 5, cursor: "pointer",
-              fontSize: 11, letterSpacing: "0.06em", fontWeight: active ? 500 : 400,
+              fontSize: 15, letterSpacing: "0.06em", fontWeight: active ? 500 : 400,
               fontFamily: "DM Mono, monospace",
               transition: "all 0.18s",
               boxShadow: active ? `0 0 12px ${accent}77` : "none",
@@ -145,8 +145,8 @@ function Toggle({ label, desc, value, onChange, accent }) {
   return (
     <div style={{ padding: "14px 16px", background: "#0d0d0d", borderRadius: 10, border: "1px solid #1c1c1c", display: "flex", alignItems: "center", gap: 14 }}>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, color: "#f0f0f0" }}>{label}</div>
-        {desc && <div style={{ fontSize: 10, color: "#888", marginTop: 2, lineHeight: 1.4 }}>{desc}</div>}
+        <div style={{ fontSize: 15, color: "#f0f0f0" }}>{label}</div>
+        {desc && <div style={{ fontSize: 14, color: "#888", marginTop: 2, lineHeight: 1.4 }}>{desc}</div>}
       </div>
       <button onClick={() => onChange(!value)}
         style={{
@@ -183,8 +183,8 @@ function Action({ label, desc, onClick, danger }) {
       onMouseEnter={e => e.currentTarget.style.borderColor = danger ? "#ff444499" : "#3a3a3a"}
       onMouseLeave={e => e.currentTarget.style.borderColor = danger ? "#ff444433" : "#1c1c1c"}
     >
-      <div style={{ fontSize: 13, color: danger ? "#ff8888" : "#f0f0f0" }}>{label} →</div>
-      {desc && <div style={{ fontSize: 10, color: "#888", marginTop: 3, lineHeight: 1.4 }}>{desc}</div>}
+      <div style={{ fontSize: 15, color: danger ? "#ff8888" : "#f0f0f0" }}>{label} →</div>
+      {desc && <div style={{ fontSize: 14, color: "#888", marginTop: 3, lineHeight: 1.4 }}>{desc}</div>}
     </button>
   );
 }

@@ -87,8 +87,8 @@ export default function StatsView({ history, progression, settings, achievements
             return (
               <div key={ex.name} style={{ padding: "12px 14px", background: "#0d0d0d", borderRadius: 9, border: "1px solid #1c1c1c" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <span style={{ fontSize: 13, color: "#f0f0f0" }}>{ex.name}</span>
-                  <span style={{ fontSize: 12, color, fontWeight: 500 }}>
+                  <span style={{ fontSize: 15, color: "#f0f0f0" }}>{ex.name}</span>
+                  <span style={{ fontSize: 14, color, fontWeight: 500 }}>
                     {ex.repLabel}{ex.baseReps} → {ex.repLabel}{peakReps} {atMax && "🏆"}
                   </span>
                 </div>
@@ -120,10 +120,10 @@ export default function StatsView({ history, progression, settings, achievements
                 boxShadow: unlocked ? "0 0 16px #fbbf2422" : "none",
               }}>
                 <div style={{ fontSize: 26, marginBottom: 6, filter: unlocked ? "none" : "grayscale(1) brightness(0.5)" }}>{a.icon}</div>
-                <div style={{ fontSize: 11, color: unlocked ? "#fbbf24" : "#666", letterSpacing: "0.06em", fontWeight: 500, marginBottom: 4 }}>
+                <div style={{ fontSize: 15, color: unlocked ? "#fbbf24" : "#666", letterSpacing: "0.06em", fontWeight: 500, marginBottom: 4 }}>
                   {a.name}
                 </div>
-                <div style={{ fontSize: 9, color: "#888", lineHeight: 1.4 }}>{a.desc}</div>
+                <div style={{ fontSize: 15, color: "#888", lineHeight: 1.4 }}>{a.desc}</div>
               </div>
             );
           })}
@@ -140,7 +140,7 @@ export default function StatsView({ history, progression, settings, achievements
             <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 48, color: "#a78bfa", letterSpacing: "0.06em", filter: "drop-shadow(0 0 8px #a78bfa55)" }}>
               {fmtDuration(avgDuration)}
             </div>
-            <div style={{ fontSize: 11, color: "#aaa", letterSpacing: "0.14em", marginTop: 4 }}>PER WORKOUT</div>
+            <div style={{ fontSize: 15, color: "#aaa", letterSpacing: "0.14em", marginTop: 4 }}>PER WORKOUT</div>
           </div>
         </Section>
       )}
@@ -159,7 +159,7 @@ function Header({ title, subtitle, accent }) {
       <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 44, letterSpacing: "0.06em", lineHeight: 0.9, color: "#fafafa" }}>
         {title}
       </div>
-      <div style={{ fontSize: 11, color: "#999", marginTop: 6, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+      <div style={{ fontSize: 15, color: "#999", marginTop: 6, letterSpacing: "0.14em", textTransform: "uppercase" }}>
         {subtitle}
       </div>
     </div>
@@ -169,10 +169,10 @@ function Header({ title, subtitle, accent }) {
 function Section({ title, subtitle, children }) {
   return (
     <div style={{ padding: "24px 20px 8px" }}>
-      <div style={{ fontSize: 11, color: "#ddd", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 500 }}>
+      <div style={{ fontSize: 15, color: "#ddd", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 500 }}>
         {title}
       </div>
-      {subtitle && <div style={{ fontSize: 10, color: "#888", marginTop: 3, letterSpacing: "0.04em" }}>{subtitle}</div>}
+      {subtitle && <div style={{ fontSize: 14, color: "#888", marginTop: 3, letterSpacing: "0.04em" }}>{subtitle}</div>}
       <div style={{ marginTop: 14 }}>{children}</div>
     </div>
   );
@@ -185,7 +185,7 @@ function BigStat({ label, value, unit, suffix, accent }) {
       borderRadius: 11, position: "relative", overflow: "hidden",
     }}>
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at top right, ${accent}10 0%, transparent 70%)`, pointerEvents: "none" }} />
-      <div style={{ fontSize: 9, color: "#aaa", letterSpacing: "0.14em", textTransform: "uppercase", position: "relative" }}>{label}</div>
+      <div style={{ fontSize: 15, color: "#aaa", letterSpacing: "0.14em", textTransform: "uppercase", position: "relative" }}>{label}</div>
       <div style={{
         fontFamily: "'Bebas Neue', sans-serif", fontSize: 32,
         color: accent || "#fafafa", marginTop: 4, letterSpacing: "0.04em",
@@ -193,7 +193,7 @@ function BigStat({ label, value, unit, suffix, accent }) {
         position: "relative",
       }}>
         {value}
-        {unit && <span style={{ fontSize: 12, color: "#999", marginLeft: 4, letterSpacing: "0.1em" }}>{unit}</span>}
+        {unit && <span style={{ fontSize: 14, color: "#999", marginLeft: 4, letterSpacing: "0.1em" }}>{unit}</span>}
         {suffix && <span style={{ fontSize: 18, marginLeft: 4 }}>{suffix}</span>}
       </div>
     </div>
@@ -202,7 +202,7 @@ function BigStat({ label, value, unit, suffix, accent }) {
 
 function Legend({ items }) {
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 10, fontSize: 10, color: "#aaa" }}>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 10, fontSize: 14, color: "#aaa" }}>
       {items.map((item, i) => (
         <div key={i} style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <div style={{ width: 8, height: 8, background: item.color, borderRadius: 2 }} />
