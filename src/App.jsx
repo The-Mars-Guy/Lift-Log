@@ -89,7 +89,7 @@ export default function App() {
       background:`radial-gradient(ellipse at top, ${accent}0d 0%, #050505 55%, #000 100%)`,
       paddingBottom:"calc(82px + env(safe-area-inset-bottom))",
     }}>
-      <div style={{ width:"100%", maxWidth:520, margin:"0 auto" }}>
+      <div className="app-shell">
         {activeView === "workout" && (
           <WorkoutView
             sets={sets} setSets={setSets}

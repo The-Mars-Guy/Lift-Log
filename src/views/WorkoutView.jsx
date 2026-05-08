@@ -222,7 +222,7 @@ function PostWorkoutFeedback({ exercises, sessionLogs, getLogKey, exConfig, hist
 
   return (
     <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,.92)",display:"flex",alignItems:"flex-end"}}>
-      <div style={{width:"100%",maxWidth:520,margin:"0 auto",background:"#0a0a0a",borderTop:`2px solid ${accent}`,borderRadius:"18px 18px 0 0",padding:"24px 20px 36px",animation:"slideUp .3s ease-out"}}>
+      <div className="mobile-shell" style={{background:"#0a0a0a",borderTop:`2px solid ${accent}`,borderRadius:"18px 18px 0 0",padding:"24px 20px 36px",animation:"slideUp .3s ease-out"}}>
         {/* Progress dots */}
         <div style={{display:"flex",gap:5,justifyContent:"center",marginBottom:20}}>
           {exercises.map((_,i)=>(
@@ -342,7 +342,7 @@ function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, o
   const [reps,   setReps]   = useState(defaultReps);
   return (
     <div style={{position:"fixed",bottom:82,left:0,right:0,zIndex:105,background:"#0a0a0a",borderTop:`1.5px solid ${accent}99`,padding:"14px 18px 12px",boxShadow:`0 -8px 32px ${accent}44`,animation:"slideUp .22s ease-out"}}>
-      <div style={{maxWidth:520,margin:"0 auto"}}>
+      <div className="mobile-shell">
         <div style={{fontSize:12,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:12,fontWeight:500}}>Log Set {setNum} · {exerciseName}</div>
         <div style={{display:"flex",gap:10,alignItems:"center"}}>
           <div style={{flex:1}}>

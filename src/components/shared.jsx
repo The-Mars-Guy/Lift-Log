@@ -36,13 +36,30 @@ export function ExerciseAnimation({ folder, accent }) {
 export function RestTimer({ seconds, label, onSkip, onComplete, accent }) {
   const [remaining, setRemaining] = useState(seconds);
   const fired = useRef(false);
+  const endsAt = useRef(Date.now() + seconds * 1000);
+  const onCompleteRef = useRef(onComplete);
+
   useEffect(() => {
-    const id = setInterval(() => setRemaining(r => {
-      if (r <= 1) { clearInterval(id); if (!fired.current) { fired.current=true; onComplete(); } return 0; }
-      return r-1;
-    }), 1000);
-    return () => clearInterval(id);
+    onCompleteRef.current = onComplete;
   }, [onComplete]);
+
+  useEffect(() => {
+    endsAt.current = Date.now() + seconds * 1000;
+    fired.current = false;
+
+    const tick = () => {
+      const next = Math.max(0, Math.ceil((endsAt.current - Date.now()) / 1000));
+      setRemaining(next);
+      if (next === 0 && !fired.current) {
+        fired.current = true;
+        onCompleteRef.current();
+      }
+    };
+
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  }, [seconds]);
   const pct  = (remaining / seconds) * 100;
   const r    = 22;
   const circ = 2 * Math.PI * r;
@@ -55,7 +72,7 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent }) {
       boxShadow:`0 -8px 36px ${accent}33`,
       animation:"slideUp .25s ease-out",
     }}>
-      <div style={{ maxWidth:520, margin:"0 auto", display:"flex", alignItems:"center", gap:16 }}>
+      <div className="mobile-shell" style={{ display:"flex", alignItems:"center", gap:16 }}>
         <div style={{ position:"relative", width:56, height:56, flexShrink:0 }}>
           <svg width="56" height="56" viewBox="0 0 56 56" style={{ transform:"rotate(-90deg)" }}>
             <circle cx="28" cy="28" r={r} fill="none" stroke="#1a1a1a" strokeWidth="3.5"/>
@@ -85,7 +102,7 @@ export function Toast({ icon="🎯", title, msg, accent, onClose, duration=4000 
   return (
     <div style={{ position:"fixed",top:16,left:16,right:16,zIndex:200, animation:"slideDown .3s ease-out", pointerEvents:"none" }}>
       <div style={{
-        maxWidth:488, margin:"0 auto",
+        width:"100%", maxWidth:488, margin:"0 auto",
         background:"#0c0c0c", border:`1.5px solid ${accent}`,
         borderRadius:13, padding:"14px 18px",
         boxShadow:`0 0 40px ${accent}88,0 4px 24px rgba(0,0,0,.6)`,
@@ -159,7 +176,7 @@ export function BottomNav({ active, onSelect, accent, level }) {
       WebkitBackdropFilter:"blur(20px)", borderTop:"1px solid #222",
       paddingBottom:"env(safe-area-inset-bottom)",
     }}>
-      <div style={{ maxWidth:520, margin:"0 auto", display:"flex", justifyContent:"space-around", padding:"12px 4px 10px" }}>
+      <div className="mobile-shell" style={{ display:"flex", justifyContent:"space-around", padding:"12px 4px 10px" }}>
         {NAV_ITEMS.map(({ id, label, Icon }) => {
           const isActive = active === id;
           const color = isActive ? accent : "#666";

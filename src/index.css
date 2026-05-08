@@ -32,6 +32,21 @@ body {
 #root {
   overflow-x: clip;
 }
+
+.app-shell,
+.mobile-shell {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+@media (pointer: coarse) {
+  .app-shell,
+  .mobile-shell {
+    max-width: none;
+  }
+}
+
 button { font-family: inherit; cursor: pointer; }
 ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #0a0a0a; } ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
 
