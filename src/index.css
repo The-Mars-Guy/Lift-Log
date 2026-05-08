@@ -75,7 +75,23 @@ button { font-family: inherit; cursor: pointer; }
 @keyframes coachSlide    { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
 @keyframes completePulse { 0%{box-shadow:0 0 0 0 var(--glow,rgba(74,222,128,.5))} 70%{box-shadow:0 0 0 18px rgba(0,0,0,0)} 100%{box-shadow:0 0 0 0 rgba(0,0,0,0)} }
 @keyframes levelUp       { 0%{transform:scale(0.7) rotate(-6deg);opacity:0} 60%{transform:scale(1.1) rotate(1deg);opacity:1} 100%{transform:scale(1) rotate(0);opacity:1} }
-@keyframes exerciseFlip    { 0%,38%{opacity:1;transform:scale(1)} 48%{opacity:0;transform:scale(1.02)} 62%,100%{opacity:0} }
-@keyframes exerciseFlipAlt { 0%,38%{opacity:0} 48%{opacity:0;transform:scale(.98)} 62%,100%{opacity:1;transform:scale(1)} }
+@keyframes exerciseFrameA {
+  0%, 34%   { opacity:1; transform:scale(1) translateY(0); }
+  50%, 84%  { opacity:0; transform:scale(1.012) translateY(-1px); }
+  100%      { opacity:1; transform:scale(1) translateY(0); }
+}
+@keyframes exerciseFrameB {
+  0%, 34%   { opacity:0; transform:scale(.992) translateY(1px); }
+  50%, 84%  { opacity:1; transform:scale(1) translateY(0); }
+  100%      { opacity:0; transform:scale(.992) translateY(1px); }
+}
 @keyframes pulseGlow     { 0%,100%{filter:drop-shadow(0 0 4px var(--c,#4ade80))} 50%{filter:drop-shadow(0 0 18px var(--c,#4ade80))} }
 @keyframes streakPop     { 0%{transform:scale(1)} 50%{transform:scale(1.25)} 100%{transform:scale(1)} }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

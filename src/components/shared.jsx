@@ -6,6 +6,15 @@ import { remainingSeconds } from "../session.js";
 export function ExerciseAnimation({ folder, accent }) {
   const [loaded, setLoaded] = useState({ 0:false, 1:false });
   const ready = loaded[0] && loaded[1];
+  const frameStyle = {
+    position:"absolute",
+    inset:0,
+    width:"100%",
+    height:"100%",
+    objectFit:"contain",
+    willChange:"opacity, transform",
+  };
+
   return (
     <div style={{
       position:"relative", width:"100%", aspectRatio:"1",
@@ -26,9 +35,9 @@ export function ExerciseAnimation({ folder, accent }) {
         }}>LOADING...</div>
       )}
       <img src={`${IMG_BASE}/${folder}/0.jpg`} alt="" onLoad={() => setLoaded(p=>({...p,0:true}))} onError={() => setLoaded(p=>({...p,0:true}))}
-        style={{ position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"contain", opacity:ready?1:0, animation:ready?"exerciseFlip 1.6s ease-in-out infinite":"none" }}/>
+        style={{ ...frameStyle, opacity:ready?1:0, animation:ready?"exerciseFrameA 2.8s ease-in-out infinite":"none" }}/>
       <img src={`${IMG_BASE}/${folder}/1.jpg`} alt="" onLoad={() => setLoaded(p=>({...p,1:true}))} onError={() => setLoaded(p=>({...p,1:true}))}
-        style={{ position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"contain", opacity:0, animation:ready?"exerciseFlipAlt 1.6s ease-in-out infinite":"none" }}/>
+        style={{ ...frameStyle, opacity:0, animation:ready?"exerciseFrameB 2.8s ease-in-out infinite":"none" }}/>
     </div>
   );
 }
