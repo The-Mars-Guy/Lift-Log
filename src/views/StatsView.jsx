@@ -21,8 +21,10 @@ export default function StatsView({ history, progression, settings, achievements
     if(h.exercises){
       return sum+h.exercises.reduce((s,ex)=>{
         const db=ex.name==="Goblet Squat"?1:2;
-        const w=ex.setLog?ex.setLog.reduce((a,l)=>a+l.weight,0)/ex.setLog.length:settings.dumbbellWeight;
-        return s+(ex.reps*(ex.setLog?.length||ex.sets)*w*db);
+        if(ex.setLog?.length){
+          return s+ex.setLog.reduce((setSum,l)=>setSum+((l.reps||0)*(l.weight||0)*db),0);
+        }
+        return s+((ex.reps||0)*(ex.sets||0)*settings.dumbbellWeight*db);
       },0);
     }
     const w=WORKOUTS[h.workout];

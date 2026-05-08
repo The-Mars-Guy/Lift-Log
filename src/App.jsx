@@ -66,7 +66,7 @@ export default function App() {
 
   const resetAllData = () => {
     setSets({}); setHistory([]); setCompleted({}); setProgression({});
-    setAchievements([]); setXp(0); setCheckIns({}); setExConfig({});
+    setAchievements([]); setXp(0); setCheckIns([]); setExConfig({});
   };
 
   const exportData = () => {
@@ -89,7 +89,7 @@ export default function App() {
       background:`radial-gradient(ellipse at top, ${accent}0d 0%, #050505 55%, #000 100%)`,
       paddingBottom:"calc(82px + env(safe-area-inset-bottom))",
     }}>
-      <div style={{ maxWidth:520, margin:"0 auto" }}>
+      <div style={{ width:"100%", maxWidth:520, margin:"0 auto" }}>
         {activeView === "workout" && (
           <WorkoutView
             sets={sets} setSets={setSets}
@@ -101,6 +101,7 @@ export default function App() {
             xp={xp} addXp={addXp} level={level}
             checkIns={checkIns} setCheckIns={setCheckIns}
             assessmentDone={assessmentDone} setAssessmentDone={setAssessmentDone}
+            playSound={playSound} vibrate={vibrate}
             setActiveView={setActiveView}
           />
         )}

@@ -2,15 +2,36 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
-html, body, #root {
+html {
+  width: 100%;
   min-height: 100%;
+  font-size: 18px;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (max-width: 390px) {
+  html { font-size: 17px; }
+}
+
+body, #root {
+  width: 100%;
+  min-height: 100dvh;
   background: #050505;
   -webkit-font-smoothing: antialiased;
   font-family: 'DM Mono', 'Courier New', monospace;
   color: #f0f0f0;
-  font-size: 16px;
+  font-size: 1rem;
 }
-body { overscroll-behavior: none; }
+
+body {
+  overflow-x: hidden;
+  overscroll-behavior: none;
+}
+
+#root {
+  overflow-x: clip;
+}
 button { font-family: inherit; cursor: pointer; }
 ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #0a0a0a; } ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
 
