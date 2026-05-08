@@ -41,9 +41,23 @@ body {
 }
 
 @media (pointer: coarse) {
+  :root {
+    --mobile-ui-scale: 1.28;
+  }
+
   .app-shell,
   .mobile-shell {
+    width: calc(100% / var(--mobile-ui-scale));
     max-width: none;
+    zoom: var(--mobile-ui-scale);
+  }
+
+  @supports not (zoom: 1) {
+    .app-shell,
+    .mobile-shell {
+      transform: scale(var(--mobile-ui-scale));
+      transform-origin: top center;
+    }
   }
 }
 

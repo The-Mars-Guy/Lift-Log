@@ -2,6 +2,7 @@ import { useState } from "react";
 import { WORKOUTS, ACHIEVEMENTS, computeStats, isoWeek, getLevel, epley1RM, getExerciseHistory } from "../data.js";
 import { BarChart, MiniGraph } from "../components/shared.jsx";
 import { fmtDuration } from "../hooks.js";
+import { exerciseVolume } from "../session.js";
 
 export default function StatsView({ history, progression, settings, achievements, accent, xp, level, exConfig, checkIns }) {
   const stats = computeStats({ history, progression, settings });
@@ -20,11 +21,7 @@ export default function StatsView({ history, progression, settings, achievements
   const totalVolume = history.reduce((sum,h)=>{
     if(h.exercises){
       return sum+h.exercises.reduce((s,ex)=>{
-        const db=ex.name==="Goblet Squat"?1:2;
-        if(ex.setLog?.length){
-          return s+ex.setLog.reduce((setSum,l)=>setSum+((l.reps||0)*(l.weight||0)*db),0);
-        }
-        return s+((ex.reps||0)*(ex.sets||0)*settings.dumbbellWeight*db);
+        return s+exerciseVolume(ex, settings.dumbbellWeight);
       },0);
     }
     const w=WORKOUTS[h.workout];

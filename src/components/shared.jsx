@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { IMG_BASE, WORKOUTS, isoDate, isoWeek, dateStr } from "../data.js";
+import { remainingSeconds } from "../session.js";
 
 // ── Exercise Animation ───────────────────────────────────────────────────────
 export function ExerciseAnimation({ folder, accent }) {
@@ -48,7 +49,7 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent }) {
     fired.current = false;
 
     const tick = () => {
-      const next = Math.max(0, Math.ceil((endsAt.current - Date.now()) / 1000));
+      const next = remainingSeconds(endsAt.current);
       setRemaining(next);
       if (next === 0 && !fired.current) {
         fired.current = true;

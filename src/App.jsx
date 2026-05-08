@@ -7,6 +7,7 @@ import WorkoutView  from "./views/WorkoutView.jsx";
 import StatsView    from "./views/StatsView.jsx";
 import CalendarView from "./views/CalendarView.jsx";
 import SettingsView from "./views/SettingsView.jsx";
+import { normalizeLiftLogData } from "./session.js";
 
 export default function App() {
   const [activeView, setActiveView] = useState("workout");
@@ -35,6 +36,20 @@ export default function App() {
   useEffect(() => {
     const merged = { ...DEFAULT_SETTINGS, ...settings };
     if (Object.keys(merged).length !== Object.keys(settings).length) setSettings(merged);
+  }, []); // eslint-disable-line
+
+  // Normalize older or malformed localStorage data.
+  useEffect(() => {
+    const data = normalizeLiftLogData({ sets, history, completed, progression, achievements, exConfig, xp, checkIns, assessmentDone });
+    if (data.sets !== sets) setSets(data.sets);
+    if (data.history !== history) setHistory(data.history);
+    if (data.completed !== completed) setCompleted(data.completed);
+    if (data.progression !== progression) setProgression(data.progression);
+    if (data.achievements !== achievements) setAchievements(data.achievements);
+    if (data.exConfig !== exConfig) setExConfig(data.exConfig);
+    if (data.xp !== xp) setXp(data.xp);
+    if (data.checkIns !== checkIns) setCheckIns(data.checkIns);
+    if (data.assessmentDone !== assessmentDone) setAssessmentDone(data.assessmentDone);
   }, []); // eslint-disable-line
 
   // Seed exercise weights if not set
@@ -70,13 +85,33 @@ export default function App() {
   };
 
   const exportData = () => {
-    const data = { sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, exportedAt: new Date().toISOString() };
+    const data = { sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, assessmentDone, exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     a.href = url; a.download = `lift-log-${new Date().toISOString().slice(0,10)}.json`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const importData = async (file) => {
+    try {
+      const raw = await file.text();
+      const data = normalizeLiftLogData(JSON.parse(raw));
+      setSets(data.sets);
+      setHistory(data.history);
+      setCompleted(data.completed);
+      setProgression(data.progression);
+      setSettings({ ...DEFAULT_SETTINGS, ...(data.settings || {}) });
+      setAchievements(data.achievements);
+      setExConfig(data.exConfig);
+      setXp(data.xp);
+      setCheckIns(data.checkIns);
+      setAssessmentDone(data.assessmentDone);
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const day  = todayName();
@@ -115,7 +150,7 @@ export default function App() {
         )}
         {activeView === "settings" && (
           <SettingsView settings={settings} setSettings={setSettings}
-            resetAllData={resetAllData} exportData={exportData} accent={accent} />
+            resetAllData={resetAllData} exportData={exportData} importData={importData} accent={accent} />
         )}
       </div>
 

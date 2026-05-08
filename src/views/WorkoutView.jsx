@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import {
   WORKOUTS, SCHEDULE, DAYS, MUSCLE_LABELS, DEFAULT_WEIGHTS,
-  todayName, dateStr, isoDate, calcDynamicTarget, assessmentTarget,
+  todayName, dateStr, calcDynamicTarget, assessmentTarget,
   getExerciseHistory, XP_VALUES, getLevel
 } from "../data.js";
 import { useSessionTimer, fmtDuration } from "../hooks.js";
 import { ExerciseAnimation, RestTimer, Toast, MiniGraph } from "../components/shared.jsx";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
+import { completionKey, defaultWorkoutDay, scheduledDate, logKey as makeLogKey } from "../session.js";
 
 // ── CONFETTI ──────────────────────────────────────────────────────────────────
 function Confetti({ active, accent, onDone }) {
@@ -371,18 +372,6 @@ function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, o
 }
 
 // ── THIS WEEK STRIP ───────────────────────────────────────────────────────────
-const DAY_NUM = { Monday:1, Wednesday:3, Friday:5 };
-
-function scheduledDate(day) {
-  const d = new Date();
-  d.setHours(0,0,0,0);
-  const current = d.getDay() || 7;
-  d.setDate(d.getDate() + DAY_NUM[day] - current);
-  return d;
-}
-
-const completionKey = (day) => `${isoDate(scheduledDate(day))}_${day}`;
-
 function ThisWeek({ completed, setActiveTab }) {
   const today = todayName();
   return (
@@ -414,7 +403,7 @@ export default function WorkoutView({
   playSound, vibrate, setActiveView,
   assessmentDone, setAssessmentDone,
 }) {
-  const [activeTab,    setActiveTab]   = useState(()=>DAYS.includes(todayName())?todayName():"Monday");
+  const [activeTab,    setActiveTab]   = useState(()=>defaultWorkoutDay());
   const [expanded,     setExpanded]    = useState(null);
   const [restState,    setRestState]   = useState(null);
   const [loggerState,  setLoggerState] = useState(null);
@@ -432,7 +421,7 @@ export default function WorkoutView({
   const accent  = workout.color;
 
   const sessionKey = completionKey(activeTab);
-  const logKey  = (i,j) => `${sessionKey}_${i}_${j}`;
+  const logKey  = (i,j) => makeLogKey(sessionKey,i,j);
   const setKey  = (i,j) => `${sessionKey}_${i}_${j}`;
   const setDone = (i,j) => !!sets[setKey(i,j)];
   const exDone  = (i)   => Array.from({length:workout.exercises[i].sets},(_,j)=>setDone(i,j)).every(Boolean);
@@ -482,31 +471,36 @@ export default function WorkoutView({
 
   const toggleSet = (i,j) => {
     const k=setKey(i,j); const was=!!sets[k];
-    setSets(p=>({...p,[k]:!was}));
-    if(!was){
-      playSound("setComplete"); vibrate([28]);
-      const bk=`${i}_${j}`;
+    const ex=workout.exercises[i];
+    const lk=logKey(i,j);
+
+    if(was){
+      const logged=sessionLogs[lk]||{weight:getWeight(ex.name),reps:getTargetReps(ex)};
+      setLoggerState({exIdx:i,setIdx:j,weight:logged.weight,reps:logged.reps,editing:true});
+      return;
+    }
+
+    setSets(p=>({...p,[k]:true}));
+    setSessionLogs(p=>({...p,[lk]:{weight:getWeight(ex.name),reps:getTargetReps(ex)}}));
+    if(!xpAwards[lk]){
+      setXpAwards(p=>({...p,[lk]:true}));
+      spawnXp(XP_VALUES.set);
+    }
+    playSound("setComplete"); vibrate([28]);
+    const bk=lk;
       setBounceSets(p=>({...p,[bk]:true}));
       setTimeout(()=>setBounceSets(p=>{const n={...p};delete n[bk];return n;}),500);
-      const ex=workout.exercises[i];
-      setLoggerState({exIdx:i,setIdx:j,weight:getWeight(ex.name),reps:getTargetReps(ex)});
-      const remaining=ex.sets-(j+1);
-      const next=remaining>0?`Set ${j+2} of ${ex.name}`:i+1<workout.exercises.length?`Up next: ${workout.exercises[i+1].name}`:"Last set! Finish when ready.";
-      setRestState({label:next,accent});
-    } else {
-      const lk=logKey(i,j);
-      setSessionLogs(p=>{const n={...p};delete n[lk];return n;});
-      if(loggerState?.exIdx===i&&loggerState?.setIdx===j) setLoggerState(null);
-      playSound("uncheck");
-    }
+    const remaining=ex.sets-(j+1);
+    const next=remaining>0?`Set ${j+2} of ${ex.name}`:i+1<workout.exercises.length?`Up next: ${workout.exercises[i+1].name}`:"Last set! Finish when ready.";
+    setRestState({label:next,accent});
   };
 
   const saveLog = ({weight,reps}) => {
     if(!loggerState) return;
-    const {exIdx,setIdx}=loggerState;
+    const {exIdx,setIdx,editing}=loggerState;
     const lk=logKey(exIdx,setIdx);
     setSessionLogs(p=>({...p,[lk]:{weight,reps}}));
-    if(!xpAwards[lk]){
+    if(!editing&&!xpAwards[lk]){
       setXpAwards(p=>({...p,[lk]:true}));
       spawnXp(XP_VALUES.set);
     }

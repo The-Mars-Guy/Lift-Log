@@ -1,10 +1,19 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { DEFAULT_SETTINGS } from "../data.js";
 
-export default function SettingsView({ settings, setSettings, resetAllData, exportData, accent }) {
+export default function SettingsView({ settings, setSettings, resetAllData, exportData, importData, accent }) {
   const [confirming, setConfirming] = useState(false);
+  const [importStatus, setImportStatus] = useState(null);
+  const fileInput = useRef(null);
 
   const update = (key, value) => setSettings(s => ({ ...s, [key]: value }));
+  const handleImport = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const ok = await importData(file);
+    setImportStatus(ok ? "Import complete." : "Import failed. Choose a Lift Log JSON export.");
+    event.target.value = "";
+  };
 
   return (
     <div>
@@ -51,6 +60,9 @@ export default function SettingsView({ settings, setSettings, resetAllData, expo
 
       <Section title="Data">
         <Action label="Export Data" desc="Download history, progression, and settings as JSON" onClick={exportData} />
+        <Action label="Import Data" desc="Restore from a Lift Log JSON export" onClick={() => fileInput.current?.click()} />
+        <input ref={fileInput} type="file" accept="application/json,.json" onChange={handleImport} style={{ display:"none" }} />
+        {importStatus && <div style={{fontSize:13,color:importStatus.startsWith("Import complete") ? accent : "#ff8888",padding:"4px 2px 8px"}}>{importStatus}</div>}
         <Action label="Reset to Defaults" desc="Restore default settings (keeps workout history)" onClick={() => setSettings(DEFAULT_SETTINGS)} />
         {confirming ? (
           <div style={{ padding: 16, background: "#1a0a0a", border: "1px solid #ff444466", borderRadius: 10, marginTop: 8 }}>
