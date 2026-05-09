@@ -43,7 +43,7 @@ export function ExerciseAnimation({ folder, accent }) {
 }
 
 // ── Rest Timer ───────────────────────────────────────────────────────────────
-export function RestTimer({ seconds, label, onSkip, onComplete, accent }) {
+export function RestTimer({ seconds, label, onSkip, onComplete, accent, fullscreen=false }) {
   const [remaining, setRemaining] = useState(seconds);
   const fired = useRef(false);
   const endsAt = useRef(Date.now() + seconds * 1000);
@@ -73,6 +73,37 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent }) {
   const pct  = (remaining / seconds) * 100;
   const r    = 22;
   const circ = 2 * Math.PI * r;
+  if (fullscreen) {
+    const bigR = 62;
+    const bigCirc = 2 * Math.PI * bigR;
+    return (
+      <div style={{
+        position:"fixed", inset:0, zIndex:180,
+        background:`radial-gradient(circle at center, ${accent}18 0%, #050505 55%, #000 100%)`,
+        display:"flex", alignItems:"center", justifyContent:"center", padding:"28px 22px",
+      }}>
+        <div className="mobile-shell" style={{textAlign:"center"}}>
+          <div style={{fontSize:12,color:"#888",letterSpacing:".16em",textTransform:"uppercase",marginBottom:20}}>Rest</div>
+          <div style={{position:"relative",width:168,height:168,margin:"0 auto 26px"}}>
+            <svg width="168" height="168" viewBox="0 0 168 168" style={{transform:"rotate(-90deg)"}}>
+              <circle cx="84" cy="84" r={bigR} fill="none" stroke="#171717" strokeWidth="8"/>
+              <circle cx="84" cy="84" r={bigR} fill="none" stroke={accent} strokeWidth="8"
+                strokeLinecap="round" strokeDasharray={bigCirc}
+                strokeDashoffset={bigCirc*(1-pct/100)}
+                style={{transition:"stroke-dashoffset .25s linear",filter:`drop-shadow(0 0 12px ${accent})`}}/>
+            </svg>
+            <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:72,color:accent,letterSpacing:".04em"}}>{remaining}</div>
+          </div>
+          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:"#f5f5f5",letterSpacing:".06em",lineHeight:1.05,marginBottom:10}}>{label}</div>
+          <div style={{fontSize:13,color:"#888",lineHeight:1.5,marginBottom:30}}>Breathe, shake it out, then hit the next set clean.</div>
+          <button onClick={onSkip}
+            style={{width:"100%",padding:"18px",background:"transparent",border:`1.5px solid ${accent}77`,borderRadius:13,color:accent,fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:".12em"}}>
+            SKIP REST
+          </button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div style={{
       position:"fixed", bottom:64, left:0, right:0, zIndex:100,

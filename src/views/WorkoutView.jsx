@@ -399,12 +399,81 @@ function TodayPlan({ plan, readiness, accent }) {
   );
 }
 
+function FocusWorkoutMode({
+  workout, accent, activeTab, doneSets, totalSets, setDone, sessionLogs, logKey,
+  getTargetReps, getWeight, toggleSet, onExit, onFinish, allDone, isCompleted,
+}) {
+  const next = (() => {
+    for (let i=0;i<workout.exercises.length;i++) {
+      const ex = workout.exercises[i];
+      for (let j=0;j<ex.sets;j++) {
+        if (!setDone(i,j)) return { ex, exIdx:i, setIdx:j };
+      }
+    }
+    return { ex:workout.exercises[workout.exercises.length-1], exIdx:workout.exercises.length-1, setIdx:workout.exercises[workout.exercises.length-1].sets-1 };
+  })();
+  const target = getTargetReps(next.ex);
+  const weight = getWeight(next.ex.name);
+  const currentDone = Array.from({length:next.ex.sets},(_,j)=>setDone(next.exIdx,j)).filter(Boolean).length;
+
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:150,background:`radial-gradient(circle at top,${accent}12,#050505 46%,#000)`,overflowY:"auto",padding:"calc(18px + env(safe-area-inset-top)) 18px 28px"}}>
+      <div className="mobile-shell">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <button onClick={onExit} style={{background:"transparent",border:"1px solid #2c2c2c",borderRadius:9,color:"#aaa",padding:"10px 13px",fontSize:12,letterSpacing:".08em"}}>EXIT</button>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:11,color:"#777",letterSpacing:".14em",textTransform:"uppercase"}}>{activeTab}</div>
+            <div style={{fontSize:13,color:accent}}>{doneSets}/{totalSets} sets</div>
+          </div>
+        </div>
+
+        <div style={{fontSize:12,color:accent,letterSpacing:".16em",textTransform:"uppercase",marginBottom:8}}>Focus Mode</div>
+        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:46,color:"#f5f5f5",letterSpacing:".06em",lineHeight:.92,marginBottom:6}}>{next.ex.name}</div>
+        <div style={{fontSize:15,color:"#aaa",lineHeight:1.5,marginBottom:18}}>
+          Set {Math.min(currentDone+1,next.ex.sets)} of {next.ex.sets} · {weight}lbs · target ×{target}{next.ex.repSuffix||""}
+        </div>
+
+        <ExerciseAnimation folder={next.ex.folder} accent={accent}/>
+
+        <div style={{marginTop:20,display:"grid",gridTemplateColumns:`repeat(${next.ex.sets},1fr)`,gap:9}}>
+          {Array.from({length:next.ex.sets},(_,j)=>{
+            const isDone=setDone(next.exIdx,j);
+            const logged=sessionLogs[logKey(next.exIdx,j)];
+            return (
+              <button key={j} onClick={()=>toggleSet(next.exIdx,j)}
+                style={{height:58,borderRadius:13,border:`1.5px solid ${isDone?accent:"#333"}`,background:isDone?`${accent}25`:"#0d0d0d",color:isDone?accent:"#aaa",fontSize:15,fontWeight:700,boxShadow:isDone?`0 0 14px ${accent}55`:"none"}}>
+                {isDone ? (logged ? `${logged.reps}r` : "DONE") : `SET ${j+1}`}
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{marginTop:18,padding:"14px 16px",background:"#0d0d0d",border:"1px solid #202020",borderRadius:12}}>
+          <div style={{fontSize:11,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:6}}>Cue</div>
+          <div style={{fontSize:15,color:"#ddd",lineHeight:1.5}}>{next.ex.tip}</div>
+        </div>
+
+        <div style={{height:7,background:"#181818",borderRadius:5,overflow:"hidden",marginTop:22}}>
+          <div style={{height:"100%",width:`${(doneSets/totalSets)*100}%`,background:accent,boxShadow:`0 0 12px ${accent}`,transition:"width .25s"}}/>
+        </div>
+
+        {allDone&&!isCompleted&&(
+          <button onClick={onFinish}
+            style={{width:"100%",marginTop:22,padding:20,borderRadius:15,border:"none",background:accent,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:28,letterSpacing:".12em",boxShadow:`0 0 48px ${accent}77`}}>
+            FINISH WORKOUT
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── SET LOGGER ────────────────────────────────────────────────────────────────
 function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, onSave, onSkip }) {
   const [weight, setWeight] = useState(defaultWeight);
   const [reps,   setReps]   = useState(defaultReps);
   return (
-    <div style={{position:"fixed",bottom:82,left:0,right:0,zIndex:105,background:"#0a0a0a",borderTop:`1.5px solid ${accent}99`,padding:"14px 18px 12px",boxShadow:`0 -8px 32px ${accent}44`,animation:"slideUp .22s ease-out"}}>
+    <div style={{position:"fixed",bottom:82,left:0,right:0,zIndex:220,background:"#0a0a0a",borderTop:`1.5px solid ${accent}99`,padding:"14px 18px 12px",boxShadow:`0 -8px 32px ${accent}44`,animation:"slideUp .22s ease-out"}}>
       <div className="mobile-shell">
         <div style={{fontSize:12,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:12,fontWeight:500}}>Log Set {setNum} · {exerciseName}</div>
         <div style={{display:"flex",gap:10,alignItems:"center"}}>
@@ -477,6 +546,7 @@ export default function WorkoutView({
   const [sessionLogs,  setSessionLogs] = useState({});
   const [xpAwards,     setXpAwards]    = useState({});
   const [showFeedback, setShowFeedback]= useState(false);
+  const [focusMode,    setFocusMode]   = useState(false);
 
   const wKey    = SCHEDULE[activeTab];
   const workout = WORKOUTS[wKey];
@@ -569,8 +639,10 @@ export default function WorkoutView({
       setBounceSets(p=>({...p,[bk]:true}));
       setTimeout(()=>setBounceSets(p=>{const n={...p};delete n[bk];return n;}),500);
     const remaining=ex.sets-(j+1);
-    const next=remaining>0?`Set ${j+2} of ${ex.name}`:i+1<workout.exercises.length?`Up next: ${workout.exercises[i+1].name}`:"Last set! Finish when ready.";
-    setRestState({label:next,accent});
+    const hasNextExercise=i+1<workout.exercises.length;
+    const next=remaining>0?`Set ${j+2} of ${ex.name}`:hasNextExercise?`Up next: ${workout.exercises[i+1].name}`:null;
+    if(next) setRestState({label:next,accent});
+    else setRestState(null);
   };
 
   const saveLog = ({weight,reps}) => {
@@ -664,6 +736,7 @@ export default function WorkoutView({
     setExConfig(newConfig);
     setSessionLogs({});
     setXpAwards({});
+    setFocusMode(false);
     setRestState(null);
     setLoggerState(null);
   };
@@ -748,7 +821,7 @@ export default function WorkoutView({
       <div style={{padding:"18px 16px 14px",borderBottom:"1px solid #1a1a1a"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:accent,letterSpacing:".06em",filter:`drop-shadow(0 0 10px ${accent}66)`}}>{workout.label}</span>
-          <button onClick={()=>{if(!confirm("Reset today's sets?"))return;const n={...sets};workout.exercises.forEach((_,i)=>Array.from({length:workout.exercises[i].sets},(_,j)=>{delete n[setKey(i,j)];}));setSets(n);setCompleted(p=>{const n2={...p};delete n2[sessionKey];return n2;});setExpanded(null);setRestState(null);setLoggerState(null);setSessionLogs({});setXpAwards({});}}
+          <button onClick={()=>{if(!confirm("Reset today's sets?"))return;const n={...sets};workout.exercises.forEach((_,i)=>Array.from({length:workout.exercises[i].sets},(_,j)=>{delete n[setKey(i,j)];}));setSets(n);setCompleted(p=>{const n2={...p};delete n2[sessionKey];return n2;});setExpanded(null);setRestState(null);setLoggerState(null);setSessionLogs({});setXpAwards({});setFocusMode(false);}}
             style={{background:"none",border:"1px solid #2c2c2c",borderRadius:8,color:"#aaa",fontSize:12,padding:"8px 16px",letterSpacing:".08em"}}>RESET</button>
         </div>
         <div style={{marginTop:14}}>
@@ -759,6 +832,12 @@ export default function WorkoutView({
           <div style={{height:7,background:"#1a1a1a",borderRadius:4,overflow:"hidden"}}>
             <div style={{height:"100%",width:`${(doneSets/totalSets)*100}%`,background:`linear-gradient(90deg,${accent}bb,${accent})`,transition:"width .4s ease",boxShadow:doneSets>0?`0 0 14px ${accent}bb`:"none"}}/>
           </div>
+          {!isCompleted&&(
+            <button onClick={()=>setFocusMode(true)}
+              style={{width:"100%",marginTop:14,padding:"18px",background:accent,border:"none",borderRadius:13,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:25,letterSpacing:".12em",boxShadow:`0 0 36px ${accent}55`}}>
+              START WORKOUT
+            </button>
+          )}
         </div>
       </div>
 
@@ -902,7 +981,17 @@ export default function WorkoutView({
 
       {/* OVERLAYS */}
       {loggerState&&<SetLogger exerciseName={workout.exercises[loggerState.exIdx].name} setNum={loggerState.setIdx+1} defaultWeight={loggerState.weight} defaultReps={loggerState.reps} accent={accent} onSave={saveLog} onSkip={skipLog}/>}
-      {restState&&!loggerState&&<RestTimer seconds={settings.restSeconds} label={restState.label} accent={restState.accent} onSkip={()=>setRestState(null)} onComplete={()=>{setRestState(null);playSound("restEnd");vibrate([200,60,200]);}}/>}
+      {focusMode&&(
+        <FocusWorkoutMode
+          workout={workout} accent={accent} activeTab={activeTab}
+          doneSets={doneSets} totalSets={totalSets} setDone={setDone}
+          sessionLogs={sessionLogs} logKey={logKey}
+          getTargetReps={getTargetReps} getWeight={getWeight}
+          toggleSet={toggleSet} onExit={()=>setFocusMode(false)}
+          onFinish={finishWorkout} allDone={allDone} isCompleted={isCompleted}
+        />
+      )}
+      {restState&&!loggerState&&<RestTimer fullscreen={focusMode} seconds={settings.restSeconds} label={restState.label} accent={restState.accent} onSkip={()=>setRestState(null)} onComplete={()=>{setRestState(null);playSound("restEnd");vibrate([200,60,200]);}}/>}
       {showFeedback&&<PostWorkoutFeedback exercises={workout.exercises} sessionLogs={sessionLogs} getLogKey={logKey} exConfig={exConfig} history={history} onComplete={handleFeedback} accent={accent}/>}
       {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}
       <Confetti active={confetti} accent={accent} onDone={()=>setConfetti(false)}/>
