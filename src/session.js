@@ -47,6 +47,7 @@ export function remainingSeconds(endsAt, now = Date.now()) {
 
 export function normalizeLiftLogData(data = {}) {
   const normalized = { ...data };
+  if (!normalized.settings || typeof normalized.settings !== "object" || Array.isArray(normalized.settings)) normalized.settings = {};
   if (!Array.isArray(normalized.history)) normalized.history = [];
   if (!Array.isArray(normalized.achievements)) normalized.achievements = [];
   if (!Array.isArray(normalized.checkIns)) normalized.checkIns = [];

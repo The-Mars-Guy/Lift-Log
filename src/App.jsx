@@ -29,22 +29,26 @@ export default function App() {
   const [achievementToast, setAchievementToast] = useState(null);
   const [assessmentDone, setAssessmentDone] = useLocalStorage("wt_assessment_done", false);
 
-  const playSound = makePlay(settings);
-  const vibrate   = (p) => vib(settings, p);
+  const normalized = normalizeLiftLogData({ sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, assessmentDone });
+  const safeSettings = { ...DEFAULT_SETTINGS, ...normalized.settings };
+
+  const playSound = makePlay(safeSettings);
+  const vibrate   = (p) => vib(safeSettings, p);
 
   // Migrate settings
   useEffect(() => {
-    const merged = { ...DEFAULT_SETTINGS, ...settings };
-    if (Object.keys(merged).length !== Object.keys(settings).length) setSettings(merged);
+    const merged = { ...DEFAULT_SETTINGS, ...normalized.settings };
+    if (JSON.stringify(merged) !== JSON.stringify(settings)) setSettings(merged);
   }, []); // eslint-disable-line
 
   // Normalize older or malformed localStorage data.
   useEffect(() => {
-    const data = normalizeLiftLogData({ sets, history, completed, progression, achievements, exConfig, xp, checkIns, assessmentDone });
+    const data = normalized;
     if (data.sets !== sets) setSets(data.sets);
     if (data.history !== history) setHistory(data.history);
     if (data.completed !== completed) setCompleted(data.completed);
     if (data.progression !== progression) setProgression(data.progression);
+    if (data.settings !== settings) setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
     if (data.achievements !== achievements) setAchievements(data.achievements);
     if (data.exConfig !== exConfig) setExConfig(data.exConfig);
     if (data.xp !== xp) setXp(data.xp);
@@ -58,15 +62,15 @@ export default function App() {
     let changed = false;
     const allEx = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
     allEx.forEach(ex => {
-      if (!exConfig[ex.name]) { seed[ex.name] = { weight: DEFAULT_WEIGHTS[ex.name] || settings.dumbbellWeight }; changed = true; }
+      if (!normalized.exConfig[ex.name]) { seed[ex.name] = { weight: DEFAULT_WEIGHTS[ex.name] || safeSettings.dumbbellWeight }; changed = true; }
     });
     if (changed) setExConfig(p => ({ ...p, ...seed }));
   }, []); // eslint-disable-line
 
   // Achievement check
   useEffect(() => {
-    const stats = computeStats({ history, progression, settings });
-    const fresh = ACHIEVEMENTS.filter(a => !achievements.includes(a.id) && a.check(stats));
+    const stats = computeStats({ history: normalized.history, progression: normalized.progression, settings: safeSettings });
+    const fresh = ACHIEVEMENTS.filter(a => !normalized.achievements.includes(a.id) && a.check(stats));
     if (!fresh.length) return;
     setAchievements(p => [...p, ...fresh.map(a => a.id)]);
     const first = fresh[0];
@@ -85,7 +89,7 @@ export default function App() {
   };
 
   const exportData = () => {
-    const data = { sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, assessmentDone, exportedAt: new Date().toISOString() };
+    const data = { sets: normalized.sets, history: normalized.history, completed: normalized.completed, progression: normalized.progression, settings: safeSettings, achievements: normalized.achievements, exConfig: normalized.exConfig, xp: normalized.xp, checkIns: normalized.checkIns, assessmentDone: normalized.assessmentDone, exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
@@ -116,7 +120,7 @@ export default function App() {
 
   const day  = todayName();
   const accent = WORKOUTS[DAYS.includes(day) ? SCHEDULE[day] : "A"].color;
-  const level  = getLevel(xp);
+  const level  = getLevel(normalized.xp);
 
   return (
     <div style={{
@@ -127,29 +131,29 @@ export default function App() {
       <div className="app-shell">
         {activeView === "workout" && (
           <WorkoutView
-            sets={sets} setSets={setSets}
-            history={history} setHistory={setHistory}
-            completed={completed} setCompleted={setCompleted}
-            progression={progression} setProgression={setProgression}
-            settings={settings}
-            exConfig={exConfig} setExConfig={setExConfig}
-            xp={xp} addXp={addXp} level={level}
-            checkIns={checkIns} setCheckIns={setCheckIns}
-            assessmentDone={assessmentDone} setAssessmentDone={setAssessmentDone}
+            sets={normalized.sets} setSets={setSets}
+            history={normalized.history} setHistory={setHistory}
+            completed={normalized.completed} setCompleted={setCompleted}
+            progression={normalized.progression} setProgression={setProgression}
+            settings={safeSettings}
+            exConfig={normalized.exConfig} setExConfig={setExConfig}
+            xp={normalized.xp} addXp={addXp} level={level}
+            checkIns={normalized.checkIns} setCheckIns={setCheckIns}
+            assessmentDone={normalized.assessmentDone} setAssessmentDone={setAssessmentDone}
             playSound={playSound} vibrate={vibrate}
             setActiveView={setActiveView}
           />
         )}
         {activeView === "stats" && (
-          <StatsView history={history} progression={progression} settings={settings}
-            achievements={achievements} accent={accent} xp={xp} level={level}
-            exConfig={exConfig} checkIns={checkIns} />
+          <StatsView history={normalized.history} progression={normalized.progression} settings={safeSettings}
+            achievements={normalized.achievements} accent={accent} xp={normalized.xp} level={level}
+            exConfig={normalized.exConfig} checkIns={normalized.checkIns} />
         )}
         {activeView === "calendar" && (
-          <CalendarView history={history} progression={progression} settings={settings} accent={accent} />
+          <CalendarView history={normalized.history} progression={normalized.progression} settings={safeSettings} accent={accent} />
         )}
         {activeView === "settings" && (
-          <SettingsView settings={settings} setSettings={setSettings}
+          <SettingsView settings={safeSettings} setSettings={setSettings}
             resetAllData={resetAllData} exportData={exportData} importData={importData} accent={accent} />
         )}
       </div>
