@@ -18,6 +18,14 @@ export const READINESS = {
 
 export const DEFAULT_READINESS = { energy: "okay", soreness: "mild", time: "normal" };
 
+export const SUBSTITUTIONS = {
+  "Arnold Press": { name: "Lateral Raise", reason: "shoulder-friendly pressing alternative" },
+  "Reverse Lunge": { name: "Glute Bridge", reason: "lower knee stress while keeping glutes working" },
+  "Romanian Deadlift": { name: "Hip Thrust", reason: "less lower-back demand today" },
+  "Rear Delt Row": { name: "Rear Delt Fly", reason: "lighter upper-back isolation" },
+  "Tricep Kickback": { name: "Close-Grip Floor Press", reason: "more stable triceps work" },
+};
+
 export function readinessScore(readiness = DEFAULT_READINESS) {
   return (READINESS.energy[readiness.energy]?.score || 0)
     + (READINESS.soreness[readiness.soreness]?.score || 0)
@@ -98,6 +106,7 @@ export function buildCoachPlan({ workout, history, exConfig, settings, readiness
 
   const focus = exerciseNotes[0]?.note || "Build clean reps today.";
   watch.push(...exerciseNotes.filter(n => n.priority >= 2).slice(0, 2).map(n => n.note));
+  const substitutions = suggestSubstitutions({ workout, history, exConfig, readiness }).slice(0, 2);
 
   cards.push({
     icon: score >= 2 ? "⚡" : score <= -2 ? "🎯" : "🧠",
@@ -106,6 +115,7 @@ export function buildCoachPlan({ workout, history, exConfig, settings, readiness
   });
 
   adjustments.slice(0, 2).forEach(msg => cards.push({ icon: "🧭", cat: "Plan", msg }));
+  substitutions.forEach(sub => cards.push({ icon: "🔁", cat: "Swap", msg: `${sub.exercise}: use ${sub.substitute} if ${sub.reason}.` }));
   watch.forEach(msg => cards.push({ icon: "👁️", cat: "Watch", msg }));
 
   return {
@@ -113,7 +123,59 @@ export function buildCoachPlan({ workout, history, exConfig, settings, readiness
     headline: score >= 2 ? "Attack the work" : score <= -2 ? "Train, don't drain" : "Clean reps first",
     focus,
     adjustments,
+    substitutions,
     cards,
+  };
+}
+
+export function suggestSubstitutions({ workout, history = [], exConfig = {}, readiness = DEFAULT_READINESS }) {
+  const sore = readiness?.soreness === "sore";
+  return workout.exercises
+    .map(ex => {
+      const target = exConfig[ex.name]?.targetReps ?? ex.baseReps;
+      const trend = exerciseTrend(history, ex, target);
+      const swap = SUBSTITUTIONS[ex.name];
+      if (!swap) return null;
+      if (sore || trend.status === "stalling") {
+        return { exercise: ex.name, substitute: swap.name, reason: sore ? swap.reason : "this movement has been stalling" };
+      }
+      return null;
+    })
+    .filter(Boolean);
+}
+
+export function evaluateProgression({ setLog = [], targetReps, currentWeight, previous = {}, increment = 2.5 }) {
+  const allHit = setLog.length > 0 && setLog.every(l => (l.reps || 0) >= targetReps);
+  const anyFail = setLog.some(l => (l.reps || 0) < Math.round(targetReps * 0.75));
+  const cleanSessions = allHit ? (previous.cleanSessions || 0) + 1 : 0;
+  const missSessions = anyFail ? (previous.missSessions || 0) + 1 : 0;
+
+  if (missSessions >= 2) {
+    return {
+      action: "deload",
+      nextWeight: Math.max(Math.round((currentWeight - increment) * 4) / 4, increment),
+      cleanSessions,
+      missSessions,
+      note: "Repeated misses. Reduce load and rebuild clean reps.",
+    };
+  }
+
+  if (cleanSessions >= 2) {
+    return {
+      action: "increase",
+      nextWeight: Math.round((currentWeight + increment) * 4) / 4,
+      cleanSessions: 0,
+      missSessions: 0,
+      note: "Two clean sessions. Ready to progress.",
+    };
+  }
+
+  return {
+    action: "maintain",
+    nextWeight: currentWeight,
+    cleanSessions,
+    missSessions,
+    note: allHit ? "Clean session logged. Repeat once more before increasing." : "Keep the same load.",
   };
 }
 
@@ -158,4 +220,77 @@ export function summarizeWorkout({ exercises, duration = 0, readiness, prs = [],
         : "Clean work. Keep stacking sessions and let the trend build.";
 
   return { ...totals, duration, prs, coachNote, nextWorkout };
+}
+
+export function buildCoachMemory({ history = [], checkIns = [], exercises = [], exConfig = {} }) {
+  const readinessEntries = checkIns.filter(ci => ci.kind === "readiness" && ci.readiness);
+  const energyCounts = readinessEntries.reduce((acc, ci) => {
+    const key = ci.readiness.energy || "okay";
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const commonEnergy = Object.entries(energyCounts).sort((a,b)=>b[1]-a[1])[0]?.[0] || "unknown";
+
+  const exerciseStats = exercises.map(ex => {
+    const sessions = history.filter(h => h.exercises?.some(item => item.name === ex.name));
+    const latest = sessions[0]?.exercises?.find(item => item.name === ex.name);
+    const target = exConfig[ex.name]?.targetReps ?? ex.baseReps;
+    const trend = exerciseTrend(history, ex, target);
+    const maxWeight = Math.max(0, ...(sessions.flatMap(h => {
+      const item = h.exercises.find(e => e.name === ex.name);
+      return item?.setLog?.map(log => log.weight || 0) || [];
+    })));
+    const latestReps = latest?.setLog?.reduce((sum, log) => sum + (log.reps || 0), 0) || 0;
+    return { name: ex.name, trend: trend.status, maxWeight, latestReps };
+  });
+
+  const strongest = [...exerciseStats].sort((a,b)=>b.maxWeight-a.maxWeight)[0];
+  const stalling = exerciseStats.filter(ex => ex.trend === "stalling");
+  const progressing = exerciseStats.filter(ex => ex.trend === "ready");
+  const inconsistent = stalling[0] || exerciseStats.find(ex => ex.trend === "building");
+  const focus = stalling[0]?.name || progressing[0]?.name || inconsistent?.name || exercises[0]?.name || "consistency";
+
+  return {
+    commonEnergy,
+    readinessCount: readinessEntries.length,
+    strongest,
+    stalling,
+    progressing,
+    inconsistent,
+    focus,
+    summary: stalling.length
+      ? `${stalling[0].name} needs steadier reps before increasing load.`
+      : progressing.length
+        ? `${progressing[0].name} is trending well. It may be ready for progression.`
+        : "The coach is still collecting enough sessions to see a clear pattern.",
+  };
+}
+
+export function buildWeeklyReview({ history = [], checkIns = [] }) {
+  const now = Date.now();
+  const weekMs = 7 * 86400000;
+  const recent = history.filter(h => now - h.timestamp <= weekMs);
+  const readiness = checkIns.filter(ci => ci.kind === "readiness" && now - ci.timestamp <= weekMs);
+  const totalVolume = recent.reduce((sum, h) => sum + (h.exercises || []).reduce((s, ex) => {
+    const dumbbells = ex.name === "Goblet Squat" ? 1 : 2;
+    return s + (ex.setLog || []).reduce((setSum, log) => setSum + ((log.reps || 0) * (log.weight || 0) * dumbbells), 0);
+  }, 0), 0);
+  const best = [...recent.flatMap(h => h.exercises || [])]
+    .map(ex => ({ name: ex.name, reps: (ex.setLog || []).reduce((s, l) => s + (l.reps || 0), 0) }))
+    .sort((a,b)=>b.reps-a.reps)[0];
+  const consistency = Math.min(100, Math.round((recent.length / 3) * 100));
+  const lowEnergy = readiness.filter(r => r.readiness?.energy === "low").length;
+  const focus = lowEnergy >= 2
+    ? "Prioritize recovery and sleep before pushing load."
+    : recent.length >= 3
+      ? "Consistency is on track. Look for one clean progression."
+      : "Aim for three sessions this week before chasing heavier weights.";
+
+  return {
+    sessions: recent.length,
+    volume: totalVolume,
+    best,
+    consistency,
+    focus,
+  };
 }

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildCoachPlan, coachSetCount, coachTargetReps, exerciseTrend, readinessScore, summarizeWorkout } from "../src/coach.js";
+import { buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, evaluateProgression, exerciseTrend, readinessScore, summarizeWorkout } from "../src/coach.js";
 
 const exercise = { name: "Floor Press", sets: 3, baseReps: 10 };
 
@@ -62,4 +62,58 @@ test("summarizeWorkout totals logged work and creates a coach note", () => {
   assert.equal(summary.reps, 19);
   assert.equal(summary.volume, 570);
   assert.ok(summary.coachNote.length > 0);
+});
+
+test("buildCoachMemory exposes learned readiness and exercise trends", () => {
+  const memory = buildCoachMemory({
+    exercises: [exercise],
+    exConfig: {},
+    checkIns: [
+      { kind: "readiness", readiness: { energy: "low" } },
+      { kind: "readiness", readiness: { energy: "low" } },
+      { kind: "readiness", readiness: { energy: "high" } },
+    ],
+    history: [
+      { timestamp: 2, exercises: [{ name: "Floor Press", sets: 3, setLog: [{ weight: 20, reps: 8 }, { weight: 20, reps: 7 }] }] },
+      { timestamp: 1, exercises: [{ name: "Floor Press", sets: 3, setLog: [{ weight: 20, reps: 9 }, { weight: 20, reps: 8 }] }] },
+    ],
+  });
+
+  assert.equal(memory.commonEnergy, "low");
+  assert.equal(memory.focus, "Floor Press");
+  assert.equal(memory.stalling.length, 1);
+});
+
+test("evaluateProgression requires two clean sessions before increasing", () => {
+  const first = evaluateProgression({
+    setLog: [{ reps: 10 }, { reps: 10 }],
+    targetReps: 10,
+    currentWeight: 15,
+    previous: {},
+  });
+  const second = evaluateProgression({
+    setLog: [{ reps: 10 }, { reps: 10 }],
+    targetReps: 10,
+    currentWeight: 15,
+    previous: first,
+  });
+
+  assert.equal(first.action, "maintain");
+  assert.equal(second.action, "increase");
+  assert.equal(second.nextWeight, 17.5);
+});
+
+test("buildWeeklyReview summarizes recent work", () => {
+  const now = Date.now();
+  const review = buildWeeklyReview({
+    checkIns: [{ kind: "readiness", timestamp: now, readiness: { energy: "low" } }],
+    history: [{
+      timestamp: now,
+      exercises: [{ name: "Floor Press", setLog: [{ weight: 15, reps: 10 }] }],
+    }],
+  });
+
+  assert.equal(review.sessions, 1);
+  assert.equal(review.volume, 300);
+  assert.equal(review.best.name, "Floor Press");
 });

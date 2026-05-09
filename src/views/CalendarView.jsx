@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { WORKOUTS, computeStats, dateStr } from "../data.js";
 import { Heatmap } from "../components/shared.jsx";
 import { fmtDuration } from "../hooks.js";
 
 export default function CalendarView({ history, progression, settings, accent }) {
   const stats = computeStats({ history, progression, settings });
+  const [selected, setSelected] = useState(null);
 
   const longestStreak = (() => {
     if (history.length === 0) return 0;
@@ -65,9 +67,9 @@ export default function CalendarView({ history, progression, settings, accent })
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {history.map((h, i) => (
-              <div key={i} style={{
+              <button key={i} onClick={() => setSelected(h)} style={{
                 padding: "12px 14px", background: "#0d0d0d", borderRadius: 9,
-                border: "1px solid #1a1a1a",
+                border: "1px solid #1a1a1a", textAlign:"left", width:"100%",
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                   <div style={{ display: "flex", gap: 10, alignItems: "center", flex: 1, minWidth: 0 }}>
@@ -89,11 +91,12 @@ export default function CalendarView({ history, progression, settings, accent })
                     {h.exercises.map(e => `${e.name} ${e.sets}×${e.reps}`).join(" · ")}
                   </div>
                 )}
-              </div>
+              </button>
             ))}
           </div>
         )}
       </div>
+      {selected&&<SessionDetail session={selected} onClose={()=>setSelected(null)} />}
     </div>
   );
 }
@@ -112,6 +115,40 @@ function Swatch({ color, label }) {
     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
       <div style={{ width: 12, height: 12, background: color, borderRadius: 3, boxShadow: color !== "#161616" ? `0 0 6px ${color}66` : "none" }} />
       <span>{label}</span>
+    </div>
+  );
+}
+
+function SessionDetail({ session, onClose }) {
+  const color = WORKOUTS[session.workout]?.color || "#4ade80";
+  const totalReps = (session.exercises||[]).reduce((sum, ex)=>sum+(ex.setLog||[]).reduce((s,l)=>s+(l.reps||0),0),0);
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:240,background:"#050505",overflowY:"auto",padding:"calc(28px + env(safe-area-inset-top)) 20px 30px"}}>
+      <div className="mobile-shell">
+        <button onClick={onClose} style={{background:"transparent",border:"1px solid #2c2c2c",borderRadius:9,color:"#aaa",padding:"10px 13px",fontSize:12,letterSpacing:".08em",marginBottom:22}}>CLOSE</button>
+        <div style={{fontSize:12,color,letterSpacing:".16em",textTransform:"uppercase",marginBottom:8}}>{session.date}</div>
+        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:44,color:"#f5f5f5",letterSpacing:".06em",lineHeight:.95,marginBottom:8}}>WORKOUT {session.workout}</div>
+        <div style={{fontSize:14,color:"#888",marginBottom:18}}>{session.day} · {fmtDuration(session.duration||0)} · {totalReps} reps</div>
+        {session.readiness&&(
+          <div style={{padding:13,background:"#0d0d0d",border:"1px solid #202020",borderRadius:10,marginBottom:14,fontSize:13,color:"#bbb"}}>
+            Readiness: {session.readiness.energy} / {session.readiness.soreness} / {session.readiness.time}
+          </div>
+        )}
+        <div style={{display:"grid",gap:10}}>
+          {(session.exercises||[]).map(ex=>(
+            <div key={ex.name} style={{padding:14,background:"#0d0d0d",border:"1px solid #202020",borderRadius:11}}>
+              <div style={{fontSize:15,color:"#f0f0f0",fontWeight:600,marginBottom:8}}>{ex.name}</div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {(ex.setLog||[]).map((log,i)=>(
+                  <span key={i} style={{fontSize:12,color,background:`${color}15`,border:`1px solid ${color}44`,borderRadius:7,padding:"7px 9px"}}>
+                    S{i+1}: {log.weight}lbs x {log.reps}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

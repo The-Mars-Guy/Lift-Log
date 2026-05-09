@@ -81,7 +81,7 @@ export default function App() {
     }, 1600);
   }, [history, progression]); // eslint-disable-line
 
-  const addXp = (amount) => setXp(p => p + amount);
+  const addXp = (amount) => setXp(p => Math.max(0, p + amount));
 
   const resetAllData = () => {
     setSets({}); setHistory([]); setCompleted({}); setProgression({});

@@ -3,10 +3,13 @@ import { WORKOUTS, ACHIEVEMENTS, computeStats, isoWeek, getLevel, epley1RM, getE
 import { BarChart, MiniGraph } from "../components/shared.jsx";
 import { fmtDuration } from "../hooks.js";
 import { exerciseVolume } from "../session.js";
+import { buildCoachMemory, buildWeeklyReview } from "../coach.js";
 
 export default function StatsView({ history, progression, settings, achievements, accent, xp, level, exConfig, checkIns }) {
   const stats = computeStats({ history, progression, settings });
   const allExercises = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
+  const coachMemory = buildCoachMemory({ history, checkIns, exercises: allExercises, exConfig });
+  const weeklyReview = buildWeeklyReview({ history, checkIns });
 
   // Sessions per week chart (last 8 weeks)
   const weekData = (() => {
@@ -87,6 +90,32 @@ export default function StatsView({ history, progression, settings, achievements
         <BigStat label="Volume Lifted"  value={`${(totalVolume/1000).toFixed(1)}K`} unit="LBS" accent="#60a5fa"/>
         <BigStat label="Time Lifting"   value={fmtDuration(totalDuration)} accent="#a78bfa"/>
       </div>
+
+      {/* SESSIONS / WEEK CHART */}
+      <Section title="Coach Memory" sub="what the coach has learned">
+        <div style={{padding:"16px",background:"#0d0d0d",borderRadius:12,border:`1.5px solid ${accent}33`,boxShadow:`0 0 24px ${accent}12`}}>
+          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:accent,letterSpacing:".06em",lineHeight:1}}>FOCUS: {coachMemory.focus}</div>
+          <div style={{fontSize:14,color:"#ddd",lineHeight:1.55,marginTop:8}}>{coachMemory.summary}</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:14}}>
+            <MemoryPill label="Readiness" value={coachMemory.readinessCount ? coachMemory.commonEnergy : "learning"} color="#a78bfa"/>
+            <MemoryPill label="Strongest" value={coachMemory.strongest?.maxWeight ? coachMemory.strongest.name : "learning"} color="#4ade80"/>
+            <MemoryPill label="Progressing" value={coachMemory.progressing.length || 0} color="#60a5fa"/>
+            <MemoryPill label="Stalling" value={coachMemory.stalling.length || 0} color="#fb923c"/>
+          </div>
+        </div>
+      </Section>
+
+      <Section title="Weekly Review" sub="last 7 days">
+        <div style={{padding:"16px",background:"#0d0d0d",borderRadius:12,border:"1px solid #1f1f1f"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+            <MemoryPill label="Sessions" value={weeklyReview.sessions} color="#4ade80"/>
+            <MemoryPill label="Consistency" value={`${weeklyReview.consistency}%`} color="#fbbf24"/>
+            <MemoryPill label="Volume" value={`${Math.round(weeklyReview.volume/100)/10}K`} color="#60a5fa"/>
+            <MemoryPill label="Best Lift" value={weeklyReview.best?.name || "learning"} color="#a78bfa"/>
+          </div>
+          <div style={{fontSize:14,color:"#ddd",lineHeight:1.55}}>{weeklyReview.focus}</div>
+        </div>
+      </Section>
 
       {/* SESSIONS / WEEK CHART */}
       <Section title="Sessions Per Week" sub="last 8 weeks · target 3/wk">
@@ -253,6 +282,15 @@ function BigStat({label,value,unit,suffix,accent}){
         {unit&&<span style={{fontSize:14,color:"#999",marginLeft:5,letterSpacing:".1em"}}>{unit}</span>}
         {suffix&&<span style={{fontSize:20,marginLeft:6}}>{suffix}</span>}
       </div>
+    </div>
+  );
+}
+
+function MemoryPill({label,value,color}){
+  return(
+    <div style={{padding:"11px 12px",background:"#080808",border:"1px solid #202020",borderRadius:9}}>
+      <div style={{fontSize:10,color:"#888",letterSpacing:".12em",textTransform:"uppercase",marginBottom:4}}>{label}</div>
+      <div style={{fontSize:13,color,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{value}</div>
     </div>
   );
 }

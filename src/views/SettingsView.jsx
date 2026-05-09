@@ -58,6 +58,15 @@ export default function SettingsView({ settings, setSettings, resetAllData, expo
         <Toggle label="Vibration" desc="Haptic feedback on phone" value={settings.vibrationEnabled} onChange={v => update("vibrationEnabled", v)} accent={accent} />
       </Section>
 
+      <Section title="Offline">
+        <div style={{ padding: 16, background: "#0d0d0d", borderRadius: 10, border: "1px solid #1c1c1c" }}>
+          <div style={{ fontSize: 15, color: "#f0f0f0", marginBottom: 5 }}>Offline Ready</div>
+          <div style={{ fontSize: 14, color: "#888", lineHeight: 1.45 }}>
+            The app shell and viewed exercise demos are cached after first load.
+          </div>
+        </div>
+      </Section>
+
       <Section title="Data">
         <Action label="Export Data" desc="Download history, progression, and settings as JSON" onClick={exportData} />
         <Action label="Import Data" desc="Restore from a Lift Log JSON export" onClick={() => fileInput.current?.click()} />
