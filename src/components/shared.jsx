@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { IMG_BASE, WORKOUTS, isoDate, isoWeek, dateStr } from "../data.js";
+import { IMG_BASE, VIDEO_BASE, WORKOUTS, isoDate, isoWeek, dateStr } from "../data.js";
 import { remainingSeconds } from "../session.js";
 
 // ── Exercise Animation ───────────────────────────────────────────────────────
-export function ExerciseAnimation({ folder, accent }) {
+export function ExerciseAnimation({ folder, accent, video }) {
   const [loaded, setLoaded] = useState({ 0:false, 1:false });
+  const [videoFailed, setVideoFailed] = useState(false);
   const ready = loaded[0] && loaded[1];
+  const videoSrc = video || `${VIDEO_BASE}/${folder}.mp4`;
   const frameStyle = {
     position:"absolute",
     inset:0,
@@ -24,7 +26,21 @@ export function ExerciseAnimation({ folder, accent }) {
       border:`1.5px solid ${accent}40`,
       boxShadow:`0 0 36px ${accent}18`,
     }}>
-      {!ready && (
+      {!videoFailed && (
+        <video
+          src={videoSrc}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="metadata"
+          onLoadedData={() => setLoaded({ 0:true, 1:true })}
+          onCanPlay={e => e.currentTarget.play().catch(() => setVideoFailed(true))}
+          onError={() => setVideoFailed(true)}
+          style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"contain",background:"#f2f2f2"}}
+        />
+      )}
+      {videoFailed && !ready && (
         <div style={{
           position:"absolute", inset:0,
           display:"flex", alignItems:"center", justifyContent:"center",
@@ -34,10 +50,12 @@ export function ExerciseAnimation({ folder, accent }) {
           animation:"shimmer 1.4s ease-in-out infinite",
         }}>LOADING...</div>
       )}
-      <img src={`${IMG_BASE}/${folder}/0.jpg`} alt="" onLoad={() => setLoaded(p=>({...p,0:true}))} onError={() => setLoaded(p=>({...p,0:true}))}
+      {videoFailed && <img src={`${IMG_BASE}/${folder}/0.jpg`} alt="" onLoad={() => setLoaded(p=>({...p,0:true}))} onError={() => setLoaded(p=>({...p,0:true}))}
         style={{ ...frameStyle, opacity:ready?1:0, animation:ready?"exerciseFrameA 2.1s ease-in-out infinite":"none" }}/>
-      <img src={`${IMG_BASE}/${folder}/1.jpg`} alt="" onLoad={() => setLoaded(p=>({...p,1:true}))} onError={() => setLoaded(p=>({...p,1:true}))}
+      }
+      {videoFailed && <img src={`${IMG_BASE}/${folder}/1.jpg`} alt="" onLoad={() => setLoaded(p=>({...p,1:true}))} onError={() => setLoaded(p=>({...p,1:true}))}
         style={{ ...frameStyle, opacity:0, animation:ready?"exerciseFrameB 2.1s ease-in-out infinite":"none" }}/>
+      }
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { useSessionTimer, fmtDuration } from "../hooks.js";
 import { ExerciseAnimation, RestTimer, Toast, MiniGraph } from "../components/shared.jsx";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
 import { completionKey, defaultWorkoutDay, scheduledDate, logKey as makeLogKey } from "../session.js";
-import { buildCoachPlan, DEFAULT_READINESS, readinessLabel } from "../coach.js";
+import { buildCoachPlan, coachSetCount, coachTargetReps, DEFAULT_READINESS, readinessLabel, summarizeWorkout } from "../coach.js";
 
 // ── CONFETTI ──────────────────────────────────────────────────────────────────
 function Confetti({ active, accent, onDone }) {
@@ -401,12 +401,12 @@ function TodayPlan({ plan, readiness, accent }) {
 
 function FocusWorkoutMode({
   workout, accent, activeTab, doneSets, totalSets, setDone, sessionLogs, logKey,
-  getTargetReps, getWeight, toggleSet, onExit, onFinish, allDone, isCompleted,
+  getTargetReps, getSetCount, getWeight, toggleSet, onExit, onFinish, allDone, isCompleted,
 }) {
   const next = (() => {
     for (let i=0;i<workout.exercises.length;i++) {
       const ex = workout.exercises[i];
-      for (let j=0;j<ex.sets;j++) {
+      for (let j=0;j<getSetCount(ex);j++) {
         if (!setDone(i,j)) return { ex, exIdx:i, setIdx:j };
       }
     }
@@ -414,7 +414,8 @@ function FocusWorkoutMode({
   })();
   const target = getTargetReps(next.ex);
   const weight = getWeight(next.ex.name);
-  const currentDone = Array.from({length:next.ex.sets},(_,j)=>setDone(next.exIdx,j)).filter(Boolean).length;
+  const plannedSets = getSetCount(next.ex);
+  const currentDone = Array.from({length:plannedSets},(_,j)=>setDone(next.exIdx,j)).filter(Boolean).length;
 
   return (
     <div style={{position:"fixed",inset:0,zIndex:150,background:"#050505",overflowY:"auto",padding:"calc(18px + env(safe-area-inset-top)) 18px 28px"}}>
@@ -430,13 +431,13 @@ function FocusWorkoutMode({
         <div style={{fontSize:12,color:accent,letterSpacing:".16em",textTransform:"uppercase",marginBottom:8}}>Focus Mode</div>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:46,color:"#f5f5f5",letterSpacing:".06em",lineHeight:.92,marginBottom:6}}>{next.ex.name}</div>
         <div style={{fontSize:15,color:"#aaa",lineHeight:1.5,marginBottom:18}}>
-          Set {Math.min(currentDone+1,next.ex.sets)} of {next.ex.sets} · {weight}lbs · target ×{target}{next.ex.repSuffix||""}
+          Set {Math.min(currentDone+1,plannedSets)} of {plannedSets} · {weight}lbs · target ×{target}{next.ex.repSuffix||""}
         </div>
 
-        <ExerciseAnimation folder={next.ex.folder} accent={accent}/>
+        <ExerciseAnimation folder={next.ex.folder} video={next.ex.video} accent={accent}/>
 
-        <div style={{marginTop:20,display:"grid",gridTemplateColumns:`repeat(${next.ex.sets},1fr)`,gap:9}}>
-          {Array.from({length:next.ex.sets},(_,j)=>{
+        <div style={{marginTop:20,display:"grid",gridTemplateColumns:`repeat(${plannedSets},1fr)`,gap:9}}>
+          {Array.from({length:plannedSets},(_,j)=>{
             const isDone=setDone(next.exIdx,j);
             const logged=sessionLogs[logKey(next.exIdx,j)];
             return (
@@ -464,6 +465,49 @@ function FocusWorkoutMode({
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+function WorkoutSummary({ summary, accent, onClose }) {
+  if (!summary) return null;
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:230,background:"#050505",overflowY:"auto",padding:"calc(28px + env(safe-area-inset-top)) 20px 30px"}}>
+      <div className="mobile-shell">
+        <div style={{fontSize:12,color:accent,letterSpacing:".16em",textTransform:"uppercase",marginBottom:10}}>Workout Complete</div>
+        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:48,color:"#f5f5f5",letterSpacing:".06em",lineHeight:.92,marginBottom:18}}>SESSION<br/>SUMMARY</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+          <SummaryStat label="Sets" value={summary.sets} accent={accent}/>
+          <SummaryStat label="Reps" value={summary.reps} accent={accent}/>
+          <SummaryStat label="Volume" value={`${Math.round(summary.volume).toLocaleString()}`} sub="lbs" accent={accent}/>
+          <SummaryStat label="Time" value={fmtDuration(summary.duration || 0)} accent={accent}/>
+        </div>
+        {summary.prs?.length>0&&(
+          <div style={{padding:16,background:"#101008",border:"1px solid #fbbf2455",borderRadius:12,marginBottom:12}}>
+            <div style={{fontSize:11,color:"#fbbf24",letterSpacing:".14em",textTransform:"uppercase",marginBottom:8}}>PRs</div>
+            <div style={{fontSize:14,color:"#eee",lineHeight:1.5}}>{summary.prs.map(p=>`${p.name}: ${p.val}lbs`).join(" · ")}</div>
+          </div>
+        )}
+        <div style={{padding:16,background:"#0d0d0d",border:"1px solid #202020",borderRadius:12,marginBottom:14}}>
+          <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:8}}>Coach Note</div>
+          <div style={{fontSize:15,color:"#ddd",lineHeight:1.55}}>{summary.coachNote}</div>
+          {summary.nextWorkout&&<div style={{fontSize:13,color:"#888",marginTop:10}}>Next up: Workout {summary.nextWorkout}</div>}
+        </div>
+        <button onClick={onClose}
+          style={{width:"100%",padding:19,background:accent,border:"none",borderRadius:14,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:26,letterSpacing:".12em",boxShadow:`0 0 42px ${accent}66`}}>
+          DONE
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SummaryStat({ label, value, sub, accent }) {
+  return (
+    <div style={{padding:"15px 14px",background:"#0d0d0d",border:"1px solid #202020",borderRadius:12}}>
+      <div style={{fontSize:10,color:"#888",letterSpacing:".14em",textTransform:"uppercase",marginBottom:4}}>{label}</div>
+      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:32,color:accent,letterSpacing:".04em",lineHeight:1}}>{value}</div>
+      {sub&&<div style={{fontSize:11,color:"#777",marginTop:2}}>{sub}</div>}
     </div>
   );
 }
@@ -547,6 +591,7 @@ export default function WorkoutView({
   const [xpAwards,     setXpAwards]    = useState({});
   const [showFeedback, setShowFeedback]= useState(false);
   const [focusMode,    setFocusMode]   = useState(false);
+  const [workoutSummary, setWorkoutSummary] = useState(null);
 
   const wKey    = SCHEDULE[activeTab];
   const workout = WORKOUTS[wKey];
@@ -556,14 +601,7 @@ export default function WorkoutView({
   const logKey  = (i,j) => makeLogKey(sessionKey,i,j);
   const setKey  = (i,j) => `${sessionKey}_${i}_${j}`;
   const setDone = (i,j) => !!sets[setKey(i,j)];
-  const exDone  = (i)   => Array.from({length:workout.exercises[i].sets},(_,j)=>setDone(i,j)).every(Boolean);
-  const totalSets = workout.exercises.reduce((a,e)=>a+e.sets,0);
-  const doneSets  = workout.exercises.reduce((a,ex,i)=>a+Array.from({length:ex.sets},(_,j)=>setDone(i,j)?1:0).reduce((x,y)=>x+y,0),0);
-  const allDone   = doneSets===totalSets;
   const isCompleted = !!completed[sessionKey];
-
-  const sessionRunning = doneSets>0&&!isCompleted;
-  const sessionElapsed = useSessionTimer(sessionRunning);
 
   // Apply any pending adjustments at session start
   useEffect(()=>{
@@ -579,11 +617,22 @@ export default function WorkoutView({
     }
   },[activeTab]); // eslint-disable-line
 
-  // Dynamic target or fallback to base
-  const getTargetReps = (ex) => exConfig[ex.name]?.targetReps ?? (ex.baseReps + (progression[ex.name]?.repBonus||0));
+  const readinessEntry = (checkIns||[]).find(ci=>ci.kind==="readiness"&&ci.sessionKey===sessionKey);
+  const readiness = readinessEntry?.readiness;
+  const coachPlan = buildCoachPlan({workout,history,exConfig,settings,readiness:readiness||DEFAULT_READINESS});
+  const suggestions = [...coachPlan.cards, ...buildSuggestions({history,progression,settings,exConfig,workoutKey:wKey})];
+  const getBaseTargetReps = (ex) => exConfig[ex.name]?.targetReps ?? (ex.baseReps + (progression[ex.name]?.repBonus||0));
+  const getTargetReps = (ex) => coachTargetReps(getBaseTargetReps(ex), readiness||DEFAULT_READINESS);
+  const getSetCount = (ex) => coachSetCount(ex.sets, readiness||DEFAULT_READINESS);
   const getWeight     = (n)  => exConfig[n]?.weight  || DEFAULT_WEIGHTS[n] || settings.dumbbellWeight;
   const getNextW      = (n)  => exConfig[n]?.nextWeight;
   const getMaxTest    = (n)  => exConfig[n]?.maxRepsTest;
+  const exDone  = (i)   => Array.from({length:getSetCount(workout.exercises[i])},(_,j)=>setDone(i,j)).every(Boolean);
+  const totalSets = workout.exercises.reduce((a,e)=>a+getSetCount(e),0);
+  const doneSets  = workout.exercises.reduce((a,ex,i)=>a+Array.from({length:getSetCount(ex)},(_,j)=>setDone(i,j)?1:0).reduce((x,y)=>x+y,0),0);
+  const allDone   = doneSets===totalSets;
+  const sessionRunning = doneSets>0&&!isCompleted;
+  const sessionElapsed = useSessionTimer(sessionRunning);
 
   const streak = (() => {
     if(!history.length) return 0;
@@ -591,11 +640,6 @@ export default function WorkoutView({
     let r=1; for(let i=1;i<s.length;i++){if((s[i-1].timestamp-s[i].timestamp)/86400000<=4.5)r++;else break;}
     return r;
   })();
-
-  const readinessEntry = (checkIns||[]).find(ci=>ci.kind==="readiness"&&ci.sessionKey===sessionKey);
-  const readiness = readinessEntry?.readiness;
-  const coachPlan = buildCoachPlan({workout,history,exConfig,settings,readiness:readiness||DEFAULT_READINESS});
-  const suggestions = [...coachPlan.cards, ...buildSuggestions({history,progression,settings,exConfig,workoutKey:wKey})];
 
   const saveReadiness = (nextReadiness) => {
     const entry = {
@@ -638,7 +682,7 @@ export default function WorkoutView({
     const bk=lk;
       setBounceSets(p=>({...p,[bk]:true}));
       setTimeout(()=>setBounceSets(p=>{const n={...p};delete n[bk];return n;}),500);
-    const remaining=ex.sets-(j+1);
+    const remaining=getSetCount(ex)-(j+1);
     const hasNextExercise=i+1<workout.exercises.length;
     const next=remaining>0?`Set ${j+2} of ${ex.name}`:hasNextExercise?`Up next: ${workout.exercises[i+1].name}`:null;
     if(next) setRestState({label:next,accent});
@@ -673,8 +717,9 @@ export default function WorkoutView({
   const finishWorkout = () => {
     if(!allDone) return;
     const exSnap = workout.exercises.map((ex,i)=>{
-      const logs=Array.from({length:ex.sets},(_,j)=>sessionLogs[logKey(i,j)]||{weight:getWeight(ex.name),reps:getTargetReps(ex)});
-      return {name:ex.name,sets:ex.sets,reps:getTargetReps(ex),setLog:logs};
+      const sets=getSetCount(ex);
+      const logs=Array.from({length:sets},(_,j)=>sessionLogs[logKey(i,j)]||{weight:getWeight(ex.name),reps:getTargetReps(ex)});
+      return {name:ex.name,sets,reps:getTargetReps(ex),setLog:logs};
     });
 
     // Update weights / next weight suggestions
@@ -709,15 +754,20 @@ export default function WorkoutView({
     });
     setProgression(newProg);
 
-    setHistory(p=>[{day:activeTab,workout:wKey,date:dateStr(scheduledDate(activeTab)),timestamp:scheduledDate(activeTab).getTime(),duration:sessionElapsed,exercises:exSnap},...p].slice(0,120));
+    setWorkoutSummary(summarizeWorkout({
+      exercises:exSnap,
+      duration:sessionElapsed,
+      readiness:readiness||DEFAULT_READINESS,
+      prs,
+      nextWorkout:wKey==="A"?"B":"A",
+    }));
+    setHistory(p=>[{day:activeTab,workout:wKey,date:dateStr(scheduledDate(activeTab)),timestamp:scheduledDate(activeTab).getTime(),duration:sessionElapsed,exercises:exSnap,readiness:readiness||DEFAULT_READINESS},...p].slice(0,120));
     setCompleted(p=>({...p,[sessionKey]:dateStr(scheduledDate(activeTab))}));
     playSound("workoutDone"); vibrate([100,60,100]);
     setConfetti(true);
     spawnXp(XP_VALUES.workout);
 
     if(prs.length) setTimeout(()=>{playSound("achievement");setToast({icon:"🏆",title:"PERSONAL RECORD",msg:prs.map(p=>`${p.name}: ${p.val}lbs`).join(", "),accent:"#fbbf24"});},600);
-    // Show feedback modal
-    setTimeout(()=>setShowFeedback(true),1200);
   };
 
   const handleFeedback = (feedbackMap) => {
@@ -737,6 +787,7 @@ export default function WorkoutView({
     setSessionLogs({});
     setXpAwards({});
     setFocusMode(false);
+    setWorkoutSummary(null);
     setRestState(null);
     setLoggerState(null);
   };
@@ -821,7 +872,7 @@ export default function WorkoutView({
       <div style={{padding:"18px 16px 14px",borderBottom:"1px solid #1a1a1a"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:accent,letterSpacing:".06em",filter:`drop-shadow(0 0 10px ${accent}66)`}}>{workout.label}</span>
-          <button onClick={()=>{if(!confirm("Reset today's sets?"))return;const n={...sets};workout.exercises.forEach((_,i)=>Array.from({length:workout.exercises[i].sets},(_,j)=>{delete n[setKey(i,j)];}));setSets(n);setCompleted(p=>{const n2={...p};delete n2[sessionKey];return n2;});setExpanded(null);setRestState(null);setLoggerState(null);setSessionLogs({});setXpAwards({});setFocusMode(false);}}
+          <button onClick={()=>{if(!confirm("Reset today's sets?"))return;const n={...sets};workout.exercises.forEach((ex,i)=>Array.from({length:getSetCount(ex)},(_,j)=>{delete n[setKey(i,j)];}));setSets(n);setCompleted(p=>{const n2={...p};delete n2[sessionKey];return n2;});setExpanded(null);setRestState(null);setLoggerState(null);setSessionLogs({});setXpAwards({});setFocusMode(false);setWorkoutSummary(null);}}
             style={{background:"none",border:"1px solid #2c2c2c",borderRadius:8,color:"#aaa",fontSize:12,padding:"8px 16px",letterSpacing:".08em"}}>RESET</button>
         </div>
         <div style={{marginTop:14}}>
@@ -863,14 +914,14 @@ export default function WorkoutView({
                     <span style={{fontSize:11,color:open?accent:"#888",transform:open?"rotate(180deg)":"none",transition:"all .2s",display:"inline-block"}}>▼</span>
                   </div>
                   <div style={{fontSize:14,color:"#bbb",marginTop:5,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                    <span>{ex.sets} × ×{reps}{ex.repSuffix||""}</span>
+                    <span>{getSetCount(ex)} × ×{reps}{ex.repSuffix||""}</span>
                     <span style={{color:"#666"}}>@ {curW}lbs</span>
                     {hasNxtW&&<span style={{color:accent,fontSize:12,padding:"2px 7px",borderRadius:5,background:`${accent}18`,fontWeight:500}}>next: {nextW}lbs</span>}
                     {maxTest&&<span style={{color:"#888",fontSize:11}}>max: {maxTest}</span>}
                   </div>
                 </div>
                 <div style={{display:"flex",gap:7,flexShrink:0}}>
-                  {Array.from({length:ex.sets},(_,j)=>{
+                  {Array.from({length:getSetCount(ex)},(_,j)=>{
                     const isDone=setDone(i,j); const bk=logKey(i,j); const logged=sessionLogs[logKey(i,j)];
                     return(
                       <button key={j} onClick={()=>toggleSet(i,j)}
@@ -885,7 +936,7 @@ export default function WorkoutView({
               {open&&(
                 <div style={{marginTop:18,padding:18,background:"linear-gradient(180deg,#0e0e0e,#090909)",border:"1px solid #232323",borderRadius:14,animation:"slideDown .25s ease-out"}}>
                   <SLabel>Animation</SLabel>
-                  <ExerciseAnimation folder={ex.folder} accent={accent}/>
+                  <ExerciseAnimation folder={ex.folder} video={ex.video} accent={accent}/>
 
                   {/* Progress graph */}
                   <div style={{marginTop:16,padding:"14px 16px",background:"#080808",borderRadius:10,border:`1.5px solid ${exColor}33`}}>
@@ -926,11 +977,11 @@ export default function WorkoutView({
                   </div>
 
                   {/* Logged sets today */}
-                  {Array.from({length:ex.sets},(_,j)=>sessionLogs[logKey(i,j)]).some(Boolean)&&(
+                  {Array.from({length:getSetCount(ex)},(_,j)=>sessionLogs[logKey(i,j)]).some(Boolean)&&(
                     <div style={{marginTop:12,padding:"14px 16px",background:"#080808",borderRadius:10,border:`1px solid ${accent}22`}}>
                       <SLabel small>Today's Sets</SLabel>
                       <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
-                        {Array.from({length:ex.sets},(_,j)=>{const lg=sessionLogs[logKey(i,j)];return lg?(
+                        {Array.from({length:getSetCount(ex)},(_,j)=>{const lg=sessionLogs[logKey(i,j)];return lg?(
                           <div key={j} style={{padding:"8px 12px",background:`${accent}15`,borderRadius:8,border:`1px solid ${accent}44`,fontSize:13,color:accent,fontWeight:500}}>S{j+1}: {lg.weight}lbs × {lg.reps}</div>
                         ):null;})}
                       </div>
@@ -986,11 +1037,12 @@ export default function WorkoutView({
           workout={workout} accent={accent} activeTab={activeTab}
           doneSets={doneSets} totalSets={totalSets} setDone={setDone}
           sessionLogs={sessionLogs} logKey={logKey}
-          getTargetReps={getTargetReps} getWeight={getWeight}
+          getTargetReps={getTargetReps} getSetCount={getSetCount} getWeight={getWeight}
           toggleSet={toggleSet} onExit={()=>setFocusMode(false)}
           onFinish={finishWorkout} allDone={allDone} isCompleted={isCompleted}
         />
       )}
+      {workoutSummary&&<WorkoutSummary summary={workoutSummary} accent={accent} onClose={()=>{setWorkoutSummary(null);setShowFeedback(true);}}/>}
       {restState&&!loggerState&&<RestTimer fullscreen={focusMode} seconds={settings.restSeconds} label={restState.label} accent={restState.accent} onSkip={()=>setRestState(null)} onComplete={()=>{setRestState(null);playSound("restEnd");vibrate([200,60,200]);}}/>}
       {showFeedback&&<PostWorkoutFeedback exercises={workout.exercises} sessionLogs={sessionLogs} getLogKey={logKey} exConfig={exConfig} history={history} onComplete={handleFeedback} accent={accent}/>}
       {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}

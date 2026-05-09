@@ -33,6 +33,7 @@ export const MUSCLE_LABELS = {
 };
 
 export const IMG_BASE = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises";
+export const VIDEO_BASE = "/Lift-Log/videos";
 
 // ─── DEFAULTS ────────────────────────────────────────────────────────────────
 export const DEFAULT_SETTINGS = {

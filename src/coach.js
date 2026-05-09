@@ -116,3 +116,46 @@ export function buildCoachPlan({ workout, history, exConfig, settings, readiness
     cards,
   };
 }
+
+export function coachTargetReps(baseTarget, readiness = DEFAULT_READINESS) {
+  const score = readinessScore(readiness);
+  if (score <= -2) return Math.max(3, baseTarget - 2);
+  if (score <= -1) return Math.max(3, baseTarget - 1);
+  return baseTarget;
+}
+
+export function coachSetCount(baseSets, readiness = DEFAULT_READINESS) {
+  if (readiness?.time === "short") return Math.max(1, baseSets - 1);
+  return baseSets;
+}
+
+export function summarizeWorkout({ exercises, duration = 0, readiness, prs = [], nextWorkout }) {
+  const totals = exercises.reduce((acc, ex) => {
+    const setLog = ex.setLog || [];
+    const dumbbells = ex.name === "Goblet Squat" ? 1 : 2;
+    const reps = setLog.reduce((sum, log) => sum + (log.reps || 0), 0);
+    const volume = setLog.reduce((sum, log) => sum + ((log.reps || 0) * (log.weight || 0) * dumbbells), 0);
+    const target = (ex.reps || 0) * (ex.sets || 0);
+    const completion = target ? reps / target : 1;
+    const hardest = !acc.hardest || completion < acc.hardest.completion
+      ? { name: ex.name, completion }
+      : acc.hardest;
+    return {
+      reps: acc.reps + reps,
+      volume: acc.volume + volume,
+      sets: acc.sets + setLog.length,
+      hardest,
+    };
+  }, { reps: 0, volume: 0, sets: 0, hardest: null });
+
+  const score = readinessScore(readiness);
+  const coachNote = score <= -2
+    ? "Good call keeping the session controlled. Recovery days still count."
+    : totals.hardest?.completion < 0.9
+      ? `${totals.hardest.name} was the limiter today. Keep it steady next time.`
+      : prs.length
+        ? "Strong session. The next plan can afford a small progression."
+        : "Clean work. Keep stacking sessions and let the trend build.";
+
+  return { ...totals, duration, prs, coachNote, nextWorkout };
+}

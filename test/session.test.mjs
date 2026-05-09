@@ -41,14 +41,12 @@ test("normalizeLiftLogData repairs old reset/import shapes", () => {
     history: {},
     checkIns: {},
     achievements: null,
-    settings: null,
     xp: "a lot",
   });
 
   assert.deepEqual(normalized.history, []);
   assert.deepEqual(normalized.checkIns, []);
   assert.deepEqual(normalized.achievements, []);
-  assert.deepEqual(normalized.settings, {});
   assert.equal(normalized.xp, 0);
   assert.equal(normalized.assessmentDone, false);
 });
