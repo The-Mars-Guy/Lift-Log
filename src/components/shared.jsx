@@ -79,7 +79,7 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent, fullscre
     return (
       <div style={{
         position:"fixed", inset:0, zIndex:180,
-        background:`radial-gradient(circle at center, ${accent}18 0%, #050505 55%, #000 100%)`,
+        background:"#050505",
         display:"flex", alignItems:"center", justifyContent:"center", padding:"28px 22px",
       }}>
         <div className="mobile-shell" style={{textAlign:"center"}}>

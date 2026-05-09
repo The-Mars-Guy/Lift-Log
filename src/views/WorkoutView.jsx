@@ -417,7 +417,7 @@ function FocusWorkoutMode({
   const currentDone = Array.from({length:next.ex.sets},(_,j)=>setDone(next.exIdx,j)).filter(Boolean).length;
 
   return (
-    <div style={{position:"fixed",inset:0,zIndex:150,background:`radial-gradient(circle at top,${accent}12,#050505 46%,#000)`,overflowY:"auto",padding:"calc(18px + env(safe-area-inset-top)) 18px 28px"}}>
+    <div style={{position:"fixed",inset:0,zIndex:150,background:"#050505",overflowY:"auto",padding:"calc(18px + env(safe-area-inset-top)) 18px 28px"}}>
       <div className="mobile-shell">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <button onClick={onExit} style={{background:"transparent",border:"1px solid #2c2c2c",borderRadius:9,color:"#aaa",padding:"10px 13px",fontSize:12,letterSpacing:".08em"}}>EXIT</button>
