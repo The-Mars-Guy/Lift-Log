@@ -85,7 +85,44 @@ export default function App() {
 
   const resetAllData = () => {
     setSets({}); setHistory([]); setCompleted({}); setProgression({});
-    setAchievements([]); setXp(0); setCheckIns([]); setExConfig({});
+    setAchievements([]); setXp(0); setCheckIns([]); setExConfig({}); setAssessmentDone(false);
+  };
+
+  const repairSavedData = () => {
+    const data = normalizeLiftLogData({ sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, assessmentDone });
+    setSets(data.sets);
+    setHistory(data.history);
+    setCompleted(data.completed);
+    setProgression(data.progression);
+    setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
+    setAchievements(data.achievements);
+    setExConfig(data.exConfig);
+    setXp(data.xp);
+    setCheckIns(data.checkIns);
+    setAssessmentDone(data.assessmentDone);
+    return true;
+  };
+
+  const clearWorkoutState = () => {
+    setSets({});
+    setCompleted({});
+  };
+
+  const refreshAppCache = async () => {
+    try {
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(key => caches.delete(key)));
+      }
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(reg => reg.update()));
+      }
+      window.location.reload();
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const exportData = () => {
@@ -154,7 +191,9 @@ export default function App() {
         )}
         {activeView === "settings" && (
           <SettingsView settings={safeSettings} setSettings={setSettings}
-            resetAllData={resetAllData} exportData={exportData} importData={importData} accent={accent} />
+            resetAllData={resetAllData} exportData={exportData} importData={importData}
+            repairSavedData={repairSavedData} clearWorkoutState={clearWorkoutState}
+            refreshAppCache={refreshAppCache} accent={accent} />
         )}
       </div>
 

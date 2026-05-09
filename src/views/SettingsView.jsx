@@ -1,9 +1,20 @@
 import { useRef, useState } from "react";
 import { DEFAULT_SETTINGS } from "../data.js";
 
-export default function SettingsView({ settings, setSettings, resetAllData, exportData, importData, accent }) {
+export default function SettingsView({
+  settings,
+  setSettings,
+  resetAllData,
+  exportData,
+  importData,
+  repairSavedData,
+  clearWorkoutState,
+  refreshAppCache,
+  accent,
+}) {
   const [confirming, setConfirming] = useState(false);
   const [importStatus, setImportStatus] = useState(null);
+  const [recoveryStatus, setRecoveryStatus] = useState(null);
   const fileInput = useRef(null);
 
   const update = (key, value) => setSettings(s => ({ ...s, [key]: value }));
@@ -58,6 +69,20 @@ export default function SettingsView({ settings, setSettings, resetAllData, expo
         <Toggle label="Vibration" desc="Haptic feedback on phone" value={settings.vibrationEnabled} onChange={v => update("vibrationEnabled", v)} accent={accent} />
       </Section>
 
+      <Section title="Coach">
+        <Row label="Progression Style" desc="How quickly the coach recommends heavier work">
+          <SegControl
+            options={[{ v: "conservative", l: "Safe" }, { v: "balanced", l: "Balanced" }, { v: "aggressive", l: "Push" }]}
+            value={settings.coachStyle || "balanced"}
+            onChange={v => update("coachStyle", v)}
+            accent={accent}
+          />
+        </Row>
+        <Toggle label="Auto Deload" desc="Reduce load after repeated big misses" value={settings.autoDeload !== false} onChange={v => update("autoDeload", v)} accent={accent} />
+        <Toggle label="Readiness Check-In" desc="Ask energy, soreness, and time before workouts" value={settings.showReadiness !== false} onChange={v => update("showReadiness", v)} accent={accent} />
+        <Toggle label="Fullscreen Rest Timer" desc="Use the focused rest screen between sets" value={settings.fullscreenRest !== false} onChange={v => update("fullscreenRest", v)} accent={accent} />
+      </Section>
+
       <Section title="Offline">
         <div style={{ padding: 16, background: "#0d0d0d", borderRadius: 10, border: "1px solid #1c1c1c" }}>
           <div style={{ fontSize: 15, color: "#f0f0f0", marginBottom: 5 }}>Offline Ready</div>
@@ -72,6 +97,10 @@ export default function SettingsView({ settings, setSettings, resetAllData, expo
         <Action label="Import Data" desc="Restore from a Lift Log JSON export" onClick={() => fileInput.current?.click()} />
         <input ref={fileInput} type="file" accept="application/json,.json" onChange={handleImport} style={{ display:"none" }} />
         {importStatus && <div style={{fontSize:13,color:importStatus.startsWith("Import complete") ? accent : "#ff8888",padding:"4px 2px 8px"}}>{importStatus}</div>}
+        <Action label="Repair Saved Data" desc="Normalize older or broken local data shapes" onClick={() => { repairSavedData?.(); setRecoveryStatus("Saved data repaired."); }} />
+        <Action label="Refresh App Cache" desc="Clear cached app files and reload" onClick={async () => setRecoveryStatus(await refreshAppCache?.() ? "Cache refreshed." : "Cache refresh failed.")} />
+        <Action label="Clear Workout State" desc="Clear checked sets and completion flags only" onClick={() => { if (!confirm("Clear checked sets and completed workout flags? History stays saved.")) return; clearWorkoutState?.(); setRecoveryStatus("Workout state cleared."); }} />
+        {recoveryStatus && <div style={{fontSize:13,color:recoveryStatus.includes("failed") ? "#ff8888" : accent,padding:"4px 2px 8px"}}>{recoveryStatus}</div>}
         <Action label="Reset to Defaults" desc="Restore default settings (keeps workout history)" onClick={() => setSettings(DEFAULT_SETTINGS)} />
         {confirming ? (
           <div style={{ padding: 16, background: "#1a0a0a", border: "1px solid #ff444466", borderRadius: 10, marginTop: 8 }}>

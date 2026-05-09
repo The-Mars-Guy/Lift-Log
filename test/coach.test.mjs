@@ -103,6 +103,26 @@ test("evaluateProgression requires two clean sessions before increasing", () => 
   assert.equal(second.nextWeight, 17.5);
 });
 
+test("evaluateProgression respects coach style and deload settings", () => {
+  const aggressive = evaluateProgression({
+    setLog: [{ reps: 10 }, { reps: 10 }],
+    targetReps: 10,
+    currentWeight: 15,
+    style: "aggressive",
+  });
+  const noDeload = evaluateProgression({
+    setLog: [{ reps: 4 }, { reps: 5 }],
+    targetReps: 10,
+    currentWeight: 15,
+    previous: { missSessions: 1 },
+    autoDeload: false,
+  });
+
+  assert.equal(aggressive.action, "increase");
+  assert.equal(noDeload.action, "maintain");
+  assert.equal(noDeload.missSessions, 2);
+});
+
 test("buildWeeklyReview summarizes recent work", () => {
   const now = Date.now();
   const review = buildWeeklyReview({

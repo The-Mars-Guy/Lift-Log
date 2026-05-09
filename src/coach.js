@@ -144,13 +144,22 @@ export function suggestSubstitutions({ workout, history = [], exConfig = {}, rea
     .filter(Boolean);
 }
 
-export function evaluateProgression({ setLog = [], targetReps, currentWeight, previous = {}, increment = 2.5 }) {
+export function evaluateProgression({
+  setLog = [],
+  targetReps,
+  currentWeight,
+  previous = {},
+  increment = 2.5,
+  style = "balanced",
+  autoDeload = true,
+}) {
   const allHit = setLog.length > 0 && setLog.every(l => (l.reps || 0) >= targetReps);
   const anyFail = setLog.some(l => (l.reps || 0) < Math.round(targetReps * 0.75));
   const cleanSessions = allHit ? (previous.cleanSessions || 0) + 1 : 0;
   const missSessions = anyFail ? (previous.missSessions || 0) + 1 : 0;
+  const requiredCleanSessions = style === "aggressive" ? 1 : style === "conservative" ? 3 : 2;
 
-  if (missSessions >= 2) {
+  if (autoDeload && missSessions >= 2) {
     return {
       action: "deload",
       nextWeight: Math.max(Math.round((currentWeight - increment) * 4) / 4, increment),
@@ -160,13 +169,13 @@ export function evaluateProgression({ setLog = [], targetReps, currentWeight, pr
     };
   }
 
-  if (cleanSessions >= 2) {
+  if (cleanSessions >= requiredCleanSessions) {
     return {
       action: "increase",
       nextWeight: Math.round((currentWeight + increment) * 4) / 4,
       cleanSessions: 0,
       missSessions: 0,
-      note: "Two clean sessions. Ready to progress.",
+      note: `${requiredCleanSessions} clean session${requiredCleanSessions === 1 ? "" : "s"}. Ready to progress.`,
     };
   }
 
@@ -175,7 +184,7 @@ export function evaluateProgression({ setLog = [], targetReps, currentWeight, pr
     nextWeight: currentWeight,
     cleanSessions,
     missSessions,
-    note: allHit ? "Clean session logged. Repeat once more before increasing." : "Keep the same load.",
+    note: allHit ? "Clean session logged. Repeat before increasing." : "Keep the same load.",
   };
 }
 

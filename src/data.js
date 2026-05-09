@@ -44,6 +44,10 @@ export const DEFAULT_SETTINGS = {
   sessionsPerProgression: 6,
   maxRepBonus: 5,
   weightIncrement: 2.5,  // lbs to add when progression triggers
+  coachStyle: "balanced",
+  autoDeload: true,
+  showReadiness: true,
+  fullscreenRest: true,
 };
 
 // Default starting weights per exercise (lbs, per dumbbell)
