@@ -38,7 +38,8 @@ export default function StatsView({ history, progression, settings, achievements
 
   // Check-in history grouped by exercise
   const checkInsByEx = {};
-  for(const ci of (checkIns||[])){
+  const strengthCheckIns = (checkIns||[]).filter(ci=>ci.exercise&&ci.est1RM);
+  for(const ci of strengthCheckIns){
     if(!checkInsByEx[ci.exercise]) checkInsByEx[ci.exercise]=[];
     checkInsByEx[ci.exercise].push(ci);
   }
@@ -119,7 +120,7 @@ export default function StatsView({ history, progression, settings, achievements
       </Section>
 
       {/* CHECK-IN HISTORY */}
-      {checkIns?.length>0&&(
+      {strengthCheckIns.length>0&&(
         <Section title="Strength Check-Ins" sub="bi-weekly 1RM estimates">
           {Object.entries(checkInsByEx).map(([exName,cis])=>(
             <div key={exName} style={{padding:"13px 14px",background:"#0d0d0d",borderRadius:10,border:"1px solid #1c1c1c",marginBottom:10}}>

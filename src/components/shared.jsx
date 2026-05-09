@@ -35,9 +35,9 @@ export function ExerciseAnimation({ folder, accent }) {
         }}>LOADING...</div>
       )}
       <img src={`${IMG_BASE}/${folder}/0.jpg`} alt="" onLoad={() => setLoaded(p=>({...p,0:true}))} onError={() => setLoaded(p=>({...p,0:true}))}
-        style={{ ...frameStyle, opacity:ready?1:0, animation:ready?"exerciseFrameA 2.8s ease-in-out infinite":"none" }}/>
+        style={{ ...frameStyle, opacity:ready?1:0, animation:ready?"exerciseFrameA 2.1s ease-in-out infinite":"none" }}/>
       <img src={`${IMG_BASE}/${folder}/1.jpg`} alt="" onLoad={() => setLoaded(p=>({...p,1:true}))} onError={() => setLoaded(p=>({...p,1:true}))}
-        style={{ ...frameStyle, opacity:0, animation:ready?"exerciseFrameB 2.8s ease-in-out infinite":"none" }}/>
+        style={{ ...frameStyle, opacity:0, animation:ready?"exerciseFrameB 2.1s ease-in-out infinite":"none" }}/>
     </div>
   );
 }

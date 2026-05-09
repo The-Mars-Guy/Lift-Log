@@ -8,6 +8,7 @@ import { useSessionTimer, fmtDuration } from "../hooks.js";
 import { ExerciseAnimation, RestTimer, Toast, MiniGraph } from "../components/shared.jsx";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
 import { completionKey, defaultWorkoutDay, scheduledDate, logKey as makeLogKey } from "../session.js";
+import { buildCoachPlan, DEFAULT_READINESS, readinessLabel } from "../coach.js";
 
 // ── CONFETTI ──────────────────────────────────────────────────────────────────
 function Confetti({ active, accent, onDone }) {
@@ -337,6 +338,67 @@ function CoachCard({ suggestions, accent }) {
   );
 }
 
+function ReadinessCheckIn({ value, onSave, accent }) {
+  const [draft, setDraft] = useState(value || DEFAULT_READINESS);
+  const groups = [
+    { key:"energy", label:"Energy", options:[["low","Low"],["okay","Okay"],["high","High"]] },
+    { key:"soreness", label:"Body", options:[["none","Fresh"],["mild","Mild"],["sore","Sore"]] },
+    { key:"time", label:"Time", options:[["short","Short"],["normal","Normal"],["full","Full"]] },
+  ];
+
+  return (
+    <div style={{margin:"0 16px 18px",padding:"16px 18px",background:"#0d0d0d",border:`1.5px solid ${accent}44`,borderRadius:14,boxShadow:`0 0 28px ${accent}12`}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:14}}>
+        <div>
+          <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:500}}>Coach Check-In</div>
+          <div style={{fontSize:14,color:"#ddd",marginTop:4,lineHeight:1.45}}>Tune today's plan before the first set.</div>
+        </div>
+        <button onClick={()=>onSave(draft)}
+          style={{background:accent,border:"none",borderRadius:9,color:"#050505",padding:"10px 13px",fontSize:12,fontWeight:700,letterSpacing:".08em",flexShrink:0}}>
+          START
+        </button>
+      </div>
+      <div style={{display:"grid",gap:10}}>
+        {groups.map(group=>(
+          <div key={group.key}>
+            <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:6}}>{group.label}</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
+              {group.options.map(([key,label])=>{
+                const active = draft[group.key] === key;
+                return (
+                  <button key={key} onClick={()=>setDraft(p=>({...p,[group.key]:key}))}
+                    style={{padding:"9px 6px",borderRadius:8,border:`1px solid ${active?accent:"#2a2a2a"}`,background:active?`${accent}22`:"#101010",color:active?accent:"#aaa",fontSize:12,fontWeight:active?700:400}}>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TodayPlan({ plan, readiness, accent }) {
+  if (!plan) return null;
+  return (
+    <div style={{margin:"0 16px 18px",padding:"17px 18px",background:`linear-gradient(180deg,${accent}16,#0d0d0d)`,border:`1.5px solid ${accent}55`,borderRadius:14,boxShadow:`0 0 32px ${accent}18`}}>
+      <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:500,marginBottom:6}}>Today's Coach</div>
+      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:"#f5f5f5",letterSpacing:".06em",lineHeight:1}}>{plan.headline}</div>
+      <div style={{fontSize:13,color:"#888",marginTop:4}}>{readiness ? readinessLabel(readiness) : "Default readiness"}</div>
+      <div style={{fontSize:14,color:"#ddd",lineHeight:1.55,marginTop:12}}>{plan.focus}</div>
+      {plan.adjustments?.length>0&&(
+        <div style={{display:"grid",gap:7,marginTop:12}}>
+          {plan.adjustments.slice(0,2).map((item,i)=>(
+            <div key={i} style={{fontSize:12,color:"#bbb",padding:"9px 11px",background:"#080808",borderRadius:8,border:"1px solid #202020"}}>{item}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── SET LOGGER ────────────────────────────────────────────────────────────────
 function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, onSave, onSkip }) {
   const [weight, setWeight] = useState(defaultWeight);
@@ -460,7 +522,23 @@ export default function WorkoutView({
     return r;
   })();
 
-  const suggestions = buildSuggestions({history,progression,settings,exConfig,workoutKey:wKey});
+  const readinessEntry = (checkIns||[]).find(ci=>ci.kind==="readiness"&&ci.sessionKey===sessionKey);
+  const readiness = readinessEntry?.readiness;
+  const coachPlan = buildCoachPlan({workout,history,exConfig,settings,readiness:readiness||DEFAULT_READINESS});
+  const suggestions = [...coachPlan.cards, ...buildSuggestions({history,progression,settings,exConfig,workoutKey:wKey})];
+
+  const saveReadiness = (nextReadiness) => {
+    const entry = {
+      kind:"readiness",
+      sessionKey,
+      day:activeTab,
+      workout:wKey,
+      date:dateStr(scheduledDate(activeTab)),
+      timestamp:Date.now(),
+      readiness:nextReadiness,
+    };
+    setCheckIns(p=>[...(p||[]).filter(ci=>!(ci.kind==="readiness"&&ci.sessionKey===sessionKey)),entry]);
+  };
 
   const spawnXp = (amount) => {
     addXp(amount);
@@ -646,6 +724,10 @@ export default function WorkoutView({
         </div>
       </div>
 
+      {!readiness&&!isCompleted&&doneSets===0&&(
+        <ReadinessCheckIn value={DEFAULT_READINESS} onSave={saveReadiness} accent={accent}/>
+      )}
+      <TodayPlan plan={coachPlan} readiness={readiness} accent={accent}/>
       <CoachCard suggestions={suggestions} accent={accent}/>
 
       {/* DAY TABS */}
