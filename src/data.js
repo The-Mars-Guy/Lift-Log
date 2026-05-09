@@ -122,7 +122,7 @@ export function calcNextLoad(setLogs, targetReps, currentWeight, increment=2.5) 
 export function calcDynamicTarget(currentTarget, feedback, maxTest) {
   const floor   = Math.max(3, maxTest ? Math.ceil(maxTest * 0.35) : 3);
   const ceiling = maxTest ? maxTest + 10 : currentTarget + 20;
-  const adj = { too_easy: +2, good: +1, hard: 0, too_hard: -1 }[feedback] ?? 0;
+  const adj = { too_easy: +2, easy: +2, good: +1, hard: 0, too_hard: -1, pain: -2 }[feedback] ?? 0;
   return Math.max(floor, Math.min(ceiling, currentTarget + adj));
 }
 

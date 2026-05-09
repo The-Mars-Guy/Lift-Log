@@ -79,13 +79,13 @@ function AssessmentFlow({ onComplete, accent }) {
         STRENGTH<br/>ASSESSMENT
       </div>
       <div style={{fontSize:16,color:"#ccc",lineHeight:1.65,marginBottom:28}}>
-        Before your first workout, we need to find your personal starting point.
+        Before your first workout, set a safe starting point. Stop any test if form breaks or something hurts.
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:36}}>
         {[
-          {n:"01", t:"Do each exercise", d:"As many reps as you can without stopping, to failure."},
-          {n:"02", t:"Log your count",   d:"Just tap + until you hit your number. No pressure."},
-          {n:"03", t:"We do the math",   d:"Targets start at 65% of your max and adapt weekly."},
+          {n:"01", t:"Do each exercise", d:"As many clean reps as you can. Stop before ugly reps."},
+          {n:"02", t:"Log your count",   d:"Tap + until you hit your number, or skip a movement."},
+          {n:"03", t:"We do the math",   d:"Targets start conservative and adapt as you train."},
         ].map(s=>(
           <div key={s.n} style={{display:"flex",gap:16,padding:"16px 18px",background:"#0d0d0d",borderRadius:13,border:"1px solid #1c1c1c",alignItems:"flex-start"}}>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:accent,opacity:.6,flexShrink:0,lineHeight:1,marginTop:2}}>{s.n}</div>
@@ -167,7 +167,7 @@ function AssessmentFlow({ onComplete, accent }) {
       {/* Instruction */}
       <div style={{padding:"14px 18px",background:"#0d0d0d",borderRadius:12,border:`1.5px solid ${exColor}44`,marginBottom:24}}>
         <div style={{fontSize:14,color:"#ccc",lineHeight:1.55}}>
-          Do as many <strong style={{color:exColor}}>{ex.name}</strong> reps as you can <strong style={{color:"#fff"}}>without stopping</strong>. Go to failure, then log your count.
+          Do as many clean <strong style={{color:exColor}}>{ex.name}</strong> reps as you can. Stop if form breaks, if pain appears, or if the movement feels unsafe today.
         </div>
       </div>
 
@@ -194,16 +194,31 @@ function AssessmentFlow({ onComplete, accent }) {
         style={{width:"100%",padding:"20px",background:exColor,border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#050505",letterSpacing:".1em",marginTop:16,boxShadow:`0 0 40px ${exColor}66`}}>
         {step < total-1 ? "NEXT EXERCISE →" : "SEE MY RESULTS →"}
       </button>
+      <button onClick={()=>{
+        setResults(r=>{const n={...r};delete n[ex.name];return n;});
+        setCount(10);
+        setStep(s=>s+1);
+      }}
+        style={{width:"100%",padding:"14px",background:"transparent",border:"1px solid #2a2a2a",borderRadius:12,fontSize:13,color:"#888",letterSpacing:".08em",marginTop:10}}>
+        SKIP THIS EXERCISE
+      </button>
     </div>
   );
 }
 
 // ── POST-WORKOUT FEEDBACK ─────────────────────────────────────────────────────
 const FEEDBACK_OPTIONS = [
-  { key:"too_easy", label:"Too Easy",  emoji:"😴", desc:"+2 reps next session" },
+  { key:"easy",     label:"Easy",      emoji:"😴", desc:"+2 reps next session" },
   { key:"good",     label:"Good",      emoji:"👍", desc:"+1 rep next session"  },
   { key:"hard",     label:"Hard",      emoji:"💪", desc:"Keep same target"     },
-  { key:"too_hard", label:"Too Much",  emoji:"🛑", desc:"−1 rep next session"  },
+  { key:"pain",     label:"Pain",      emoji:"🛑", desc:"Lower target + bias swaps"  },
+];
+
+const SET_FEELINGS = [
+  { key:"easy", label:"EASY" },
+  { key:"good", label:"GOOD" },
+  { key:"hard", label:"HARD" },
+  { key:"pain", label:"PAIN" },
 ];
 
 function PostWorkoutFeedback({ exercises, sessionLogs, getLogKey, exConfig, history, onComplete, accent }) {
@@ -224,7 +239,7 @@ function PostWorkoutFeedback({ exercises, sessionLogs, getLogKey, exConfig, hist
   const logs = Array.from({length:ex.sets},(_,j)=>sessionLogs[getLogKey(step,j)]).filter(Boolean);
   const totalReps = logs.reduce((s,l)=>s+(l.reps||0),0);
   const exColor = WORKOUTS.A.exercises.some(e=>e.name===ex.name) ? WORKOUTS.A.color : WORKOUTS.B.color;
-  const histData = getExerciseHistory(ex.name, history);
+  const histData = getExerciseHistory(ex.configName || ex.originalName || ex.name, history);
 
   return (
     <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,.92)",display:"flex",alignItems:"flex-end"}}>
@@ -406,6 +421,16 @@ function TodayPlan({ plan, readiness, accent, substitutions, onApplySubstitution
                 style={{background:active?accent:"transparent",border:`1px solid ${accent}77`,borderRadius:8,color:active?"#050505":accent,padding:"8px 10px",fontSize:11,letterSpacing:".08em",flexShrink:0}}>
                 {active ? "ACTIVE" : "USE"}
               </button>
+              {sub.alternatives?.length>1&&(
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",gridColumn:"1 / -1",marginTop:2}}>
+                  {sub.alternatives.slice(1).map(alt=>(
+                    <button key={alt.name} onClick={()=>onApplySubstitution(sub, alt)}
+                      style={{background:"transparent",border:"1px solid #2a2a2a",borderRadius:7,color:"#aaa",padding:"6px 8px",fontSize:10,letterSpacing:".06em"}}>
+                      {alt.name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )})}
         </div>
@@ -536,6 +561,19 @@ function WorkoutSummary({ summary, accent, onClose }) {
           DONE
         </button>
       </div>
+    </div>
+  );
+}
+
+function SetFeelingButtons({ onPick }) {
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginTop:10}}>
+      {SET_FEELINGS.map(({ key, label })=>(
+        <button key={key} onClick={()=>onPick(key)}
+          style={{padding:"8px 4px",background:key==="pain"?"#2a1014":"#0c0c0c",border:`1px solid ${key==="pain"?"#fb718555":"#2a2a2a"}`,borderRadius:8,color:key==="pain"?"#fb7185":"#bbb",fontSize:10,letterSpacing:".08em"}}>
+          {label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -712,9 +750,10 @@ export default function WorkoutView({
     setCheckIns(p=>[...(p||[]).filter(ci=>!(ci.kind==="readiness"&&ci.sessionKey===sessionKey)),entry]);
   };
 
-  const useSubstitution = (sub) => {
-    setSubstitutions(p => ({ ...p, [sub.exercise]: { name: sub.substitute, reason: sub.reason } }));
-    setToast({ icon:"🔁", title:"SWAP ACTIVE", msg:`${sub.exercise} swapped for ${sub.substitute} today.`, accent });
+  const useSubstitution = (sub, option) => {
+    const chosen = option || sub.alternatives?.find(item => item.name === sub.substitute) || { name: sub.substitute, reason: sub.reason };
+    setSubstitutions(p => ({ ...p, [sub.exercise]: { name: chosen.name, reason: chosen.reason || sub.reason } }));
+    setToast({ icon:"🔁", title:"SWAP ACTIVE", msg:`${sub.exercise} swapped for ${chosen.name} today.`, accent });
   };
 
   const removeSubstitution = (exerciseName) => {
@@ -759,6 +798,32 @@ export default function WorkoutView({
     const next=remaining>0?`Set ${j+2} of ${ex.name}`:hasNextExercise?`Up next: ${workoutPlan.exercises[i+1].name}`:null;
     if(next) setRestState({label:next,accent});
     else setRestState(null);
+  };
+
+  const saveSetFeedback = (feeling) => {
+    if(!undoSet) return;
+    const ex = workoutPlan.exercises[undoSet.exIdx];
+    const entry = {
+      kind:"set_feedback",
+      sessionKey,
+      setKey:undoSet.setKey,
+      day:activeTab,
+      workout:wKey,
+      exercise:ex.name,
+      originalName:ex.originalName || ex.configName || ex.name,
+      set:undoSet.setIdx + 1,
+      feeling,
+      date:dateStr(scheduledDate(activeTab)),
+      timestamp:Date.now(),
+    };
+    setCheckIns(p=>[...(p||[]).filter(ci=>ci.kind!=="set_feedback"||ci.setKey!==undoSet.setKey),entry]);
+    setToast({
+      icon:feeling==="pain"?"🛑":"🧠",
+      title:"COACH NOTE SAVED",
+      msg:feeling==="pain" ? `${ex.name} flagged for discomfort.` : `${ex.name} set ${undoSet.setIdx+1}: ${feeling}.`,
+      accent:feeling==="pain"?"#fb7185":accent,
+    });
+    setUndoSet(null);
   };
 
   const undoLastSet = () => {
@@ -1122,13 +1187,16 @@ export default function WorkoutView({
       {loggerState&&<SetLogger exerciseName={workoutPlan.exercises[loggerState.exIdx].name} setNum={loggerState.setIdx+1} defaultWeight={loggerState.weight} defaultReps={loggerState.reps} accent={accent} onSave={saveLog} onSkip={skipLog}/>}
       {undoSet&&(
         <div style={{position:"fixed",left:16,right:16,bottom:"calc(82px + env(safe-area-inset-bottom))",zIndex:260,pointerEvents:"none"}}>
-          <div className="mobile-shell" style={{display:"flex",alignItems:"center",gap:12,background:"#111",border:`1.5px solid ${accent}66`,borderRadius:12,padding:"13px 14px",boxShadow:`0 0 28px ${accent}33`,pointerEvents:"auto"}}>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:12,color:accent,letterSpacing:".12em",textTransform:"uppercase"}}>Set Logged</div>
-              <div style={{fontSize:13,color:"#ddd",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{undoSet.label}</div>
+          <div className="mobile-shell" style={{background:"#111",border:`1.5px solid ${accent}66`,borderRadius:12,padding:"13px 14px",boxShadow:`0 0 28px ${accent}33`,pointerEvents:"auto"}}>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:12,color:accent,letterSpacing:".12em",textTransform:"uppercase"}}>Set Logged</div>
+                <div style={{fontSize:13,color:"#ddd",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{undoSet.label}</div>
+              </div>
+              <button onClick={undoLastSet} style={{background:"transparent",border:`1px solid ${accent}77`,color:accent,borderRadius:8,padding:"9px 12px",fontSize:12,letterSpacing:".1em"}}>UNDO</button>
+              <button onClick={()=>setUndoSet(null)} style={{background:"transparent",border:"none",color:"#666",fontSize:18,padding:"4px 2px"}}>×</button>
             </div>
-            <button onClick={undoLastSet} style={{background:"transparent",border:`1px solid ${accent}77`,color:accent,borderRadius:8,padding:"9px 12px",fontSize:12,letterSpacing:".1em"}}>UNDO</button>
-            <button onClick={()=>setUndoSet(null)} style={{background:"transparent",border:"none",color:"#666",fontSize:18,padding:"4px 2px"}}>×</button>
+            <SetFeelingButtons onPick={saveSetFeedback}/>
           </div>
         </div>
       )}

@@ -99,8 +99,13 @@ export default function StatsView({ history, progression, settings, achievements
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:14}}>
             <MemoryPill label="Readiness" value={coachMemory.readinessCount ? coachMemory.commonEnergy : "learning"} color="#a78bfa"/>
             <MemoryPill label="Strongest" value={coachMemory.strongest?.maxWeight ? coachMemory.strongest.name : "learning"} color="#4ade80"/>
-            <MemoryPill label="Progressing" value={coachMemory.progressing.length || 0} color="#60a5fa"/>
-            <MemoryPill label="Stalling" value={coachMemory.stalling.length || 0} color="#fb923c"/>
+            <MemoryPill label="Set Notes" value={coachMemory.setFeedbackCount || 0} color="#60a5fa"/>
+            <MemoryPill label="Pain Flags" value={coachMemory.painFlags?.length || 0} color="#fb7185"/>
+          </div>
+          <div style={{display:"grid",gap:8,marginTop:10}}>
+            <MemoryLine label="Hardest lately" value={coachMemory.hardest?.hardCount ? `${coachMemory.hardest.name} (${coachMemory.hardest.hardCount})` : "learning"} color="#fb923c"/>
+            <MemoryLine label="Easiest lately" value={coachMemory.easiest?.easyCount ? `${coachMemory.easiest.name} (${coachMemory.easiest.easyCount})` : "learning"} color="#4ade80"/>
+            <MemoryLine label="Favorite swap" value={coachMemory.favoriteSwap ? `${coachMemory.favoriteSwap.label} (${coachMemory.favoriteSwap.count})` : "learning"} color="#a78bfa"/>
           </div>
         </div>
       </Section>
@@ -291,6 +296,15 @@ function MemoryPill({label,value,color}){
     <div style={{padding:"11px 12px",background:"#080808",border:"1px solid #202020",borderRadius:9}}>
       <div style={{fontSize:10,color:"#888",letterSpacing:".12em",textTransform:"uppercase",marginBottom:4}}>{label}</div>
       <div style={{fontSize:13,color,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{value}</div>
+    </div>
+  );
+}
+
+function MemoryLine({label,value,color}){
+  return(
+    <div style={{display:"flex",justifyContent:"space-between",gap:10,padding:"10px 12px",background:"#080808",border:"1px solid #202020",borderRadius:9}}>
+      <span style={{fontSize:11,color:"#888",letterSpacing:".12em",textTransform:"uppercase"}}>{label}</span>
+      <span style={{fontSize:12,color,fontWeight:600,textAlign:"right",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{value}</span>
     </div>
   );
 }

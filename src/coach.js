@@ -19,11 +19,31 @@ export const READINESS = {
 export const DEFAULT_READINESS = { energy: "okay", soreness: "mild", time: "normal" };
 
 export const SUBSTITUTIONS = {
-  "Arnold Press": { name: "Lateral Raise", reason: "shoulder-friendly pressing alternative" },
-  "Reverse Lunge": { name: "Glute Bridge", reason: "lower knee stress while keeping glutes working" },
-  "Romanian Deadlift": { name: "Hip Thrust", reason: "less lower-back demand today" },
-  "Rear Delt Row": { name: "Rear Delt Fly", reason: "lighter upper-back isolation" },
-  "Tricep Kickback": { name: "Close-Grip Floor Press", reason: "more stable triceps work" },
+  "Arnold Press": [
+    { name: "Lateral Raise", reason: "shoulder-friendly pressing alternative" },
+    { name: "Front Raise", reason: "lighter front-delt work with less overhead demand" },
+    { name: "Seated Shoulder Press", reason: "more stable pressing if balance is the limiter" },
+  ],
+  "Reverse Lunge": [
+    { name: "Glute Bridge", reason: "lower knee stress while keeping glutes working" },
+    { name: "Split Squat Hold", reason: "controlled quad work with less stepping" },
+    { name: "Goblet Squat", reason: "simpler lower-body pattern when coordination is off" },
+  ],
+  "Romanian Deadlift": [
+    { name: "Hip Thrust", reason: "less lower-back demand today" },
+    { name: "Glute Bridge", reason: "easy hinge substitute if hamstrings feel tight" },
+    { name: "Suitcase Deadlift", reason: "shorter range hinge with more control" },
+  ],
+  "Rear Delt Row": [
+    { name: "Rear Delt Fly", reason: "lighter upper-back isolation" },
+    { name: "Bent Over Row", reason: "more stable pulling pattern" },
+    { name: "Prone Rear Delt Raise", reason: "stricter rear-delt work with less momentum" },
+  ],
+  "Tricep Kickback": [
+    { name: "Close-Grip Floor Press", reason: "more stable triceps work" },
+    { name: "Overhead Triceps Extension", reason: "long-head triceps focus" },
+    { name: "Diamond Push-Up", reason: "bodyweight triceps option if dumbbells feel awkward" },
+  ],
 };
 
 export function readinessScore(readiness = DEFAULT_READINESS) {
@@ -134,10 +154,16 @@ export function suggestSubstitutions({ workout, history = [], exConfig = {}, rea
     .map(ex => {
       const target = exConfig[ex.name]?.targetReps ?? ex.baseReps;
       const trend = exerciseTrend(history, ex, target);
-      const swap = SUBSTITUTIONS[ex.name];
+      const swaps = SUBSTITUTIONS[ex.name] || [];
+      const swap = swaps[0];
       if (!swap) return null;
       if (sore || trend.status === "stalling") {
-        return { exercise: ex.name, substitute: swap.name, reason: sore ? swap.reason : "this movement has been stalling" };
+        return {
+          exercise: ex.name,
+          substitute: swap.name,
+          reason: sore ? swap.reason : "this movement has been stalling",
+          alternatives: swaps,
+        };
       }
       return null;
     })
@@ -233,6 +259,7 @@ export function summarizeWorkout({ exercises, duration = 0, readiness, prs = [],
 
 export function buildCoachMemory({ history = [], checkIns = [], exercises = [], exConfig = {} }) {
   const readinessEntries = checkIns.filter(ci => ci.kind === "readiness" && ci.readiness);
+  const setFeedback = checkIns.filter(ci => ci.kind === "set_feedback" && ci.exercise);
   const energyCounts = readinessEntries.reduce((acc, ci) => {
     const key = ci.readiness.energy || "okay";
     acc[key] = (acc[key] || 0) + 1;
@@ -250,24 +277,46 @@ export function buildCoachMemory({ history = [], checkIns = [], exercises = [], 
       return item?.setLog?.map(log => log.weight || 0) || [];
     })));
     const latestReps = latest?.setLog?.reduce((sum, log) => sum + (log.reps || 0), 0) || 0;
-    return { name: ex.name, trend: trend.status, maxWeight, latestReps };
+    const feedback = setFeedback.filter(item => item.exercise === ex.name || item.originalName === ex.name);
+    const hardCount = feedback.filter(item => item.feeling === "hard" || item.feeling === "pain").length;
+    const easyCount = feedback.filter(item => item.feeling === "easy").length;
+    const painCount = feedback.filter(item => item.feeling === "pain").length;
+    return { name: ex.name, trend: trend.status, maxWeight, latestReps, hardCount, easyCount, painCount };
   });
 
   const strongest = [...exerciseStats].sort((a,b)=>b.maxWeight-a.maxWeight)[0];
   const stalling = exerciseStats.filter(ex => ex.trend === "stalling");
   const progressing = exerciseStats.filter(ex => ex.trend === "ready");
+  const painFlags = exerciseStats.filter(ex => ex.painCount > 0).sort((a,b)=>b.painCount-a.painCount);
+  const hardest = [...exerciseStats].sort((a,b)=>b.hardCount-a.hardCount)[0];
+  const easiest = [...exerciseStats].sort((a,b)=>b.easyCount-a.easyCount)[0];
+  const swapCounts = history.flatMap(h => h.exercises || [])
+    .filter(ex => ex.substitutedFor)
+    .reduce((acc, ex) => {
+      const key = `${ex.substitutedFor} -> ${ex.name}`;
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+  const favoriteSwap = Object.entries(swapCounts).sort((a,b)=>b[1]-a[1])[0];
   const inconsistent = stalling[0] || exerciseStats.find(ex => ex.trend === "building");
-  const focus = stalling[0]?.name || progressing[0]?.name || inconsistent?.name || exercises[0]?.name || "consistency";
+  const focus = painFlags[0]?.name || stalling[0]?.name || progressing[0]?.name || inconsistent?.name || exercises[0]?.name || "consistency";
 
   return {
     commonEnergy,
     readinessCount: readinessEntries.length,
+    setFeedbackCount: setFeedback.length,
     strongest,
     stalling,
     progressing,
+    painFlags,
+    hardest,
+    easiest,
+    favoriteSwap: favoriteSwap ? { label: favoriteSwap[0], count: favoriteSwap[1] } : null,
     inconsistent,
     focus,
-    summary: stalling.length
+    summary: painFlags.length
+      ? `${painFlags[0].name} has been flagged for discomfort. The coach should bias toward swaps or lighter work there.`
+      : stalling.length
       ? `${stalling[0].name} needs steadier reps before increasing load.`
       : progressing.length
         ? `${progressing[0].name} is trending well. It may be ready for progression.`
