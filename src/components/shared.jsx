@@ -3,7 +3,7 @@ import { IMG_BASE, VIDEO_BASE, WORKOUTS, isoDate, isoWeek, dateStr } from "../da
 import { remainingSeconds } from "../session.js";
 
 // ── Exercise Animation ───────────────────────────────────────────────────────
-export function ExerciseAnimation({ folder, accent, video }) {
+export function ExerciseAnimation({ folder, accent, video, compact=false, bare=false }) {
   const [loaded, setLoaded] = useState({ 0:false, 1:false });
   const [videoFailed, setVideoFailed] = useState(false);
   const ready = loaded[0] && loaded[1];
@@ -20,11 +20,11 @@ export function ExerciseAnimation({ folder, accent, video }) {
   return (
     <div style={{
       position:"relative", width:"100%", aspectRatio:"1",
-      maxWidth:340, margin:"0 auto",
-      background:"linear-gradient(180deg,#fafafa,#eee)",
-      borderRadius:13, overflow:"hidden",
-      border:`1.5px solid ${accent}40`,
-      boxShadow:`0 0 36px ${accent}18`,
+      maxWidth:compact ? 246 : 340, margin:"0 auto",
+      background:bare ? "transparent" : "linear-gradient(180deg,#fafafa,#eee)",
+      borderRadius:bare ? 0 : 13, overflow:"hidden",
+      border:bare ? "none" : `1.5px solid ${accent}40`,
+      boxShadow:bare ? "none" : `0 0 36px ${accent}18`,
     }}>
       {!videoFailed && (
         <video
@@ -37,7 +37,7 @@ export function ExerciseAnimation({ folder, accent, video }) {
           onLoadedData={() => setLoaded({ 0:true, 1:true })}
           onCanPlay={e => e.currentTarget.play().catch(() => setVideoFailed(true))}
           onError={() => setVideoFailed(true)}
-          style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"contain",background:"#f2f2f2"}}
+          style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"contain",background:bare ? "transparent" : "#f2f2f2"}}
         />
       )}
       {videoFailed && !ready && (

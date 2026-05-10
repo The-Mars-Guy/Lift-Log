@@ -513,49 +513,49 @@ function FocusWorkoutMode({
   const currentDone = Array.from({length:plannedSets},(_,j)=>setDone(next.exIdx,j)).filter(Boolean).length;
 
   return (
-    <div style={{position:"fixed",inset:0,zIndex:150,background:"#050505",overflowY:"auto",padding:"calc(18px + env(safe-area-inset-top)) 18px 28px"}}>
+    <div style={{position:"fixed",inset:0,zIndex:150,background:"#050505",overflowY:"auto",padding:"calc(10px + env(safe-area-inset-top)) 16px 18px"}}>
       <div className="mobile-shell">
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-          <button onClick={onExit} style={{background:"transparent",border:"1px solid #2c2c2c",borderRadius:9,color:"#aaa",padding:"10px 13px",fontSize:12,letterSpacing:".08em"}}>PAUSE</button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <button onClick={onExit} style={{background:"transparent",border:"1px solid #2c2c2c",borderRadius:9,color:"#aaa",padding:"8px 12px",fontSize:12,letterSpacing:".08em"}}>PAUSE</button>
           <div style={{textAlign:"right"}}>
             <div style={{fontSize:11,color:"#777",letterSpacing:".14em",textTransform:"uppercase"}}>{activeTab}</div>
             <div style={{fontSize:13,color:accent}}>{doneSets}/{totalSets} sets</div>
           </div>
         </div>
 
-        <div style={{fontSize:12,color:accent,letterSpacing:".16em",textTransform:"uppercase",marginBottom:8}}>Focus Mode</div>
-        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:46,color:"#f5f5f5",letterSpacing:".06em",lineHeight:.92,marginBottom:6}}>{next.ex.name}</div>
-        <div style={{fontSize:15,color:"#aaa",lineHeight:1.5,marginBottom:18}}>
+        <div style={{fontSize:11,color:accent,letterSpacing:".16em",textTransform:"uppercase",marginBottom:6}}>Focus Mode</div>
+        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:38,color:"#f5f5f5",letterSpacing:".06em",lineHeight:.92,marginBottom:5}}>{next.ex.name}</div>
+        <div style={{fontSize:13,color:"#aaa",lineHeight:1.35,marginBottom:8}}>
           Set {Math.min(currentDone+1,plannedSets)} of {plannedSets} · {weight}lbs · target ×{target}{next.ex.repSuffix||""}
         </div>
 
-        <ExerciseAnimation folder={next.ex.folder} video={next.ex.video} accent={accent}/>
+        <ExerciseAnimation folder={next.ex.folder} video={next.ex.video} accent={accent} compact bare/>
 
-        <div style={{marginTop:20,display:"grid",gridTemplateColumns:`repeat(${plannedSets},1fr)`,gap:9}}>
+        <div style={{marginTop:10,display:"grid",gridTemplateColumns:`repeat(${plannedSets},1fr)`,gap:8}}>
           {Array.from({length:plannedSets},(_,j)=>{
             const isDone=setDone(next.exIdx,j);
             const logged=sessionLogs[logKey(next.exIdx,j)];
             return (
               <button key={j} onClick={()=>toggleSet(next.exIdx,j)}
-                style={{height:58,borderRadius:13,border:`1.5px solid ${isDone?accent:"#333"}`,background:isDone?`${accent}25`:"#0d0d0d",color:isDone?accent:"#aaa",fontSize:15,fontWeight:700,boxShadow:isDone?`0 0 14px ${accent}55`:"none"}}>
+                style={{height:48,borderRadius:11,border:`1.5px solid ${isDone?accent:"#333"}`,background:isDone?`${accent}25`:"#0d0d0d",color:isDone?accent:"#aaa",fontSize:13,fontWeight:700,boxShadow:isDone?`0 0 14px ${accent}55`:"none"}}>
                 {isDone ? (logged ? `${logged.reps}r` : "DONE") : `SET ${j+1}`}
               </button>
             );
           })}
         </div>
 
-        <div style={{marginTop:18,padding:"14px 16px",background:"#0d0d0d",border:"1px solid #202020",borderRadius:12}}>
-          <div style={{fontSize:11,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:6}}>Cue</div>
-          <div style={{fontSize:15,color:"#ddd",lineHeight:1.5}}>{next.ex.tip}</div>
+        <div style={{marginTop:10,padding:"10px 12px",background:"#0d0d0d",border:"1px solid #202020",borderRadius:11}}>
+          <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:4}}>Cue</div>
+          <div style={{fontSize:13,color:"#ddd",lineHeight:1.38}}>{next.ex.tip}</div>
         </div>
 
-        <div style={{height:7,background:"#181818",borderRadius:5,overflow:"hidden",marginTop:22}}>
+        <div style={{height:6,background:"#181818",borderRadius:5,overflow:"hidden",marginTop:12}}>
           <div style={{height:"100%",width:`${(doneSets/totalSets)*100}%`,background:accent,boxShadow:`0 0 12px ${accent}`,transition:"width .25s"}}/>
         </div>
 
         {allDone&&!isCompleted&&(
           <button onClick={onFinish}
-            style={{width:"100%",marginTop:22,padding:20,borderRadius:15,border:"none",background:accent,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:28,letterSpacing:".12em",boxShadow:`0 0 48px ${accent}77`}}>
+            style={{width:"100%",marginTop:12,padding:16,borderRadius:14,border:"none",background:accent,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:24,letterSpacing:".12em",boxShadow:`0 0 48px ${accent}77`}}>
             FINISH WORKOUT
           </button>
         )}
@@ -1089,9 +1089,6 @@ export default function WorkoutView({
       {!readiness&&!isCompleted&&doneSets===0&&(
         settings.showReadiness!==false&&<ReadinessCheckIn value={DEFAULT_READINESS} onSave={saveReadiness} accent={accent}/>
       )}
-      <TodayPlan plan={coachPlan} readiness={readiness} accent={accent} substitutions={substitutions} onApplySubstitution={useSubstitution} onRemoveSubstitution={removeSubstitution}/>
-      <CoachCard suggestions={suggestions} accent={accent} onOpen={()=>setCoachOpen(true)}/>
-
       {/* DAY TABS */}
       <div style={{display:"flex",borderTop:"1px solid #1a1a1a",borderBottom:"1px solid #1a1a1a",background:"#080808"}}>
         {DAYS.map(day=>{
@@ -1196,6 +1193,8 @@ export default function WorkoutView({
                     <div style={{fontSize:15,color:"#f0f0f0",marginTop:5,lineHeight:1.55}}>→ {ex.tip}</div>
                     {ex.substitutedFor&&<div style={{fontSize:12,color:"#888",marginTop:8}}>Original: {ex.substitutedFor}</div>}
                   </div>
+
+                  <CoachCard suggestions={suggestions.filter(s => s.cat === "Form" || s.cat === "Science" || s.cat === "Watch" || s.cat === "Habits").slice(0, 4)} accent={accent} onOpen={()=>setCoachOpen(true)}/>
 
                   {science.enabled&&(
                     <div style={{marginTop:14,padding:"13px 16px",background:"#080808",borderRadius:10,border:"1.5px solid #a78bfa44"}}>
