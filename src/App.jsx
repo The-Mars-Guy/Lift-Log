@@ -28,6 +28,7 @@ export default function App() {
 
   const [achievementToast, setAchievementToast] = useState(null);
   const [assessmentDone, setAssessmentDone] = useLocalStorage("wt_assessment_done", false);
+  const [updateReady, setUpdateReady] = useState(null);
 
   const normalized = normalizeLiftLogData({ sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, assessmentDone });
   const safeSettings = { ...DEFAULT_SETTINGS, ...normalized.settings };
@@ -80,6 +81,12 @@ export default function App() {
       setAchievementToast({ icon:first.icon, title:"ACHIEVEMENT UNLOCKED", msg:`${first.name} — ${first.desc}`, accent:"#fbbf24" });
     }, 1600);
   }, [history, progression]); // eslint-disable-line
+
+  useEffect(() => {
+    const onUpdate = (event) => setUpdateReady(event.detail?.registration || null);
+    window.addEventListener("lift-log-update", onUpdate);
+    return () => window.removeEventListener("lift-log-update", onUpdate);
+  }, []);
 
   const addXp = (amount) => setXp(p => Math.max(0, p + amount));
 
@@ -155,6 +162,12 @@ export default function App() {
     }
   };
 
+  const applyUpdate = () => {
+    const waiting = updateReady?.waiting;
+    if (waiting) waiting.postMessage({ type:"SKIP_WAITING" });
+    else window.location.reload();
+  };
+
   const day  = todayName();
   const accent = WORKOUTS[DAYS.includes(day) ? SCHEDULE[day] : "A"].color;
   const level  = getLevel(normalized.xp);
@@ -203,6 +216,19 @@ export default function App() {
         <Toast icon={achievementToast.icon} title={achievementToast.title}
           msg={achievementToast.msg} accent={achievementToast.accent}
           onClose={() => setAchievementToast(null)} duration={5000} />
+      )}
+
+      {updateReady && (
+        <div style={{position:"fixed",left:16,right:16,bottom:"calc(92px + env(safe-area-inset-bottom))",zIndex:260,pointerEvents:"none"}}>
+          <div className="mobile-shell" style={{background:"#101010",border:`1.5px solid ${accent}66`,borderRadius:13,padding:"14px 15px",boxShadow:`0 0 30px ${accent}33`,pointerEvents:"auto",display:"flex",alignItems:"center",gap:12}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:500}}>Update Ready</div>
+              <div style={{fontSize:13,color:"#ddd",marginTop:3,lineHeight:1.35}}>Refresh to load the newest Lift Log build.</div>
+            </div>
+            <button onClick={applyUpdate} style={{background:accent,border:"none",borderRadius:9,color:"#050505",padding:"10px 12px",fontSize:12,letterSpacing:".08em",fontWeight:700}}>REFRESH</button>
+            <button onClick={()=>setUpdateReady(null)} style={{background:"transparent",border:"none",color:"#666",fontSize:18,padding:"4px"}}>×</button>
+          </div>
+        </div>
       )}
     </div>
   );

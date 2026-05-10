@@ -1,4 +1,4 @@
-const CACHE_VERSION = "lift-log-v1";
+const CACHE_VERSION = "lift-log-v2";
 const APP_CACHE = `${CACHE_VERSION}-app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const APP_SHELL = [
@@ -37,6 +37,10 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(networkFirst(req));
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 async function cacheFirst(req) {

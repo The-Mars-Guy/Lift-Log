@@ -42,6 +42,12 @@ export default function CalendarView({ history, progression, settings, accent })
         <div style={{ fontSize: 15, color: "#ddd", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 500, marginBottom: 14 }}>
           Last 12 Weeks
         </div>
+        {history.length===0&&(
+          <div style={{padding:"16px",background:`linear-gradient(180deg,${accent}12,#0d0d0d)`,border:`1.5px solid ${accent}33`,borderRadius:11,marginBottom:12}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:accent,letterSpacing:".06em"}}>CALENDAR STARTS AFTER SESSION ONE</div>
+            <div style={{fontSize:14,color:"#bbb",lineHeight:1.55,marginTop:6}}>Finish a workout and this heatmap will become your consistency tracker.</div>
+          </div>
+        )}
         <div style={{
           padding: 16, background: "#0d0d0d", borderRadius: 11,
           border: "1px solid #1c1c1c", overflowX: "auto",
@@ -61,8 +67,8 @@ export default function CalendarView({ history, progression, settings, accent })
           Session History
         </div>
         {history.length === 0 ? (
-          <div style={{ padding: 32, textAlign: "center", color: "#666", fontSize: 14, letterSpacing: "0.1em" }}>
-            NO SESSIONS LOGGED YET
+          <div style={{ padding: 24, background:"#0d0d0d", border:"1px solid #1c1c1c", borderRadius:11, color: "#888", fontSize: 14, lineHeight:1.55 }}>
+            Your completed workouts will appear here with duration, exercises, logged sets, and readiness notes.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

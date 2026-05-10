@@ -42,7 +42,7 @@ body {
 
 @media (pointer: coarse) {
   :root {
-    --mobile-ui-scale: 1.28;
+    --mobile-ui-scale: 1.38;
   }
 
   .app-shell,

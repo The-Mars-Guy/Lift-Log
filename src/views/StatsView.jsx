@@ -91,6 +91,17 @@ export default function StatsView({ history, progression, settings, achievements
         <BigStat label="Time Lifting"   value={fmtDuration(totalDuration)} accent="#a78bfa"/>
       </div>
 
+      {history.length===0&&(
+        <Section title="Getting Started" sub="your stats will fill in automatically">
+          <EmptyState
+            accent={accent}
+            title="No sessions yet"
+            body="Complete your first workout and this page will start showing coach memory, weekly review, volume, progression, and exercise graphs."
+            items={["Log sets during Workout A or B", "Finish the workout summary", "Use easy/good/hard/pain notes so the coach learns faster"]}
+          />
+        </Section>
+      )}
+
       {/* SESSIONS / WEEK CHART */}
       <Section title="Coach Memory" sub="what the coach has learned">
         <div style={{padding:"16px",background:"#0d0d0d",borderRadius:12,border:`1.5px solid ${accent}33`,boxShadow:`0 0 24px ${accent}12`}}>
@@ -314,6 +325,23 @@ function Leg({color,label}){
     <div style={{display:"flex",alignItems:"center",gap:6}}>
       <div style={{width:10,height:10,background:color,borderRadius:2}}/>
       <span>{label}</span>
+    </div>
+  );
+}
+
+function EmptyState({ accent, title, body, items=[] }) {
+  return (
+    <div style={{padding:"18px 16px",background:`linear-gradient(180deg,${accent}12,#0d0d0d)`,border:`1.5px solid ${accent}33`,borderRadius:12,boxShadow:`0 0 24px ${accent}12`}}>
+      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:accent,letterSpacing:".06em",lineHeight:1}}>{title}</div>
+      <div style={{fontSize:14,color:"#ddd",lineHeight:1.55,marginTop:8}}>{body}</div>
+      <div style={{display:"grid",gap:7,marginTop:13}}>
+        {items.map((item,i)=>(
+          <div key={item} style={{display:"flex",gap:10,padding:"9px 10px",background:"#080808",border:"1px solid #202020",borderRadius:8,fontSize:12,color:"#bbb",lineHeight:1.4}}>
+            <span style={{color:accent,fontWeight:700}}>{String(i+1).padStart(2,"0")}</span>
+            <span>{item}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
