@@ -9,7 +9,7 @@ const APP_SHELL = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(APP_CACHE).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())
+    caches.open(APP_CACHE).then((cache) => cache.addAll(APP_SHELL))
   );
 });
 

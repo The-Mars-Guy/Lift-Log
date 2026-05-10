@@ -90,7 +90,35 @@ export default function App() {
 
   const addXp = (amount) => setXp(p => Math.max(0, p + amount));
 
+  const currentData = () => ({
+    sets: normalized.sets,
+    history: normalized.history,
+    completed: normalized.completed,
+    progression: normalized.progression,
+    settings: safeSettings,
+    achievements: normalized.achievements,
+    exConfig: normalized.exConfig,
+    xp: normalized.xp,
+    checkIns: normalized.checkIns,
+    assessmentDone: normalized.assessmentDone,
+  });
+
+  const createBackupSnapshot = (reason = "manual") => {
+    try {
+      const backup = {
+        ...currentData(),
+        backupReason: reason,
+        backedUpAt: new Date().toISOString(),
+      };
+      localStorage.setItem("wt_last_backup", JSON.stringify(backup));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const resetAllData = () => {
+    createBackupSnapshot("before_reset");
     setSets({}); setHistory([]); setCompleted({}); setProgression({});
     setAchievements([]); setXp(0); setCheckIns([]); setExConfig({}); setAssessmentDone(false);
   };
@@ -111,6 +139,7 @@ export default function App() {
   };
 
   const clearWorkoutState = () => {
+    createBackupSnapshot("before_clear_workout_state");
     setSets({});
     setCompleted({});
   };
@@ -133,7 +162,7 @@ export default function App() {
   };
 
   const exportData = () => {
-    const data = { sets: normalized.sets, history: normalized.history, completed: normalized.completed, progression: normalized.progression, settings: safeSettings, achievements: normalized.achievements, exConfig: normalized.exConfig, xp: normalized.xp, checkIns: normalized.checkIns, assessmentDone: normalized.assessmentDone, exportedAt: new Date().toISOString() };
+    const data = { ...currentData(), exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
@@ -146,6 +175,7 @@ export default function App() {
     try {
       const raw = await file.text();
       const data = normalizeLiftLogData(JSON.parse(raw));
+      createBackupSnapshot("before_import");
       setSets(data.sets);
       setHistory(data.history);
       setCompleted(data.completed);
@@ -156,6 +186,24 @@ export default function App() {
       setXp(data.xp);
       setCheckIns(data.checkIns);
       setAssessmentDone(data.assessmentDone);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const exportLastBackup = () => {
+    try {
+      const raw = localStorage.getItem("wt_last_backup");
+      if (!raw) return false;
+      const backup = JSON.parse(raw);
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type:"application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const date = backup.backedUpAt?.slice(0,10) || new Date().toISOString().slice(0,10);
+      a.href = url; a.download = `lift-log-backup-${date}.json`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       return true;
     } catch {
       return false;
@@ -206,7 +254,8 @@ export default function App() {
           <SettingsView settings={safeSettings} setSettings={setSettings}
             resetAllData={resetAllData} exportData={exportData} importData={importData}
             repairSavedData={repairSavedData} clearWorkoutState={clearWorkoutState}
-            refreshAppCache={refreshAppCache} accent={accent} />
+            refreshAppCache={refreshAppCache} exportLastBackup={exportLastBackup}
+            createBackupSnapshot={createBackupSnapshot} accent={accent} />
         )}
       </div>
 

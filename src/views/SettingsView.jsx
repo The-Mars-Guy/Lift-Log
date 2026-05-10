@@ -10,6 +10,8 @@ export default function SettingsView({
   repairSavedData,
   clearWorkoutState,
   refreshAppCache,
+  exportLastBackup,
+  createBackupSnapshot,
   accent,
 }) {
   const [confirming, setConfirming] = useState(false);
@@ -94,6 +96,8 @@ export default function SettingsView({
 
       <Section title="Data">
         <Action label="Export Data" desc="Download history, progression, and settings as JSON" onClick={exportData} />
+        <Action label="Create Backup Snapshot" desc="Save a local safety copy before risky changes" onClick={() => { setRecoveryStatus(createBackupSnapshot?.("manual") ? "Backup snapshot saved on this device." : "Backup failed. Export data instead."); }} />
+        <Action label="Download Last Backup" desc="Download the latest automatic safety snapshot" onClick={() => setRecoveryStatus(exportLastBackup?.() ? "Backup downloaded." : "No backup snapshot found yet.")} />
         <Action label="Import Data" desc="Restore from a Lift Log JSON export" onClick={() => fileInput.current?.click()} />
         <input ref={fileInput} type="file" accept="application/json,.json" onChange={handleImport} style={{ display:"none" }} />
         {importStatus && <div style={{fontSize:13,color:importStatus.startsWith("Import complete") ? accent : "#ff8888",padding:"4px 2px 8px"}}>{importStatus}</div>}
@@ -104,7 +108,7 @@ export default function SettingsView({
         <Action label="Reset to Defaults" desc="Restore default settings (keeps workout history)" onClick={() => setSettings(DEFAULT_SETTINGS)} />
         {confirming ? (
           <div style={{ padding: 16, background: "#1a0a0a", border: "1px solid #ff444466", borderRadius: 10, marginTop: 8 }}>
-            <div style={{ fontSize: 14, color: "#ff8888", marginBottom: 12 }}>This permanently deletes all sessions, progression, and achievements. Continue?</div>
+            <div style={{ fontSize: 14, color: "#ff8888", marginBottom: 12 }}>This deletes all sessions, progression, and achievements. A local backup snapshot will be created first.</div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => { resetAllData(); setConfirming(false); }} style={{
                 flex: 1, padding: "10px 14px", background: "#ff4444", color: "#fff",
