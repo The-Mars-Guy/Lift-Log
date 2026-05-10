@@ -23,8 +23,8 @@ function AssessmentFlow({ onComplete, accent }) {
 
   // ── INTRO ──
   if (step === -1) return (
-    <div style={{minHeight:"100vh",overflowY:"auto",padding:"44px 24px 40px",background:"#050505"}}>
-      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:54,color:accent,letterSpacing:".06em",lineHeight:.9,marginBottom:20,filter:`drop-shadow(0 0 20px ${accent}55)`}}>
+    <div style={{minHeight:"100vh",overflowY:"auto",padding:"40px 20px 40px",background:"#050505"}}>
+      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(44px, 14vw, 54px)",color:accent,letterSpacing:".04em",lineHeight:.9,marginBottom:20,filter:`drop-shadow(0 0 20px ${accent}55)`}}>
         STRENGTH<br/>ASSESSMENT
       </div>
       <div style={{fontSize:16,color:"#ccc",lineHeight:1.65,marginBottom:28}}>
@@ -36,7 +36,7 @@ function AssessmentFlow({ onComplete, accent }) {
           {n:"02", t:"Log your count",   d:"Tap + until you hit your number, or skip a movement."},
           {n:"03", t:"We do the math",   d:"Targets start conservative and adapt as you train."},
         ].map(s=>(
-          <div key={s.n} style={{display:"flex",gap:16,padding:"16px 18px",background:"#0d0d0d",borderRadius:13,border:"1px solid #1c1c1c",alignItems:"flex-start"}}>
+          <div key={s.n} style={{display:"flex",gap:14,padding:"16px",background:"#0d0d0d",borderRadius:13,border:"1px solid #1c1c1c",alignItems:"flex-start"}}>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:accent,opacity:.6,flexShrink:0,lineHeight:1,marginTop:2}}>{s.n}</div>
             <div>
               <div style={{fontSize:15,color:"#f0f0f0",fontWeight:500,marginBottom:3}}>{s.t}</div>
