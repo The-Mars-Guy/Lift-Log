@@ -764,6 +764,12 @@ export default function WorkoutView({
     });
   };
 
+  useEffect(() => {
+    if (!undoSet) return;
+    const id = setTimeout(() => setUndoSet(null), 4500);
+    return () => clearTimeout(id);
+  }, [undoSet]);
+
   const spawnXp = (amount) => {
     addXp(amount);
     setXpAmount(amount);
@@ -822,6 +828,7 @@ export default function WorkoutView({
       title:"COACH NOTE SAVED",
       msg:feeling==="pain" ? `${ex.name} flagged for discomfort.` : `${ex.name} set ${undoSet.setIdx+1}: ${feeling}.`,
       accent:feeling==="pain"?"#fb7185":accent,
+      duration:3500,
     });
     setUndoSet(null);
   };
