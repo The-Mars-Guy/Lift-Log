@@ -13,11 +13,13 @@ export default function SettingsView({
   exportLastBackup,
   createBackupSnapshot,
   accent,
+  theme,
 }) {
   const [confirming, setConfirming] = useState(false);
   const [importStatus, setImportStatus] = useState(null);
   const [recoveryStatus, setRecoveryStatus] = useState(null);
   const fileInput = useRef(null);
+  const ui = makeSettingsTheme(theme, accent);
 
   const update = (key, value) => setSettings(s => ({ ...s, [key]: value }));
   const handleImport = async (event) => {
@@ -29,100 +31,118 @@ export default function SettingsView({
   };
 
   return (
-    <div>
+    <div style={{ color:ui.text }}>
       <div style={{ padding: "32px 20px 18px" }}>
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 44, letterSpacing: "0.06em", lineHeight: 0.9, color: "#fafafa" }}>
+        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 44, letterSpacing: "0.06em", lineHeight: 0.9, color: ui.title }}>
           SETTINGS
         </div>
-        <div style={{ fontSize: 15, color: "#999", marginTop: 6, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+        <div style={{ fontSize: 15, color: ui.muted, marginTop: 6, letterSpacing: "0.14em", textTransform: "uppercase" }}>
           customize your experience
         </div>
       </div>
 
-      <Section title="Workout">
-        <Row label="Rest Timer" desc="Seconds between sets">
+      <Section title="Appearance" ui={ui}>
+        <Row label="Visual Style" desc="Bright phone mode or classic dark mode" ui={ui}>
+          <SegControl
+            options={[{ v: "pop_light", l: "Pop" }, { v: "dark", l: "Dark" }]}
+            value={settings.visualTheme || "pop_light"}
+            onChange={v => update("visualTheme", v)}
+            accent={accent}
+            ui={ui}
+          />
+        </Row>
+      </Section>
+
+      <Section title="Workout" ui={ui}>
+        <Row label="Rest Timer" desc="Seconds between sets" ui={ui}>
           <SegControl
             options={[{ v: 45, l: "45s" }, { v: 60, l: "60s" }, { v: 90, l: "90s" }, { v: 120, l: "2m" }]}
             value={settings.restSeconds}
             onChange={v => update("restSeconds", v)}
             accent={accent}
+            ui={ui}
           />
         </Row>
-        <Row label="Dumbbell Weight" desc="Used for volume calculations">
+        <Row label="Dumbbell Weight" desc="Used for volume calculations" ui={ui}>
           <SegControl
             options={[{ v: 10, l: "10" }, { v: 15, l: "15" }, { v: 20, l: "20" }, { v: 25, l: "25" }]}
             value={settings.dumbbellWeight}
             onChange={v => update("dumbbellWeight", v)}
             accent={accent}
+            ui={ui}
           />
         </Row>
-        <Row label="Sessions Per Progression" desc="How many sessions before reps auto-bump">
+        <Row label="Sessions Per Progression" desc="How many sessions before reps auto-bump" ui={ui}>
           <SegControl
             options={[{ v: 4, l: "4" }, { v: 6, l: "6" }, { v: 8, l: "8" }, { v: 10, l: "10" }]}
             value={settings.sessionsPerProgression}
             onChange={v => update("sessionsPerProgression", v)}
             accent={accent}
+            ui={ui}
           />
         </Row>
       </Section>
 
-      <Section title="Feedback">
-        <Toggle label="Sound Effects" desc="Beeps and chimes during workouts" value={settings.soundEnabled} onChange={v => update("soundEnabled", v)} accent={accent} />
-        <Toggle label="Vibration" desc="Haptic feedback on phone" value={settings.vibrationEnabled} onChange={v => update("vibrationEnabled", v)} accent={accent} />
+      <Section title="Feedback" ui={ui}>
+        <Toggle label="Sound Effects" desc="Beeps and chimes during workouts" value={settings.soundEnabled} onChange={v => update("soundEnabled", v)} accent={accent} ui={ui} />
+        <Toggle label="Vibration" desc="Haptic feedback on phone" value={settings.vibrationEnabled} onChange={v => update("vibrationEnabled", v)} accent={accent} ui={ui} />
       </Section>
 
-      <Section title="Coach">
-        <Toggle label="Science Coach" desc="Use estimated 1RM, goal, and equipment rules" value={settings.scienceCoach === true} onChange={v => update("scienceCoach", v)} accent={accent} />
-        <Row label="Training Goal" desc="Changes rep ranges and progression bias">
+      <Section title="Coach" ui={ui}>
+        <Toggle label="Science Coach" desc="Use estimated 1RM, goal, and equipment rules" value={settings.scienceCoach === true} onChange={v => update("scienceCoach", v)} accent={accent} ui={ui} />
+        <Row label="Training Goal" desc="Changes rep ranges and progression bias" ui={ui}>
           <SegControl
             options={[{ v: "general", l: "General" }, { v: "strength", l: "Strength" }, { v: "hypertrophy", l: "Muscle" }, { v: "fatigue_friendly", l: "Easy" }]}
             value={settings.trainingGoal || "general"}
             onChange={v => update("trainingGoal", v)}
             accent={accent}
+            ui={ui}
           />
         </Row>
-        <Row label="Equipment" desc="Tells the coach whether load jumps are available">
+        <Row label="Equipment" desc="Tells the coach whether load jumps are available" ui={ui}>
           <SegControl
             options={[{ v: "fixed_dumbbells", l: "Fixed" }, { v: "adjustable_dumbbells", l: "Adjustable" }, { v: "gym_access", l: "Gym" }]}
             value={settings.equipmentProfile || "fixed_dumbbells"}
             onChange={v => update("equipmentProfile", v)}
             accent={accent}
+            ui={ui}
           />
         </Row>
-        <Row label="Progression Style" desc="How quickly the coach recommends heavier work">
+        <Row label="Progression Style" desc="How quickly the coach recommends heavier work" ui={ui}>
           <SegControl
             options={[{ v: "conservative", l: "Safe" }, { v: "balanced", l: "Balanced" }, { v: "aggressive", l: "Push" }]}
             value={settings.coachStyle || "balanced"}
             onChange={v => update("coachStyle", v)}
             accent={accent}
+            ui={ui}
           />
         </Row>
-        <Toggle label="Auto Deload" desc="Reduce load after repeated big misses" value={settings.autoDeload !== false} onChange={v => update("autoDeload", v)} accent={accent} />
-        <Toggle label="Readiness Check-In" desc="Ask energy, soreness, and time before workouts" value={settings.showReadiness !== false} onChange={v => update("showReadiness", v)} accent={accent} />
-        <Toggle label="Fullscreen Rest Timer" desc="Use the focused rest screen between sets" value={settings.fullscreenRest !== false} onChange={v => update("fullscreenRest", v)} accent={accent} />
+        <Toggle label="Auto Deload" desc="Reduce load after repeated big misses" value={settings.autoDeload !== false} onChange={v => update("autoDeload", v)} accent={accent} ui={ui} />
+        <Toggle label="Readiness Check-In" desc="Ask energy, soreness, and time before workouts" value={settings.showReadiness !== false} onChange={v => update("showReadiness", v)} accent={accent} ui={ui} />
+        <Toggle label="Fullscreen Rest Timer" desc="Use the focused rest screen between sets" value={settings.fullscreenRest !== false} onChange={v => update("fullscreenRest", v)} accent={accent} ui={ui} />
       </Section>
 
-      <Section title="Offline">
-        <div style={{ padding: 16, background: "#0d0d0d", borderRadius: 10, border: "1px solid #1c1c1c" }}>
-          <div style={{ fontSize: 15, color: "#f0f0f0", marginBottom: 5 }}>Offline Ready</div>
-          <div style={{ fontSize: 14, color: "#888", lineHeight: 1.45 }}>
+      <Section title="Offline" ui={ui}>
+        <div style={{ padding: 16, background: ui.card, borderRadius: 10, border: `1px solid ${ui.border}` }}>
+          <div style={{ fontSize: 15, color: ui.text, marginBottom: 5 }}>Offline Ready</div>
+          <div style={{ fontSize: 14, color: ui.muted, lineHeight: 1.45 }}>
             The app shell and viewed exercise demos are cached after first load.
           </div>
         </div>
       </Section>
 
-      <Section title="Data">
-        <Action label="Export Data" desc="Download history, progression, and settings as JSON" onClick={exportData} />
-        <Action label="Create Backup Snapshot" desc="Save a local safety copy before risky changes" onClick={() => { setRecoveryStatus(createBackupSnapshot?.("manual") ? "Backup snapshot saved on this device." : "Backup failed. Export data instead."); }} />
-        <Action label="Download Last Backup" desc="Download the latest automatic safety snapshot" onClick={() => setRecoveryStatus(exportLastBackup?.() ? "Backup downloaded." : "No backup snapshot found yet.")} />
-        <Action label="Import Data" desc="Restore from a Lift Log JSON export" onClick={() => fileInput.current?.click()} />
+      <Section title="Data" ui={ui}>
+        <Action label="Export Data" desc="Download history, progression, and settings as JSON" onClick={exportData} ui={ui} />
+        <Action label="Create Backup Snapshot" desc="Save a local safety copy before risky changes" onClick={() => { setRecoveryStatus(createBackupSnapshot?.("manual") ? "Backup snapshot saved on this device." : "Backup failed. Export data instead."); }} ui={ui} />
+        <Action label="Download Last Backup" desc="Download the latest automatic safety snapshot" onClick={() => setRecoveryStatus(exportLastBackup?.() ? "Backup downloaded." : "No backup snapshot found yet.")} ui={ui} />
+        <Action label="Import Data" desc="Restore from a Lift Log JSON export" onClick={() => fileInput.current?.click()} ui={ui} />
         <input ref={fileInput} type="file" accept="application/json,.json" onChange={handleImport} style={{ display:"none" }} />
         {importStatus && <div style={{fontSize:13,color:importStatus.startsWith("Import complete") ? accent : "#ff8888",padding:"4px 2px 8px"}}>{importStatus}</div>}
-        <Action label="Repair Saved Data" desc="Normalize older or broken local data shapes" onClick={() => { repairSavedData?.(); setRecoveryStatus("Saved data repaired."); }} />
-        <Action label="Refresh App Cache" desc="Clear cached app files and reload" onClick={async () => setRecoveryStatus(await refreshAppCache?.() ? "Cache refreshed." : "Cache refresh failed.")} />
-        <Action label="Clear Workout State" desc="Clear checked sets and completion flags only" onClick={() => { if (!confirm("Clear checked sets and completed workout flags? History stays saved.")) return; clearWorkoutState?.(); setRecoveryStatus("Workout state cleared."); }} />
+        <Action label="Repair Saved Data" desc="Normalize older or broken local data shapes" onClick={() => { repairSavedData?.(); setRecoveryStatus("Saved data repaired."); }} ui={ui} />
+        <Action label="Refresh App Cache" desc="Clear cached app files and reload" onClick={async () => setRecoveryStatus(await refreshAppCache?.() ? "Cache refreshed." : "Cache refresh failed.")} ui={ui} />
+        <Action label="Clear Workout State" desc="Clear checked sets and completion flags only" onClick={() => { if (!confirm("Clear checked sets and completed workout flags? History stays saved.")) return; clearWorkoutState?.(); setRecoveryStatus("Workout state cleared."); }} ui={ui} />
         {recoveryStatus && <div style={{fontSize:13,color:recoveryStatus.includes("failed") ? "#ff8888" : accent,padding:"4px 2px 8px"}}>{recoveryStatus}</div>}
-        <Action label="Reset to Defaults" desc="Restore default settings (keeps workout history)" onClick={() => setSettings(DEFAULT_SETTINGS)} />
+        <Action label="Reset to Defaults" desc="Restore default settings (keeps workout history)" onClick={() => setSettings(DEFAULT_SETTINGS)} ui={ui} />
         {confirming ? (
           <div style={{ padding: 16, background: "#1a0a0a", border: "1px solid #ff444466", borderRadius: 10, marginTop: 8 }}>
             <div style={{ fontSize: 14, color: "#ff8888", marginBottom: 12 }}>This deletes all sessions, progression, and achievements. A local backup snapshot will be created first.</div>
@@ -140,17 +160,17 @@ export default function SettingsView({
             </div>
           </div>
         ) : (
-          <Action label="Erase All Data" desc="Delete every session and progression record" onClick={() => setConfirming(true)} danger />
+          <Action label="Erase All Data" desc="Delete every session and progression record" onClick={() => setConfirming(true)} danger ui={ui} />
         )}
       </Section>
 
-      <Section title="About">
-        <div style={{ padding: 16, background: "#0d0d0d", borderRadius: 10, border: "1px solid #1c1c1c" }}>
-          <div style={{ fontSize: 15, color: "#e0e0e0", marginBottom: 6 }}>Lift Log <span style={{ color: "#888", fontSize: 11 }}>v2.0</span></div>
-          <div style={{ fontSize: 15, color: "#aaa", lineHeight: 1.6 }}>
+      <Section title="About" ui={ui}>
+        <div style={{ padding: 16, background: ui.card, borderRadius: 10, border: `1px solid ${ui.border}` }}>
+          <div style={{ fontSize: 15, color: ui.text, marginBottom: 6 }}>Lift Log <span style={{ color: ui.muted, fontSize: 11 }}>v2.0</span></div>
+          <div style={{ fontSize: 15, color: ui.soft, lineHeight: 1.6 }}>
             Built for the user with two 15lb dumbbells and limited time. Auto-progression, exercise demos from the public-domain Free Exercise DB, and zero accounts.
           </div>
-          <div style={{ fontSize: 14, color: "#666", marginTop: 12, letterSpacing: "0.06em" }}>
+          <div style={{ fontSize: 14, color: ui.muted, marginTop: 12, letterSpacing: "0.06em" }}>
             All data stored locally in your browser. No tracking, no servers.
           </div>
         </div>
@@ -163,11 +183,27 @@ export default function SettingsView({
   );
 }
 
-function Section({ title, children }) {
+function makeSettingsTheme(theme, accent) {
+  const light = theme === "pop_light";
+  return {
+    light,
+    title: light ? "#123047" : "#fafafa",
+    section: light ? "#25536f" : "#ddd",
+    text: light ? "#172033" : "#f0f0f0",
+    soft: light ? "#435166" : "#aaa",
+    muted: light ? "#6b788c" : "#888",
+    card: light ? "rgba(255,255,255,.86)" : "#0d0d0d",
+    control: light ? "#eef5fb" : "#080808",
+    border: light ? "rgba(112,132,160,.28)" : "#1c1c1c",
+    shadow: light ? `0 12px 26px ${accent}10` : "none",
+  };
+}
+
+function Section({ title, children, ui }) {
   return (
     <div style={{ padding: "0 20px 24px" }}>
       <div style={{
-        fontSize: 15, color: "#ddd", letterSpacing: "0.16em", textTransform: "uppercase",
+        fontSize: 15, color: ui.section, letterSpacing: "0.16em", textTransform: "uppercase",
         fontWeight: 500, marginBottom: 12,
       }}>{title}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{children}</div>
@@ -175,21 +211,21 @@ function Section({ title, children }) {
   );
 }
 
-function Row({ label, desc, children }) {
+function Row({ label, desc, children, ui }) {
   return (
-    <div style={{ padding: "14px 16px", background: "#0d0d0d", borderRadius: 10, border: "1px solid #1c1c1c" }}>
+    <div style={{ padding: "14px 16px", background: ui.card, borderRadius: 10, border: `1px solid ${ui.border}`, boxShadow: ui.shadow }}>
       <div style={{ marginBottom: 10 }}>
-        <div style={{ fontSize: 15, color: "#f0f0f0" }}>{label}</div>
-        {desc && <div style={{ fontSize: 14, color: "#888", marginTop: 2, lineHeight: 1.4 }}>{desc}</div>}
+        <div style={{ fontSize: 15, color: ui.text }}>{label}</div>
+        {desc && <div style={{ fontSize: 14, color: ui.muted, marginTop: 2, lineHeight: 1.4 }}>{desc}</div>}
       </div>
       {children}
     </div>
   );
 }
 
-function SegControl({ options, value, onChange, accent }) {
+function SegControl({ options, value, onChange, accent, ui }) {
   return (
-    <div style={{ display: "flex", gap: 4, padding: 3, background: "#080808", borderRadius: 7, border: "1px solid #1c1c1c" }}>
+    <div style={{ display: "flex", gap: 4, padding: 3, background: ui.control, borderRadius: 7, border: `1px solid ${ui.border}` }}>
       {options.map(opt => {
         const active = opt.v === value;
         return (
@@ -197,7 +233,7 @@ function SegControl({ options, value, onChange, accent }) {
             style={{
               flex: 1, padding: "8px 4px",
               background: active ? accent : "transparent",
-              color: active ? "#050505" : "#bbb",
+              color: active ? "#050505" : ui.soft,
               border: "none", borderRadius: 5, cursor: "pointer",
               fontSize: 15, letterSpacing: "0.06em", fontWeight: active ? 500 : 400,
               fontFamily: "DM Mono, monospace",
@@ -212,17 +248,17 @@ function SegControl({ options, value, onChange, accent }) {
   );
 }
 
-function Toggle({ label, desc, value, onChange, accent }) {
+function Toggle({ label, desc, value, onChange, accent, ui }) {
   return (
-    <div style={{ padding: "14px 16px", background: "#0d0d0d", borderRadius: 10, border: "1px solid #1c1c1c", display: "flex", alignItems: "center", gap: 14 }}>
+    <div style={{ padding: "14px 16px", background: ui.card, borderRadius: 10, border: `1px solid ${ui.border}`, display: "flex", alignItems: "center", gap: 14, boxShadow: ui.shadow }}>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 15, color: "#f0f0f0" }}>{label}</div>
-        {desc && <div style={{ fontSize: 14, color: "#888", marginTop: 2, lineHeight: 1.4 }}>{desc}</div>}
+        <div style={{ fontSize: 15, color: ui.text }}>{label}</div>
+        {desc && <div style={{ fontSize: 14, color: ui.muted, marginTop: 2, lineHeight: 1.4 }}>{desc}</div>}
       </div>
       <button onClick={() => onChange(!value)}
         style={{
           width: 46, height: 26, borderRadius: 13,
-          background: value ? accent : "#222",
+          background: value ? accent : (ui.light ? "#cfd9e6" : "#222"),
           border: "none", cursor: "pointer",
           position: "relative", transition: "all 0.2s",
           boxShadow: value ? `0 0 12px ${accent}66` : "none",
@@ -241,21 +277,22 @@ function Toggle({ label, desc, value, onChange, accent }) {
   );
 }
 
-function Action({ label, desc, onClick, danger }) {
+function Action({ label, desc, onClick, danger, ui }) {
   return (
     <button onClick={onClick}
       style={{
-        padding: "14px 16px", background: "#0d0d0d",
-        borderRadius: 10, border: `1px solid ${danger ? "#ff444433" : "#1c1c1c"}`,
+        padding: "14px 16px", background: ui.card,
+        borderRadius: 10, border: `1px solid ${danger ? "#ff444433" : ui.border}`,
         cursor: "pointer", textAlign: "left", width: "100%",
         fontFamily: "DM Mono, monospace",
         transition: "all 0.15s",
+        boxShadow: ui.shadow,
       }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = danger ? "#ff444499" : "#3a3a3a"}
-      onMouseLeave={e => e.currentTarget.style.borderColor = danger ? "#ff444433" : "#1c1c1c"}
+      onMouseEnter={e => e.currentTarget.style.borderColor = danger ? "#ff444499" : (ui.light ? "#8fb0ce" : "#3a3a3a")}
+      onMouseLeave={e => e.currentTarget.style.borderColor = danger ? "#ff444433" : ui.border}
     >
-      <div style={{ fontSize: 15, color: danger ? "#ff8888" : "#f0f0f0" }}>{label} →</div>
-      {desc && <div style={{ fontSize: 14, color: "#888", marginTop: 3, lineHeight: 1.4 }}>{desc}</div>}
+      <div style={{ fontSize: 15, color: danger ? "#ff5555" : ui.text }}>{label} →</div>
+      {desc && <div style={{ fontSize: 14, color: ui.muted, marginTop: 3, lineHeight: 1.4 }}>{desc}</div>}
     </button>
   );
 }

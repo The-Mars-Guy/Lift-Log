@@ -227,18 +227,22 @@ const NAV_ITEMS = [
   { id:"settings", label:"Settings", Icon:IconGear     },
 ];
 
-export function BottomNav({ active, onSelect, accent, level }) {
+export function BottomNav({ active, onSelect, accent, level, theme="dark" }) {
+  const light = theme === "pop_light";
   return (
     <nav style={{
       position:"fixed", bottom:0, left:0, right:0, zIndex:90,
-      background:"rgba(6,6,6,0.97)", backdropFilter:"blur(20px)",
-      WebkitBackdropFilter:"blur(20px)", borderTop:"1px solid #222",
+      background:light ? "rgba(255,255,255,0.94)" : "rgba(6,6,6,0.97)",
+      backdropFilter:"blur(20px)",
+      WebkitBackdropFilter:"blur(20px)",
+      borderTop:light ? "1px solid rgba(120,135,160,.25)" : "1px solid #222",
+      boxShadow:light ? "0 -12px 34px rgba(29,78,216,.10)" : "none",
       paddingBottom:"env(safe-area-inset-bottom)",
     }}>
       <div className="mobile-shell" style={{ display:"flex", justifyContent:"space-around", padding:"12px 4px 10px" }}>
         {NAV_ITEMS.map(({ id, label, Icon }) => {
           const isActive = active === id;
-          const color = isActive ? accent : "#666";
+          const color = isActive ? accent : (light ? "#718096" : "#666");
           return (
             <button key={id} onClick={() => onSelect(id)}
               style={{

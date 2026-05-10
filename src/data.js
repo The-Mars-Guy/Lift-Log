@@ -48,6 +48,7 @@ export const DEFAULT_SETTINGS = {
   autoDeload: true,
   showReadiness: true,
   fullscreenRest: true,
+  visualTheme: "pop_light",
   scienceCoach: false,
   equipmentProfile: "fixed_dumbbells",
   trainingGoal: "general",

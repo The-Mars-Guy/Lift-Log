@@ -219,11 +219,17 @@ export default function App() {
   const day  = todayName();
   const accent = WORKOUTS[DAYS.includes(day) ? SCHEDULE[day] : "A"].color;
   const level  = getLevel(normalized.xp);
+  const visualTheme = safeSettings.visualTheme || "pop_light";
+  const lightMode = visualTheme === "pop_light";
+  const appBackground = lightMode
+    ? `radial-gradient(circle at 18% 0%, ${accent}30 0%, transparent 28%), linear-gradient(180deg,#f8fffb 0%,#eef7ff 52%,#ffffff 100%)`
+    : `radial-gradient(ellipse at top, ${accent}0d 0%, #050505 55%, #000 100%)`;
 
   return (
-    <div style={{
+    <div className={`theme-root theme-${visualTheme}`} style={{
       minHeight:"100vh",
-      background:`radial-gradient(ellipse at top, ${accent}0d 0%, #050505 55%, #000 100%)`,
+      background:appBackground,
+      color:lightMode ? "#172033" : "#f0f0f0",
       paddingBottom:"calc(82px + env(safe-area-inset-bottom))",
     }}>
       <div className="app-shell">
@@ -240,6 +246,7 @@ export default function App() {
             assessmentDone={normalized.assessmentDone} setAssessmentDone={setAssessmentDone}
             playSound={playSound} vibrate={vibrate}
             setActiveView={setActiveView}
+            theme={visualTheme}
           />
         )}
         {activeView === "stats" && (
@@ -255,11 +262,11 @@ export default function App() {
             resetAllData={resetAllData} exportData={exportData} importData={importData}
             repairSavedData={repairSavedData} clearWorkoutState={clearWorkoutState}
             refreshAppCache={refreshAppCache} exportLastBackup={exportLastBackup}
-            createBackupSnapshot={createBackupSnapshot} accent={accent} />
+            createBackupSnapshot={createBackupSnapshot} accent={accent} theme={visualTheme} />
         )}
       </div>
 
-      <BottomNav active={activeView} onSelect={setActiveView} accent={accent} level={level} />
+      <BottomNav active={activeView} onSelect={setActiveView} accent={accent} level={level} theme={visualTheme} />
 
       {achievementToast && (
         <Toast icon={achievementToast.icon} title={achievementToast.title}
