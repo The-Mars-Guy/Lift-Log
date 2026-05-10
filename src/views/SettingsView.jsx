@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { DEFAULT_SETTINGS } from "../data.js";
+import { EQUIPMENT_PROFILES, TRAINING_GOALS } from "../coach.js";
 
 export default function SettingsView({
   settings,
@@ -89,36 +90,49 @@ export default function SettingsView({
       </Section>
 
       <Section title="Coach" ui={ui}>
-        <Toggle label="Science Coach" desc="Use estimated 1RM, goal, and equipment rules" value={settings.scienceCoach === true} onChange={v => update("scienceCoach", v)} accent={accent} ui={ui} />
-        <Row label="Training Goal" desc="Changes rep ranges and progression bias" ui={ui}>
+        <Toggle label="Science Coach" desc="Use estimated 1RM, goal, and equipment rules" help="When enabled, the coach uses your logged reps, weights, recent set feedback, readiness, and equipment access to tune reps, sets, and sometimes suggested load." value={settings.scienceCoach === true} onChange={v => update("scienceCoach", v)} accent={accent} ui={ui} />
+        <Row label="Training Goal" desc="Changes rep ranges and progression bias" help={TRAINING_GOALS[settings.trainingGoal || "general"]?.desc} ui={ui}>
           <SegControl
-            options={[{ v: "general", l: "General" }, { v: "strength", l: "Strength" }, { v: "hypertrophy", l: "Muscle" }, { v: "fatigue_friendly", l: "Easy" }]}
+            options={[
+              { v: "general", l: "General", tip: TRAINING_GOALS.general.desc },
+              { v: "strength", l: "Strength", tip: TRAINING_GOALS.strength.desc },
+              { v: "hypertrophy", l: "Muscle", tip: TRAINING_GOALS.hypertrophy.desc },
+              { v: "fatigue_friendly", l: "Easy", tip: TRAINING_GOALS.fatigue_friendly.desc },
+            ]}
             value={settings.trainingGoal || "general"}
             onChange={v => update("trainingGoal", v)}
             accent={accent}
             ui={ui}
           />
         </Row>
-        <Row label="Equipment" desc="Tells the coach whether load jumps are available" ui={ui}>
+        <Row label="Equipment" desc="Tells the coach whether load jumps are available" help={EQUIPMENT_PROFILES[settings.equipmentProfile || "fixed_dumbbells"]?.desc} ui={ui}>
           <SegControl
-            options={[{ v: "fixed_dumbbells", l: "Fixed" }, { v: "adjustable_dumbbells", l: "Adjustable" }, { v: "gym_access", l: "Gym" }]}
+            options={[
+              { v: "fixed_dumbbells", l: "Fixed", tip: EQUIPMENT_PROFILES.fixed_dumbbells.desc },
+              { v: "adjustable_dumbbells", l: "Adjustable", tip: EQUIPMENT_PROFILES.adjustable_dumbbells.desc },
+              { v: "gym_access", l: "Gym", tip: EQUIPMENT_PROFILES.gym_access.desc },
+            ]}
             value={settings.equipmentProfile || "fixed_dumbbells"}
             onChange={v => update("equipmentProfile", v)}
             accent={accent}
             ui={ui}
           />
         </Row>
-        <Row label="Progression Style" desc="How quickly the coach recommends heavier work" ui={ui}>
+        <Row label="Progression Style" desc="How quickly the coach recommends heavier work" help="Safe waits for 3 clean sessions, Balanced waits for 2, and Push can progress after 1 clean session. Auto-deload still protects repeated misses." ui={ui}>
           <SegControl
-            options={[{ v: "conservative", l: "Safe" }, { v: "balanced", l: "Balanced" }, { v: "aggressive", l: "Push" }]}
+            options={[
+              { v: "conservative", l: "Safe", tip: "Requires 3 clean sessions before increasing. Best when you want fewer surprises." },
+              { v: "balanced", l: "Balanced", tip: "Requires 2 clean sessions before increasing. Good default for steady progress." },
+              { v: "aggressive", l: "Push", tip: "Can progress after 1 clean session. Best when recovery and form are consistently strong." },
+            ]}
             value={settings.coachStyle || "balanced"}
             onChange={v => update("coachStyle", v)}
             accent={accent}
             ui={ui}
           />
         </Row>
-        <Toggle label="Auto Deload" desc="Reduce load after repeated big misses" value={settings.autoDeload !== false} onChange={v => update("autoDeload", v)} accent={accent} ui={ui} />
-        <Toggle label="Readiness Check-In" desc="Ask energy, soreness, and time before workouts" value={settings.showReadiness !== false} onChange={v => update("showReadiness", v)} accent={accent} ui={ui} />
+        <Toggle label="Auto Deload" desc="Reduce load after repeated big misses" help="If the same exercise misses badly twice, the coach lowers the next load and rebuilds clean reps." value={settings.autoDeload !== false} onChange={v => update("autoDeload", v)} accent={accent} ui={ui} />
+        <Toggle label="Readiness Check-In" desc="Ask energy, soreness, and time before workouts" help="The coach uses this to trim sets on rough days, push when you are fresh, and suggest swaps when soreness is high." value={settings.showReadiness !== false} onChange={v => update("showReadiness", v)} accent={accent} ui={ui} />
         <Toggle label="Fullscreen Rest Timer" desc="Use the focused rest screen between sets" value={settings.fullscreenRest !== false} onChange={v => update("fullscreenRest", v)} accent={accent} ui={ui} />
       </Section>
 
@@ -211,12 +225,45 @@ function Section({ title, children, ui }) {
   );
 }
 
-function Row({ label, desc, children, ui }) {
+function InfoButton({ text, ui }) {
+  const [open, setOpen] = useState(false);
+  if (!text) return null;
+  return (
+    <div style={{ position:"relative", flexShrink:0 }}>
+      <button
+        type="button"
+        aria-label="More info"
+        title={text}
+        onClick={() => setOpen(o => !o)}
+        onBlur={() => setTimeout(() => setOpen(false), 120)}
+        style={{
+          width:24,height:24,borderRadius:12,border:`1px solid ${ui.border}`,
+          background:ui.light ? "#eef7ff" : "#151515",
+          color:ui.muted,fontSize:13,fontWeight:700,lineHeight:1,
+        }}
+      >?</button>
+      {open && (
+        <div style={{
+          position:"absolute",right:0,top:30,zIndex:20,width:250,
+          padding:"11px 12px",background:ui.light ? "#ffffff" : "#101010",
+          color:ui.soft,border:`1px solid ${ui.border}`,borderRadius:10,
+          boxShadow:ui.light ? "0 16px 40px rgba(25,45,80,.18)" : "0 16px 40px rgba(0,0,0,.55)",
+          fontSize:12,lineHeight:1.45,
+        }}>{text}</div>
+      )}
+    </div>
+  );
+}
+
+function Row({ label, desc, children, ui, help }) {
   return (
     <div style={{ padding: "14px 16px", background: ui.card, borderRadius: 10, border: `1px solid ${ui.border}`, boxShadow: ui.shadow }}>
-      <div style={{ marginBottom: 10 }}>
+      <div style={{ marginBottom: 10, display:"flex", alignItems:"flex-start", gap:10 }}>
+        <div style={{ flex:1, minWidth:0 }}>
         <div style={{ fontSize: 15, color: ui.text }}>{label}</div>
         {desc && <div style={{ fontSize: 14, color: ui.muted, marginTop: 2, lineHeight: 1.4 }}>{desc}</div>}
+        </div>
+        <InfoButton text={help} ui={ui} />
       </div>
       {children}
     </div>
@@ -230,6 +277,7 @@ function SegControl({ options, value, onChange, accent, ui }) {
         const active = opt.v === value;
         return (
           <button key={opt.v} onClick={() => onChange(opt.v)}
+            title={opt.tip}
             style={{
               flex: 1, padding: "8px 4px",
               background: active ? accent : "transparent",
@@ -248,11 +296,14 @@ function SegControl({ options, value, onChange, accent, ui }) {
   );
 }
 
-function Toggle({ label, desc, value, onChange, accent, ui }) {
+function Toggle({ label, desc, value, onChange, accent, ui, help }) {
   return (
     <div style={{ padding: "14px 16px", background: ui.card, borderRadius: 10, border: `1px solid ${ui.border}`, display: "flex", alignItems: "center", gap: 14, boxShadow: ui.shadow }}>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 15, color: ui.text }}>{label}</div>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ fontSize: 15, color: ui.text }}>{label}</div>
+          <InfoButton text={help} ui={ui} />
+        </div>
         {desc && <div style={{ fontSize: 14, color: ui.muted, marginTop: 2, lineHeight: 1.4 }}>{desc}</div>}
       </div>
       <button onClick={() => onChange(!value)}

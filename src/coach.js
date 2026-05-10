@@ -19,16 +19,40 @@ export const READINESS = {
 export const DEFAULT_READINESS = { energy: "okay", soreness: "mild", time: "normal" };
 
 export const EQUIPMENT_PROFILES = {
-  fixed_dumbbells: { label: "Fixed Dumbbells", canLoad: false },
-  adjustable_dumbbells: { label: "Adjustable Dumbbells", canLoad: true },
-  gym_access: { label: "Gym / Barbell Access", canLoad: true },
+  fixed_dumbbells: {
+    label: "Fixed Dumbbells",
+    canLoad: false,
+    desc: "Best when you only have a few dumbbells. The coach progresses reps, sets, tempo, and cleanliness before asking for more load.",
+  },
+  adjustable_dumbbells: {
+    label: "Adjustable Dumbbells",
+    canLoad: true,
+    desc: "Use this when you can make small load jumps. The coach can prescribe percentage-based weights from your estimated 1RM.",
+  },
+  gym_access: {
+    label: "Gym / Barbell Access",
+    canLoad: true,
+    desc: "Use this when load choice is broad. The coach can bias heavier strength work or controlled volume blocks.",
+  },
 };
 
 export const TRAINING_GOALS = {
-  general: { label: "General Fitness" },
-  strength: { label: "Strength" },
-  hypertrophy: { label: "Muscle / Volume" },
-  fatigue_friendly: { label: "Fatigue Friendly" },
+  general: {
+    label: "General Fitness",
+    desc: "Balanced work: moderate reps, steady progression, and enough volume to build skill, muscle, and consistency.",
+  },
+  strength: {
+    label: "Strength",
+    desc: "Prioritizes heavier sets and lower reps when your equipment and history support it.",
+  },
+  hypertrophy: {
+    label: "Muscle / Volume",
+    desc: "Prioritizes more hard sets and moderate-to-high reps to build useful training volume.",
+  },
+  fatigue_friendly: {
+    label: "Fatigue Friendly",
+    desc: "Keeps total work lower and leaves more reps in reserve when recovery matters most.",
+  },
 };
 
 export const SUBSTITUTIONS = {
@@ -87,12 +111,64 @@ export function bestEstimated1RM(history = [], exerciseName) {
   return estimates.length ? Math.max(...estimates) : null;
 }
 
-export function sciencePrescription({ exercise, history = [], settings = {}, readiness = DEFAULT_READINESS, baseTarget = exercise.baseReps }) {
+export function exerciseFeedbackSignal(checkIns = [], exerciseName) {
+  const recent = [...checkIns]
+    .filter(ci => ci.kind === "set_feedback" && (ci.exercise === exerciseName || ci.originalName === exerciseName))
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, 8);
+  const pain = recent.filter(ci => ci.feeling === "pain").length;
+  const hard = recent.filter(ci => ci.feeling === "hard").length;
+  const easy = recent.filter(ci => ci.feeling === "easy").length;
+  if (pain) return { status:"pain", pain, hard, easy, note:"Recent discomfort flag. The coach should reduce stress or suggest a swap." };
+  if (hard >= 2) return { status:"hard", pain, hard, easy, note:"Repeated hard sets. Hold load steady until reps are cleaner." };
+  if (easy >= 2) return { status:"easy", pain, hard, easy, note:"Repeated easy sets. This movement can tolerate a small progression." };
+  return { status:"neutral", pain, hard, easy, note:null };
+}
+
+export function recentTrainingLoad(history = [], now = Date.now()) {
+  const weekMs = 7 * 86400000;
+  const recent = history.filter(h => now - h.timestamp <= weekMs);
+  const last = [...history].sort((a, b) => b.timestamp - a.timestamp)[0];
+  const lastDaysAgo = last ? Math.round((now - last.timestamp) / 86400000) : null;
+  const volume = recent.reduce((sum, h) => sum + (h.exercises || []).reduce((s, ex) => {
+    const dumbbells = ex.name === "Goblet Squat" ? 1 : 2;
+    return s + (ex.setLog || []).reduce((setSum, log) => setSum + ((log.reps || 0) * (log.weight || 0) * dumbbells), 0);
+  }, 0), 0);
+  const status = recent.length >= 4 ? "high" : recent.length >= 2 ? "normal" : "low";
+  return { sessions: recent.length, volume, lastDaysAgo, status };
+}
+
+export function behaviorMemory(checkIns = []) {
+  const restEvents = checkIns.filter(ci => ci.kind === "rest");
+  const logEvents = checkIns.filter(ci => ci.kind === "set_log");
+  const skips = restEvents.filter(ci => ci.action === "skip").length;
+  const completes = restEvents.filter(ci => ci.action === "complete").length;
+  const totalRest = skips + completes;
+  const avgRestSeconds = restEvents
+    .filter(ci => ci.action === "complete" || ci.action === "skip")
+    .reduce((acc, ci, _, arr) => acc + ((ci.elapsedSeconds || ci.plannedSeconds || 0) / Math.max(arr.length, 1)), 0);
+  const skippedLogs = logEvents.filter(ci => ci.action === "skip").length;
+  const savedLogs = logEvents.filter(ci => ci.action === "save").length;
+  const restSkipRate = totalRest ? skips / totalRest : 0;
+  const logSkipRate = (skippedLogs + savedLogs) ? skippedLogs / (skippedLogs + savedLogs) : 0;
+  const notes = [];
+  if (restSkipRate >= 0.5 && totalRest >= 3) notes.push("You skip rests often, so the coach will watch for fatigue and set drop-off.");
+  if (avgRestSeconds && avgRestSeconds < 40) notes.push("Average rest is short. Strength work may need longer breaks.");
+  if (logSkipRate >= 0.4) notes.push("Set logging is often skipped, so recommendations are less precise.");
+  return { restEvents: totalRest, restSkips: skips, restCompletes: completes, restSkipRate, avgRestSeconds: Math.round(avgRestSeconds || 0), skippedLogs, savedLogs, logSkipRate, notes };
+}
+
+export function sciencePrescription({ exercise, history = [], checkIns = [], settings = {}, readiness = DEFAULT_READINESS, baseTarget = exercise.baseReps }) {
   const enabled = settings.scienceCoach === true;
   const goal = settings.trainingGoal || "general";
   const equipment = EQUIPMENT_PROFILES[settings.equipmentProfile || "fixed_dumbbells"] || EQUIPMENT_PROFILES.fixed_dumbbells;
   const score = readinessScore(readiness);
-  const est1RM = bestEstimated1RM(history, exercise.configName || exercise.originalName || exercise.name);
+  const exerciseName = exercise.configName || exercise.originalName || exercise.name;
+  const est1RM = bestEstimated1RM(history, exerciseName);
+  const trend = exerciseTrend(history, { ...exercise, name: exerciseName }, baseTarget);
+  const feedback = exerciseFeedbackSignal(checkIns, exerciseName);
+  const load = recentTrainingLoad(history);
+  const behavior = behaviorMemory(checkIns);
   if (!enabled) {
     return { enabled:false, targetReps:baseTarget, sets:exercise.sets, est1RM:null, suggestedWeight:null, label:"Standard", note:null };
   }
@@ -137,9 +213,36 @@ export function sciencePrescription({ exercise, history = [], settings = {}, rea
     targetReps = Math.max(3, targetReps - 2);
     sets = Math.max(1, sets - 1);
   }
+  if (load.status === "high" && score <= 0) {
+    sets = Math.max(1, sets - 1);
+    note += " Recent weekly load is high, so total sets are capped today.";
+  }
+  if (trend.status === "stalling") {
+    targetReps = Math.max(3, targetReps - 1);
+    note += " Recent set drop-off is showing, so the target is nudged down.";
+  }
+  if (feedback.status === "pain") {
+    targetReps = Math.max(3, targetReps - 2);
+    sets = Math.max(1, sets - 1);
+    pct = pct ? Math.max(0.55, pct - 0.08) : pct;
+    label = "Protect";
+    note = "Pain was flagged recently. Reduce stress today and use a swap if the movement feels wrong.";
+  } else if (feedback.status === "hard") {
+    targetReps = Math.max(3, targetReps - 1);
+    pct = pct ? Math.max(0.58, pct - 0.04) : pct;
+    note += " Recent feedback says this lift is hard, so progression is paused.";
+  } else if (feedback.status === "easy" && score >= 0 && trend.status !== "stalling") {
+    targetReps += equipment.canLoad ? 0 : 1;
+    pct = pct ? Math.min(0.82, pct + 0.03) : pct;
+    note += " Recent feedback says this is easy, so the coach allows a small push.";
+  }
+  if (behavior.restSkipRate >= 0.5 && behavior.restEvents >= 3 && (goal === "strength" || pct)) {
+    targetReps = Math.max(3, targetReps - 1);
+    note += " Rest skips are frequent, so intensity is kept slightly conservative.";
+  }
 
   const suggestedWeight = pct && est1RM ? Math.max(2.5, Math.round((est1RM * pct) * 2) / 2) : null;
-  return { enabled:true, targetReps, sets, est1RM, suggestedWeight, label, note, percent:pct };
+  return { enabled:true, targetReps, sets, est1RM, suggestedWeight, label, note, percent:pct, trend, feedback, load, behavior };
 }
 
 function lastExerciseSessions(history, exerciseName, count = 3) {
@@ -173,7 +276,7 @@ export function exerciseTrend(history, exercise, targetReps) {
   return { status: "steady", hitRate, dropoff, recentMisses };
 }
 
-export function buildCoachPlan({ workout, history, exConfig, settings, readiness }) {
+export function buildCoachPlan({ workout, history, checkIns = [], exConfig, settings, readiness }) {
   const score = readinessScore(readiness);
   const cards = [];
   const adjustments = [];
@@ -209,9 +312,11 @@ export function buildCoachPlan({ workout, history, exConfig, settings, readiness
   const focus = exerciseNotes[0]?.note || "Build clean reps today.";
   watch.push(...exerciseNotes.filter(n => n.priority >= 2).slice(0, 2).map(n => n.note));
   const substitutions = suggestSubstitutions({ workout, history, exConfig, readiness }).slice(0, 2);
+  const behavior = behaviorMemory(checkIns);
   const science = (settings.scienceCoach ? workout.exercises.map(ex => sciencePrescription({
     exercise: ex,
     history,
+    checkIns,
     settings,
     readiness,
     baseTarget: exConfig[ex.name]?.targetReps ?? ex.baseReps,
@@ -225,6 +330,7 @@ export function buildCoachPlan({ workout, history, exConfig, settings, readiness
 
   adjustments.slice(0, 2).forEach(msg => cards.push({ icon: "🧭", cat: "Plan", msg }));
   if (science) cards.push({ icon:"🔬", cat:"Science", msg:`${science.label}: ${science.note}${science.est1RM ? ` Est. 1RM: ${science.est1RM}lbs.` : ""}` });
+  behavior.notes.slice(0, 2).forEach(msg => cards.push({ icon:"⏱️", cat:"Habits", msg }));
   substitutions.forEach(sub => cards.push({ icon: "🔁", cat: "Swap", msg: `${sub.exercise}: use ${sub.substitute} if ${sub.reason}.` }));
   watch.forEach(msg => cards.push({ icon: "👁️", cat: "Watch", msg }));
 
@@ -234,6 +340,7 @@ export function buildCoachPlan({ workout, history, exConfig, settings, readiness
     focus,
     adjustments,
     science,
+    behavior,
     substitutions,
     cards,
   };
@@ -351,6 +458,7 @@ export function summarizeWorkout({ exercises, duration = 0, readiness, prs = [],
 export function buildCoachMemory({ history = [], checkIns = [], exercises = [], exConfig = {} }) {
   const readinessEntries = checkIns.filter(ci => ci.kind === "readiness" && ci.readiness);
   const setFeedback = checkIns.filter(ci => ci.kind === "set_feedback" && ci.exercise);
+  const behavior = behaviorMemory(checkIns);
   const energyCounts = readinessEntries.reduce((acc, ci) => {
     const key = ci.readiness.energy || "okay";
     acc[key] = (acc[key] || 0) + 1;
@@ -403,6 +511,7 @@ export function buildCoachMemory({ history = [], checkIns = [], exercises = [], 
     hardest,
     easiest,
     favoriteSwap: favoriteSwap ? { label: favoriteSwap[0], count: favoriteSwap[1] } : null,
+    behavior,
     inconsistent,
     focus,
     summary: painFlags.length

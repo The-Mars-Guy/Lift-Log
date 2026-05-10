@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, evaluateProgression, exerciseTrend, readinessScore, sciencePrescription, summarizeWorkout } from "../src/coach.js";
+import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, evaluateProgression, exerciseFeedbackSignal, exerciseTrend, readinessScore, sciencePrescription, summarizeWorkout } from "../src/coach.js";
 
 const exercise = { name: "Floor Press", sets: 3, baseReps: 10 };
 
@@ -76,6 +76,42 @@ test("sciencePrescription uses reps and sets when fixed weights limit loading", 
   assert.equal(prescription.targetReps, 12);
   assert.equal(prescription.sets, 4);
   assert.equal(prescription.suggestedWeight, null);
+});
+
+test("sciencePrescription reacts to pain and hard feedback", () => {
+  const history = [{ timestamp: Date.now(), exercises: [{ name: "Floor Press", setLog: [{ weight: 40, reps: 8 }] }] }];
+  const pain = sciencePrescription({
+    exercise,
+    history,
+    checkIns: [{ kind: "set_feedback", exercise: "Floor Press", feeling: "pain", timestamp: Date.now() }],
+    baseTarget: 10,
+    settings: { scienceCoach: true, trainingGoal: "strength", equipmentProfile: "gym_access" },
+    readiness: { energy: "okay", soreness: "mild", time: "normal" },
+  });
+  const hard = exerciseFeedbackSignal([
+    { kind: "set_feedback", exercise: "Floor Press", feeling: "hard", timestamp: 2 },
+    { kind: "set_feedback", exercise: "Floor Press", feeling: "hard", timestamp: 1 },
+  ], "Floor Press");
+
+  assert.equal(hard.status, "hard");
+  assert.equal(pain.label, "Protect");
+  assert.equal(pain.sets, 2);
+  assert.ok(pain.note.includes("Pain"));
+});
+
+test("behaviorMemory learns from rest and logging habits", () => {
+  const memory = behaviorMemory([
+    { kind: "rest", action: "skip", plannedSeconds: 60, elapsedSeconds: 18 },
+    { kind: "rest", action: "skip", plannedSeconds: 60, elapsedSeconds: 20 },
+    { kind: "rest", action: "complete", plannedSeconds: 60, elapsedSeconds: 60 },
+    { kind: "set_log", action: "skip" },
+    { kind: "set_log", action: "save" },
+  ]);
+
+  assert.equal(memory.restSkips, 2);
+  assert.ok(memory.restSkipRate > 0.5);
+  assert.equal(memory.skippedLogs, 1);
+  assert.ok(memory.notes.length > 0);
 });
 
 test("summarizeWorkout totals logged work and creates a coach note", () => {

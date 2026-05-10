@@ -8,7 +8,7 @@ import { useSessionTimer, fmtDuration } from "../hooks.js";
 import { ExerciseAnimation, RestTimer, Toast, MiniGraph } from "../components/shared.jsx";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
 import { completionKey, defaultWorkoutDay, scheduledDate, logKey as makeLogKey } from "../session.js";
-import { buildCoachPlan, coachSetCount, coachTargetReps, DEFAULT_READINESS, evaluateProgression, readinessLabel, sciencePrescription, summarizeWorkout } from "../coach.js";
+import { buildCoachMemory, buildCoachPlan, coachSetCount, coachTargetReps, DEFAULT_READINESS, evaluateProgression, readinessLabel, sciencePrescription, summarizeWorkout } from "../coach.js";
 import { Confetti, XpFloat } from "./workout/Effects.jsx";
 
 // ── INITIAL ASSESSMENT FLOW ───────────────────────────────────────────────────
@@ -292,22 +292,88 @@ function buildSuggestions({ history, progression, settings, exConfig, workoutKey
   return suggs.filter(Boolean);
 }
 
-function CoachCard({ suggestions, accent }) {
+function CoachDrawer({ open, onClose, suggestions, memory, plan, accent }) {
+  const [idx, setIdx] = useState(0);
+  if (!open) return null;
+  const s = suggestions[idx] || suggestions[0];
+  const behavior = memory?.behavior || {};
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:240,pointerEvents:"none"}}>
+      <button aria-label="Close coach" onClick={onClose} style={{position:"absolute",inset:0,border:"none",background:"rgba(0,0,0,.32)",pointerEvents:"auto"}} />
+      <div className="mobile-shell" style={{position:"absolute",left:0,right:0,bottom:"calc(82px + env(safe-area-inset-bottom))",padding:"0 14px",pointerEvents:"auto"}}>
+        <div style={{background:"#ffffff",color:"#172033",border:`1.5px solid ${accent}66`,borderRadius:18,boxShadow:"0 22px 70px rgba(20,40,80,.28)",overflow:"hidden",animation:"slideUp .24s ease-out"}}>
+          <div style={{padding:"16px 17px",background:`linear-gradient(135deg,${accent}24,#ffffff)`,borderBottom:"1px solid rgba(120,135,160,.22)",display:"flex",alignItems:"center",gap:12}}>
+            <div style={{width:42,height:42,borderRadius:13,background:accent,color:"#050505",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,boxShadow:`0 10px 26px ${accent}55`}}>AI</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:11,color:"#25536f",letterSpacing:".16em",textTransform:"uppercase",fontWeight:700}}>Coach</div>
+              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,letterSpacing:".05em",lineHeight:1,color:"#123047"}}>{plan?.headline || "Training assistant"}</div>
+            </div>
+            <button onClick={onClose} style={{width:34,height:34,borderRadius:10,border:"1px solid rgba(112,132,160,.28)",background:"rgba(255,255,255,.68)",color:"#435166",fontSize:18}}>×</button>
+          </div>
+          <div style={{padding:"15px 17px",display:"grid",gap:12,maxHeight:"58vh",overflowY:"auto"}}>
+            {s&&(
+              <div style={{padding:"13px 14px",background:"#f3f8fd",border:"1px solid rgba(112,132,160,.24)",borderRadius:13}}>
+                <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,marginBottom:7}}>{s.cat}</div>
+                <div style={{fontSize:14,lineHeight:1.55,color:"#263348"}}>{s.icon} {s.msg}</div>
+                {suggestions.length>1&&(
+                  <div style={{display:"flex",gap:8,marginTop:12}}>
+                    <button onClick={()=>setIdx(i=>(i+suggestions.length-1)%suggestions.length)} style={{flex:1,padding:"10px",borderRadius:10,border:"1px solid #d9e4ef",background:"#fff",color:"#435166"}}>BACK</button>
+                    <button onClick={()=>setIdx(i=>(i+1)%suggestions.length)} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:accent,color:"#050505",fontWeight:700}}>NEXT</button>
+                  </div>
+                )}
+              </div>
+            )}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+              <MiniStat label="Memory" value={`${memory?.readinessCount || 0}+${memory?.setFeedbackCount || 0}`} />
+              <MiniStat label="Rests Skipped" value={behavior.restSkips || 0} />
+              <MiniStat label="Avg Rest" value={behavior.avgRestSeconds ? `${behavior.avgRestSeconds}s` : "-"} />
+            </div>
+            <div style={{padding:"13px 14px",background:"#fff",border:"1px solid rgba(112,132,160,.24)",borderRadius:13}}>
+              <div style={{fontSize:11,color:"#25536f",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,marginBottom:7}}>What I remember</div>
+              <div style={{fontSize:13,lineHeight:1.55,color:"#435166"}}>{memory?.summary || "I am still collecting enough sessions to spot patterns."}</div>
+              {behavior.notes?.length>0&&<div style={{fontSize:13,lineHeight:1.55,color:"#435166",marginTop:8}}>{behavior.notes[0]}</div>}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }) {
+  return (
+    <div style={{padding:"11px 8px",background:"#f3f8fd",border:"1px solid rgba(112,132,160,.22)",borderRadius:11,textAlign:"center"}}>
+      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#123047",letterSpacing:".05em"}}>{value}</div>
+      <div style={{fontSize:10,color:"#6b788c",letterSpacing:".1em",textTransform:"uppercase"}}>{label}</div>
+    </div>
+  );
+}
+
+function CoachFab({ onClick, accent, count }) {
+  return (
+    <button onClick={onClick} style={{position:"fixed",right:16,bottom:"calc(98px + env(safe-area-inset-bottom))",zIndex:130,width:62,height:62,borderRadius:19,border:`1.5px solid ${accent}88`,background:accent,color:"#050505",boxShadow:`0 16px 42px ${accent}66`,fontWeight:900,letterSpacing:".04em"}}>
+      AI
+      {count>0&&<span style={{position:"absolute",right:-4,top:-5,minWidth:20,height:20,borderRadius:10,background:"#123047",color:"#fff",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid #fff"}}>{Math.min(count,9)}</span>}
+    </button>
+  );
+}
+
+function CoachCard({ suggestions, accent, onOpen }) {
   const [idx, setIdx] = useState(0);
   const [key, setKey] = useState(0);
   if (!suggestions.length) return null;
   const s = suggestions[idx];
   const cc = {Streak:"#fb923c",Form:"#60a5fa",Progress:accent,Progression:accent,Adjustment:"#fbbf24",Recovery:"#a78bfa",Welcome:accent}[s.cat]||accent;
   return (
-    <div style={{margin:"0 16px 18px",padding:"16px 18px",background:"#0e0e0e",border:`1.5px solid ${cc}44`,borderRadius:14,boxShadow:`0 0 28px ${cc}15`}}>
+    <div style={{margin:"0 16px 18px",padding:"13px 14px",background:"#0e0e0e",border:`1.5px solid ${cc}44`,borderRadius:14,boxShadow:`0 0 28px ${cc}15`}}>
       <div style={{display:"flex",alignItems:"flex-start",gap:14}}>
         <span style={{fontSize:28,flexShrink:0,marginTop:1}}>{s.icon}</span>
         <div style={{flex:1}}>
           <div style={{fontSize:11,color:cc,letterSpacing:".14em",textTransform:"uppercase",marginBottom:5,fontWeight:500}}>{s.cat}</div>
           <div key={key} style={{fontSize:15,color:"#eee",lineHeight:1.55,animation:"coachSlide .3s ease-out"}}>{s.msg}</div>
         </div>
-        {suggestions.length>1&&<button onClick={()=>{setIdx(i=>(i+1)%suggestions.length);setKey(k=>k+1);}}
-          style={{background:"transparent",border:`1px solid ${cc}44`,color:cc,borderRadius:8,padding:"8px 12px",fontSize:14,flexShrink:0,alignSelf:"center"}}>→</button>}
+        <button onClick={onOpen}
+          style={{background:"transparent",border:`1px solid ${cc}44`,color:cc,borderRadius:8,padding:"8px 10px",fontSize:12,flexShrink:0,alignSelf:"center",letterSpacing:".08em"}}>OPEN</button>
       </div>
       {suggestions.length>1&&(
         <div style={{display:"flex",gap:5,justifyContent:"center",marginTop:12}}>
@@ -362,13 +428,22 @@ function ReadinessCheckIn({ value, onSave, accent }) {
 }
 
 function TodayPlan({ plan, readiness, accent, substitutions, onApplySubstitution, onRemoveSubstitution }) {
+  const [open, setOpen] = useState(false);
   if (!plan) return null;
   return (
-    <div style={{margin:"0 16px 18px",padding:"17px 18px",background:`linear-gradient(180deg,${accent}16,#0d0d0d)`,border:`1.5px solid ${accent}55`,borderRadius:14,boxShadow:`0 0 32px ${accent}18`}}>
-      <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:500,marginBottom:6}}>Today's Coach</div>
-      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:"#f5f5f5",letterSpacing:".06em",lineHeight:1}}>{plan.headline}</div>
-      <div style={{fontSize:13,color:"#888",marginTop:4}}>{readiness ? readinessLabel(readiness) : "Default readiness"}</div>
-      <div style={{fontSize:14,color:"#ddd",lineHeight:1.55,marginTop:12}}>{plan.focus}</div>
+    <div style={{margin:"0 16px 12px",padding:"14px 15px",background:`linear-gradient(180deg,${accent}13,#0d0d0d)`,border:`1.5px solid ${accent}44`,borderRadius:14,boxShadow:`0 0 24px ${accent}12`}}>
+      <button onClick={()=>setOpen(o=>!o)} style={{width:"100%",background:"transparent",border:"none",padding:0,textAlign:"left",display:"flex",alignItems:"center",gap:12}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:500,marginBottom:5}}>Today's Coach</div>
+          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:27,color:"#f5f5f5",letterSpacing:".06em",lineHeight:1}}>{plan.headline}</div>
+          <div style={{fontSize:12,color:"#888",marginTop:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{plan.focus}</div>
+        </div>
+        <div style={{fontSize:18,color:accent,transform:open?"rotate(180deg)":"none",transition:"transform .2s"}}>⌄</div>
+      </button>
+      {open&&(
+        <div style={{animation:"slideDown .2s ease-out"}}>
+      <div style={{fontSize:13,color:"#888",marginTop:12}}>{readiness ? readinessLabel(readiness) : "Default readiness"}</div>
+      <div style={{fontSize:14,color:"#ddd",lineHeight:1.55,marginTop:8}}>{plan.focus}</div>
       {plan.science&&(
         <div style={{marginTop:12,padding:"10px 11px",background:"#101010",borderRadius:8,border:`1px solid ${accent}33`}}>
           <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:5}}>Science Coach</div>
@@ -411,6 +486,8 @@ function TodayPlan({ plan, readiness, accent, substitutions, onApplySubstitution
           {plan.adjustments.slice(0,2).map((item,i)=>(
             <div key={i} style={{fontSize:12,color:"#bbb",padding:"9px 11px",background:"#080808",borderRadius:8,border:"1px solid #202020"}}>{item}</div>
           ))}
+        </div>
+      )}
         </div>
       )}
     </div>
@@ -641,6 +718,7 @@ export default function WorkoutView({
   const [workoutSummary, setWorkoutSummary] = useState(null);
   const [undoSet,      setUndoSet]      = useState(null);
   const [substitutions, setSubstitutions] = useState({});
+  const [coachOpen,    setCoachOpen]    = useState(false);
 
   const wKey    = SCHEDULE[activeTab];
   const workout = WORKOUTS[wKey];
@@ -685,11 +763,12 @@ export default function WorkoutView({
 
   const readinessEntry = (checkIns||[]).find(ci=>ci.kind==="readiness"&&ci.sessionKey===sessionKey);
   const readiness = readinessEntry?.readiness;
-  const coachPlan = buildCoachPlan({workout,history,exConfig,settings,readiness:readiness||DEFAULT_READINESS});
+  const coachPlan = buildCoachPlan({workout,history,checkIns,exConfig,settings,readiness:readiness||DEFAULT_READINESS});
   const suggestions = [...coachPlan.cards, ...buildSuggestions({history,progression,settings,exConfig,workoutKey:wKey})];
+  const coachMemory = buildCoachMemory({ history, checkIns, exercises:[...WORKOUTS.A.exercises,...WORKOUTS.B.exercises], exConfig });
   const exerciseKey = (exOrName) => typeof exOrName === "string" ? exOrName : (exOrName.configName || exOrName.name);
   const getBaseTargetReps = (ex) => exConfig[exerciseKey(ex)]?.targetReps ?? (ex.baseReps + (progression[exerciseKey(ex)]?.repBonus||0));
-  const getScience = (ex) => sciencePrescription({ exercise:ex, history, settings, readiness:readiness||DEFAULT_READINESS, baseTarget:getBaseTargetReps(ex) });
+  const getScience = (ex) => sciencePrescription({ exercise:ex, history, checkIns, settings, readiness:readiness||DEFAULT_READINESS, baseTarget:getBaseTargetReps(ex) });
   const getTargetReps = (ex) => {
     const science = getScience(ex);
     return science.enabled ? science.targetReps : coachTargetReps(getBaseTargetReps(ex), readiness||DEFAULT_READINESS);
@@ -733,6 +812,17 @@ export default function WorkoutView({
       readiness:nextReadiness,
     };
     setCheckIns(p=>[...(p||[]).filter(ci=>!(ci.kind==="readiness"&&ci.sessionKey===sessionKey)),entry]);
+  };
+
+  const logCoachEvent = (entry) => {
+    setCheckIns(p => [...(p || []), {
+      sessionKey,
+      day:activeTab,
+      workout:wKey,
+      date:dateStr(scheduledDate(activeTab)),
+      timestamp:Date.now(),
+      ...entry,
+    }].slice(-1000));
   };
 
   const useSubstitution = (sub, option) => {
@@ -787,7 +877,11 @@ export default function WorkoutView({
     const remaining=getSetCount(ex)-(j+1);
     const hasNextExercise=i+1<workoutPlan.exercises.length;
     const next=remaining>0?`Set ${j+2} of ${ex.name}`:hasNextExercise?`Up next: ${workoutPlan.exercises[i+1].name}`:null;
-    if(next) setRestState({label:next,accent});
+    if(next) {
+      const restId = `${sessionKey}_${i}_${j}_${Date.now()}`;
+      logCoachEvent({kind:"rest",action:"start",restId,exercise:ex.name,set:j+1,plannedSeconds:settings.restSeconds});
+      setRestState({label:next,accent,restId,startedAt:Date.now(),plannedSeconds:settings.restSeconds});
+    }
     else setRestState(null);
   };
 
@@ -835,6 +929,7 @@ export default function WorkoutView({
     const {exIdx,setIdx,editing}=loggerState;
     const lk=logKey(exIdx,setIdx);
     setSessionLogs(p=>({...p,[lk]:{weight,reps}}));
+    logCoachEvent({kind:"set_log",action:"save",exercise:workoutPlan.exercises[exIdx].name,set:setIdx+1,weight,reps});
     if(!editing&&!xpAwards[lk]){
       setXpAwards(p=>({...p,[lk]:true}));
       spawnXp(XP_VALUES.set);
@@ -848,6 +943,7 @@ export default function WorkoutView({
     const ex=workoutPlan.exercises[exIdx];
     const lk=logKey(exIdx,setIdx);
     setSessionLogs(p=>({...p,[lk]:{weight:getWeight(ex),reps:getTargetReps(ex)}}));
+    logCoachEvent({kind:"set_log",action:"skip",exercise:ex.name,set:setIdx+1,weight:getWeight(ex),reps:getTargetReps(ex)});
     if(!xpAwards[lk]){
       setXpAwards(p=>({...p,[lk]:true}));
       spawnXp(XP_VALUES.set);
@@ -994,7 +1090,7 @@ export default function WorkoutView({
         settings.showReadiness!==false&&<ReadinessCheckIn value={DEFAULT_READINESS} onSave={saveReadiness} accent={accent}/>
       )}
       <TodayPlan plan={coachPlan} readiness={readiness} accent={accent} substitutions={substitutions} onApplySubstitution={useSubstitution} onRemoveSubstitution={removeSubstitution}/>
-      <CoachCard suggestions={suggestions} accent={accent}/>
+      <CoachCard suggestions={suggestions} accent={accent} onOpen={()=>setCoachOpen(true)}/>
 
       {/* DAY TABS */}
       <div style={{display:"flex",borderTop:"1px solid #1a1a1a",borderBottom:"1px solid #1a1a1a",background:"#080808"}}>
@@ -1217,10 +1313,20 @@ export default function WorkoutView({
       )}
       {workoutSummary&&<WorkoutSummary summary={workoutSummary} accent={accent} onClose={()=>{setWorkoutSummary(null);setShowFeedback(true);}}/>}
       {restState?.done&&focusMode&&<RestReady label={restState.label} accent={restState.accent} onNext={()=>setRestState(null)}/>}
-      {restState&&!restState.done&&!loggerState&&<RestTimer fullscreen={focusMode&&settings.fullscreenRest!==false} seconds={settings.restSeconds} label={restState.label} accent={restState.accent} onSkip={()=>setRestState(null)} onComplete={()=>{playSound("restEnd");vibrate([200,60,200]);focusMode?setRestState(p=>p?{...p,done:true}:null):setRestState(null);}}/>}
+      {restState&&!restState.done&&!loggerState&&<RestTimer fullscreen={focusMode&&settings.fullscreenRest!==false} seconds={settings.restSeconds} label={restState.label} accent={restState.accent}
+        onSkip={()=>{
+          logCoachEvent({kind:"rest",action:"skip",restId:restState.restId,plannedSeconds:restState.plannedSeconds||settings.restSeconds,elapsedSeconds:Math.round((Date.now()-(restState.startedAt||Date.now()))/1000)});
+          setRestState(null);
+        }}
+        onComplete={()=>{
+          logCoachEvent({kind:"rest",action:"complete",restId:restState.restId,plannedSeconds:restState.plannedSeconds||settings.restSeconds,elapsedSeconds:restState.plannedSeconds||settings.restSeconds});
+          playSound("restEnd");vibrate([200,60,200]);focusMode?setRestState(p=>p?{...p,done:true}:null):setRestState(null);
+        }}/>}
       {showFeedback&&<PostWorkoutFeedback exercises={workoutPlan.exercises} sessionLogs={sessionLogs} getLogKey={logKey} exConfig={exConfig} history={history} onComplete={handleFeedback} accent={accent}/>}
       {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}
       <Confetti active={confetti} accent={accent} onDone={()=>setConfetti(false)}/>
+      <CoachFab onClick={()=>setCoachOpen(true)} accent={accent} count={suggestions.length}/>
+      <CoachDrawer open={coachOpen} onClose={()=>setCoachOpen(false)} suggestions={suggestions} memory={coachMemory} plan={coachPlan} accent={accent}/>
     </div>
   );
 }
