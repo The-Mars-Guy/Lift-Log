@@ -48,6 +48,9 @@ export const DEFAULT_SETTINGS = {
   autoDeload: true,
   showReadiness: true,
   fullscreenRest: true,
+  scienceCoach: false,
+  equipmentProfile: "fixed_dumbbells",
+  trainingGoal: "general",
 };
 
 // Default starting weights per exercise (lbs, per dumbbell)

@@ -8,7 +8,7 @@ import { useSessionTimer, fmtDuration } from "../hooks.js";
 import { ExerciseAnimation, RestTimer, Toast, MiniGraph } from "../components/shared.jsx";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
 import { completionKey, defaultWorkoutDay, scheduledDate, logKey as makeLogKey } from "../session.js";
-import { buildCoachPlan, coachSetCount, coachTargetReps, DEFAULT_READINESS, evaluateProgression, readinessLabel, summarizeWorkout } from "../coach.js";
+import { buildCoachPlan, coachSetCount, coachTargetReps, DEFAULT_READINESS, evaluateProgression, readinessLabel, sciencePrescription, summarizeWorkout } from "../coach.js";
 import { Confetti, XpFloat } from "./workout/Effects.jsx";
 
 // ── INITIAL ASSESSMENT FLOW ───────────────────────────────────────────────────
@@ -356,6 +356,15 @@ function TodayPlan({ plan, readiness, accent, substitutions, onApplySubstitution
       <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:"#f5f5f5",letterSpacing:".06em",lineHeight:1}}>{plan.headline}</div>
       <div style={{fontSize:13,color:"#888",marginTop:4}}>{readiness ? readinessLabel(readiness) : "Default readiness"}</div>
       <div style={{fontSize:14,color:"#ddd",lineHeight:1.55,marginTop:12}}>{plan.focus}</div>
+      {plan.science&&(
+        <div style={{marginTop:12,padding:"10px 11px",background:"#101010",borderRadius:8,border:`1px solid ${accent}33`}}>
+          <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:5}}>Science Coach</div>
+          <div style={{fontSize:12,color:"#ddd",lineHeight:1.5}}>
+            {plan.science.label}: {plan.science.note}
+            {plan.science.est1RM&&<span style={{color:"#888"}}> Est. 1RM {plan.science.est1RM}lbs.</span>}
+          </div>
+        </div>
+      )}
       {plan.substitutions?.length>0&&(
         <div style={{display:"grid",gap:7,marginTop:12}}>
           {plan.substitutions.map((sub,i)=>{
@@ -667,9 +676,23 @@ export default function WorkoutView({
   const suggestions = [...coachPlan.cards, ...buildSuggestions({history,progression,settings,exConfig,workoutKey:wKey})];
   const exerciseKey = (exOrName) => typeof exOrName === "string" ? exOrName : (exOrName.configName || exOrName.name);
   const getBaseTargetReps = (ex) => exConfig[exerciseKey(ex)]?.targetReps ?? (ex.baseReps + (progression[exerciseKey(ex)]?.repBonus||0));
-  const getTargetReps = (ex) => coachTargetReps(getBaseTargetReps(ex), readiness||DEFAULT_READINESS);
-  const getSetCount = (ex) => coachSetCount(ex.sets, readiness||DEFAULT_READINESS);
-  const getWeight     = (n)  => exConfig[exerciseKey(n)]?.weight  || DEFAULT_WEIGHTS[exerciseKey(n)] || settings.dumbbellWeight;
+  const getScience = (ex) => sciencePrescription({ exercise:ex, history, settings, readiness:readiness||DEFAULT_READINESS, baseTarget:getBaseTargetReps(ex) });
+  const getTargetReps = (ex) => {
+    const science = getScience(ex);
+    return science.enabled ? science.targetReps : coachTargetReps(getBaseTargetReps(ex), readiness||DEFAULT_READINESS);
+  };
+  const getSetCount = (ex) => {
+    const science = getScience(ex);
+    return science.enabled ? science.sets : coachSetCount(ex.sets, readiness||DEFAULT_READINESS);
+  };
+  const getWeight     = (n)  => {
+    const configured = exConfig[exerciseKey(n)]?.weight || DEFAULT_WEIGHTS[exerciseKey(n)] || settings.dumbbellWeight;
+    if (typeof n !== "string") {
+      const science = getScience(n);
+      if (science.suggestedWeight && science.suggestedWeight > 0) return science.suggestedWeight;
+    }
+    return configured;
+  };
   const getNextW      = (n)  => exConfig[exerciseKey(n)]?.nextWeight;
   const getMaxTest    = (n)  => exConfig[exerciseKey(n)]?.maxRepsTest;
   const exDone  = (i)   => Array.from({length:getSetCount(workoutPlan.exercises[i])},(_,j)=>setDone(i,j)).every(Boolean);
@@ -1008,6 +1031,7 @@ export default function WorkoutView({
           const curW=getWeight(ex); const nextW=getNextW(ex);
           const hasNxtW=nextW&&nextW>curW;
           const maxTest=getMaxTest(ex);
+          const science=getScience(ex);
           const exColor=WORKOUTS.A.exercises.some(e=>e.name===ex.name)?WORKOUTS.A.color:WORKOUTS.B.color;
           const histData=getExerciseHistory(exKey,history);
 
@@ -1024,6 +1048,7 @@ export default function WorkoutView({
                   <div style={{fontSize:14,color:"#bbb",marginTop:5,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                     <span>{getSetCount(ex)} × ×{reps}{ex.repSuffix||""}</span>
                     <span style={{color:"#666"}}>@ {curW}lbs</span>
+                    {science.enabled&&<span style={{color:"#a78bfa",fontSize:12,padding:"2px 7px",borderRadius:5,background:"#a78bfa18",fontWeight:500}}>{science.label}</span>}
                     {hasNxtW&&<span style={{color:accent,fontSize:12,padding:"2px 7px",borderRadius:5,background:`${accent}18`,fontWeight:500}}>next: {nextW}lbs</span>}
                     {maxTest&&<span style={{color:"#888",fontSize:11}}>max: {maxTest}</span>}
                   </div>
@@ -1062,6 +1087,17 @@ export default function WorkoutView({
                     <div style={{fontSize:15,color:"#f0f0f0",marginTop:5,lineHeight:1.55}}>→ {ex.tip}</div>
                     {ex.substitutedFor&&<div style={{fontSize:12,color:"#888",marginTop:8}}>Original: {ex.substitutedFor}</div>}
                   </div>
+
+                  {science.enabled&&(
+                    <div style={{marginTop:14,padding:"13px 16px",background:"#080808",borderRadius:10,border:"1.5px solid #a78bfa44"}}>
+                      <SLabel small>Science Coach</SLabel>
+                      <div style={{fontSize:14,color:"#ddd",marginTop:5,lineHeight:1.55}}>{science.note}</div>
+                      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:9}}>
+                        {science.est1RM&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",border:"1px solid #a78bfa44",borderRadius:7,padding:"6px 8px"}}>est. 1RM {science.est1RM}lbs</span>}
+                        {science.percent&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",border:"1px solid #a78bfa44",borderRadius:7,padding:"6px 8px"}}>{Math.round(science.percent*100)}% target</span>}
+                      </div>
+                    </div>
+                  )}
 
                   <div style={{marginTop:18}}>
                     <SLabel>Muscles</SLabel>

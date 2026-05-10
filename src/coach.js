@@ -18,6 +18,19 @@ export const READINESS = {
 
 export const DEFAULT_READINESS = { energy: "okay", soreness: "mild", time: "normal" };
 
+export const EQUIPMENT_PROFILES = {
+  fixed_dumbbells: { label: "Fixed Dumbbells", canLoad: false },
+  adjustable_dumbbells: { label: "Adjustable Dumbbells", canLoad: true },
+  gym_access: { label: "Gym / Barbell Access", canLoad: true },
+};
+
+export const TRAINING_GOALS = {
+  general: { label: "General Fitness" },
+  strength: { label: "Strength" },
+  hypertrophy: { label: "Muscle / Volume" },
+  fatigue_friendly: { label: "Fatigue Friendly" },
+};
+
 export const SUBSTITUTIONS = {
   "Arnold Press": [
     { name: "Lateral Raise", reason: "shoulder-friendly pressing alternative" },
@@ -58,6 +71,75 @@ export function readinessLabel(readiness = DEFAULT_READINESS) {
     READINESS.soreness[readiness.soreness]?.label || "Mild",
     READINESS.time[readiness.time]?.label || "Normal",
   ].join(" / ");
+}
+
+export function estimated1RM(weight, reps) {
+  if (!weight || !reps || reps <= 0) return null;
+  return Math.round(weight * (1 + reps / 30));
+}
+
+export function bestEstimated1RM(history = [], exerciseName) {
+  const estimates = history.flatMap(h => h.exercises || [])
+    .filter(ex => ex.name === exerciseName || ex.originalName === exerciseName || ex.substitutedFor === exerciseName)
+    .flatMap(ex => ex.setLog || [])
+    .map(log => estimated1RM(log.weight, log.reps))
+    .filter(Boolean);
+  return estimates.length ? Math.max(...estimates) : null;
+}
+
+export function sciencePrescription({ exercise, history = [], settings = {}, readiness = DEFAULT_READINESS, baseTarget = exercise.baseReps }) {
+  const enabled = settings.scienceCoach === true;
+  const goal = settings.trainingGoal || "general";
+  const equipment = EQUIPMENT_PROFILES[settings.equipmentProfile || "fixed_dumbbells"] || EQUIPMENT_PROFILES.fixed_dumbbells;
+  const score = readinessScore(readiness);
+  const est1RM = bestEstimated1RM(history, exercise.configName || exercise.originalName || exercise.name);
+  if (!enabled) {
+    return { enabled:false, targetReps:baseTarget, sets:exercise.sets, est1RM:null, suggestedWeight:null, label:"Standard", note:null };
+  }
+
+  const canLoad = equipment.canLoad && est1RM;
+  let targetReps = baseTarget;
+  let sets = exercise.sets;
+  let pct = null;
+  let label = "Science";
+  let note = "Progressive overload with logged reps, load, and readiness.";
+
+  if (goal === "strength" && canLoad) {
+    targetReps = score <= -1 ? 6 : 5;
+    sets = score <= -2 ? Math.max(2, exercise.sets - 1) : Math.max(exercise.sets, 3);
+    pct = score <= -1 ? 0.70 : 0.78;
+    label = "Strength";
+    note = "Strength bias: heavier loads and lower reps are favored for maximal strength.";
+  } else if (goal === "hypertrophy") {
+    targetReps = canLoad ? 10 : Math.max(baseTarget, 12);
+    sets = score <= -2 ? Math.max(2, exercise.sets - 1) : exercise.sets + 1;
+    pct = canLoad ? 0.65 : null;
+    label = "Volume";
+    note = "Volume bias: hard moderate-to-higher rep sets can build muscle across a wide loading range.";
+  } else if (goal === "fatigue_friendly") {
+    targetReps = Math.max(6, baseTarget - 2);
+    sets = Math.max(1, exercise.sets - 1);
+    pct = canLoad ? 0.60 : null;
+    label = "Recovery";
+    note = "Fatigue-friendly bias: lower total work and more reps in reserve today.";
+  } else if (canLoad) {
+    targetReps = score >= 1 ? 8 : 10;
+    pct = score >= 1 ? 0.70 : 0.65;
+    label = "Balanced";
+    note = "Balanced bias: enough load for strength practice, enough reps for useful volume.";
+  } else {
+    targetReps = goal === "strength" ? Math.max(6, baseTarget - 2) : Math.max(baseTarget, 10);
+    label = goal === "strength" ? "Strength Skill" : "Volume";
+    note = "Fixed-weight mode: progress by reps, sets, tempo, and cleaner execution instead of large load jumps.";
+  }
+
+  if (score <= -2) {
+    targetReps = Math.max(3, targetReps - 2);
+    sets = Math.max(1, sets - 1);
+  }
+
+  const suggestedWeight = pct && est1RM ? Math.max(2.5, Math.round((est1RM * pct) * 2) / 2) : null;
+  return { enabled:true, targetReps, sets, est1RM, suggestedWeight, label, note, percent:pct };
 }
 
 function lastExerciseSessions(history, exerciseName, count = 3) {
@@ -127,6 +209,13 @@ export function buildCoachPlan({ workout, history, exConfig, settings, readiness
   const focus = exerciseNotes[0]?.note || "Build clean reps today.";
   watch.push(...exerciseNotes.filter(n => n.priority >= 2).slice(0, 2).map(n => n.note));
   const substitutions = suggestSubstitutions({ workout, history, exConfig, readiness }).slice(0, 2);
+  const science = (settings.scienceCoach ? workout.exercises.map(ex => sciencePrescription({
+    exercise: ex,
+    history,
+    settings,
+    readiness,
+    baseTarget: exConfig[ex.name]?.targetReps ?? ex.baseReps,
+  })).find(item => item.enabled && item.note) : null);
 
   cards.push({
     icon: score >= 2 ? "⚡" : score <= -2 ? "🎯" : "🧠",
@@ -135,6 +224,7 @@ export function buildCoachPlan({ workout, history, exConfig, settings, readiness
   });
 
   adjustments.slice(0, 2).forEach(msg => cards.push({ icon: "🧭", cat: "Plan", msg }));
+  if (science) cards.push({ icon:"🔬", cat:"Science", msg:`${science.label}: ${science.note}${science.est1RM ? ` Est. 1RM: ${science.est1RM}lbs.` : ""}` });
   substitutions.forEach(sub => cards.push({ icon: "🔁", cat: "Swap", msg: `${sub.exercise}: use ${sub.substitute} if ${sub.reason}.` }));
   watch.forEach(msg => cards.push({ icon: "👁️", cat: "Watch", msg }));
 
@@ -143,6 +233,7 @@ export function buildCoachPlan({ workout, history, exConfig, settings, readiness
     headline: score >= 2 ? "Attack the work" : score <= -2 ? "Train, don't drain" : "Clean reps first",
     focus,
     adjustments,
+    science,
     substitutions,
     cards,
   };

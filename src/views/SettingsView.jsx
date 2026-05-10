@@ -72,6 +72,23 @@ export default function SettingsView({
       </Section>
 
       <Section title="Coach">
+        <Toggle label="Science Coach" desc="Use estimated 1RM, goal, and equipment rules" value={settings.scienceCoach === true} onChange={v => update("scienceCoach", v)} accent={accent} />
+        <Row label="Training Goal" desc="Changes rep ranges and progression bias">
+          <SegControl
+            options={[{ v: "general", l: "General" }, { v: "strength", l: "Strength" }, { v: "hypertrophy", l: "Muscle" }, { v: "fatigue_friendly", l: "Easy" }]}
+            value={settings.trainingGoal || "general"}
+            onChange={v => update("trainingGoal", v)}
+            accent={accent}
+          />
+        </Row>
+        <Row label="Equipment" desc="Tells the coach whether load jumps are available">
+          <SegControl
+            options={[{ v: "fixed_dumbbells", l: "Fixed" }, { v: "adjustable_dumbbells", l: "Adjustable" }, { v: "gym_access", l: "Gym" }]}
+            value={settings.equipmentProfile || "fixed_dumbbells"}
+            onChange={v => update("equipmentProfile", v)}
+            accent={accent}
+          />
+        </Row>
         <Row label="Progression Style" desc="How quickly the coach recommends heavier work">
           <SegControl
             options={[{ v: "conservative", l: "Safe" }, { v: "balanced", l: "Balanced" }, { v: "aggressive", l: "Push" }]}
