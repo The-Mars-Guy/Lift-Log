@@ -4,8 +4,8 @@
   "description": "Minimal dumbbell workout tracker with auto-progression",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#050505",
-  "theme_color": "#050505",
+  "background_color": "#f8fffb",
+  "theme_color": "#f8fffb",
   "orientation": "portrait",
   "icons": [
     {
