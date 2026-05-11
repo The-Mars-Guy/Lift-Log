@@ -52,6 +52,8 @@ export const DEFAULT_SETTINGS = {
   scienceCoach: true,
   equipmentProfile: "fixed_dumbbells",
   trainingGoal: "hypertrophy",
+  onboardingDone: false,
+  cautiousJoints: [],
 };
 
 // Default starting weights per exercise (lbs, per dumbbell)

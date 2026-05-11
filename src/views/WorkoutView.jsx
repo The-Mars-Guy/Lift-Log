@@ -14,6 +14,52 @@ import { Confetti, XpFloat } from "./workout/Effects.jsx";
 // ── INITIAL ASSESSMENT FLOW ───────────────────────────────────────────────────
 const ALL_EXERCISES = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
 
+function FirstRunSetup({ settings, setSettings, accent }) {
+  const [goal, setGoal] = useState(settings.trainingGoal || "hypertrophy");
+  const [joints, setJoints] = useState(settings.cautiousJoints || []);
+  const toggleJoint = (key) => setJoints(p => p.includes(key) ? p.filter(x => x !== key) : [...p, key]);
+  const finish = () => setSettings(s => ({
+    ...s,
+    scienceCoach: true,
+    trainingGoal: goal,
+    equipmentProfile: "fixed_dumbbells",
+    coachStyle: "balanced",
+    autoDeload: true,
+    showReadiness: true,
+    cautiousJoints: joints,
+    onboardingDone: true,
+  }));
+
+  return (
+    <div style={{minHeight:"100vh",padding:"44px 20px",background:"linear-gradient(180deg,#f8fffb,#eef7ff)",color:"#172033"}}>
+      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:50,letterSpacing:".05em",lineHeight:.9,color:"#123047",marginBottom:12}}>SET UP<br/>YOUR COACH</div>
+      <div style={{fontSize:15,color:"#435166",lineHeight:1.6,marginBottom:22}}>Built around two 15lb dumbbells, clean reps, and steady muscle gain.</div>
+      <div style={{display:"grid",gap:12}}>
+        <SetupBlock title="Goal">
+          {[["hypertrophy","Build muscle"],["general","General fitness"],["fatigue_friendly","Easy recovery bias"]].map(([key,label])=>(
+            <button key={key} onClick={()=>setGoal(key)} style={{padding:"13px 12px",borderRadius:11,border:`1.5px solid ${goal===key?accent:"#d7e3ef"}`,background:goal===key?`${accent}22`:"#fff",color:"#172033",fontWeight:700,textAlign:"left"}}>{label}</button>
+          ))}
+        </SetupBlock>
+        <SetupBlock title="Joints to protect">
+          {["knees","shoulders","wrists","back"].map(key=>(
+            <button key={key} onClick={()=>toggleJoint(key)} style={{padding:"12px",borderRadius:11,border:`1.5px solid ${joints.includes(key)?accent:"#d7e3ef"}`,background:joints.includes(key)?`${accent}22`:"#fff",color:"#172033",textTransform:"capitalize",fontWeight:700}}>{key}</button>
+          ))}
+        </SetupBlock>
+      </div>
+      <button onClick={finish} style={{width:"100%",marginTop:24,padding:"20px",border:"none",borderRadius:15,background:accent,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:27,letterSpacing:".12em",boxShadow:`0 16px 42px ${accent}55`}}>SAVE SETUP</button>
+    </div>
+  );
+}
+
+function SetupBlock({ title, children }) {
+  return (
+    <div style={{padding:15,background:"rgba(255,255,255,.82)",border:"1px solid rgba(112,132,160,.25)",borderRadius:14}}>
+      <div style={{fontSize:11,color:"#25536f",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,marginBottom:10}}>{title}</div>
+      <div style={{display:"grid",gap:8}}>{children}</div>
+    </div>
+  );
+}
+
 function AssessmentFlow({ onComplete, accent, theme="dark" }) {
   const [step, setStep] = useState(-1);
   const [results, setResults] = useState({});
@@ -606,9 +652,24 @@ function WorkoutSummary({ summary, accent, onClose }) {
             <div style={{fontSize:14,color:"#eee",lineHeight:1.5}}>{summary.prs.map(p=>`${p.name}: ${p.val}lbs`).join(" · ")}</div>
           </div>
         )}
+        <div style={{display:"grid",gap:10,marginBottom:14}}>
+          {summary.bestSet&&(
+            <div style={{padding:14,background:"#0d0d0d",border:"1px solid #202020",borderRadius:12}}>
+              <div style={{fontSize:11,color:"#888",letterSpacing:".14em",textTransform:"uppercase",marginBottom:6}}>Best Set</div>
+              <div style={{fontSize:15,color:"#eee",lineHeight:1.45}}>{summary.bestSet.name}: {summary.bestSet.weight}lbs x {summary.bestSet.reps}</div>
+            </div>
+          )}
+          {summary.hardest&&(
+            <div style={{padding:14,background:"#0d0d0d",border:"1px solid #202020",borderRadius:12}}>
+              <div style={{fontSize:11,color:"#888",letterSpacing:".14em",textTransform:"uppercase",marginBottom:6}}>Limiter</div>
+              <div style={{fontSize:15,color:"#eee",lineHeight:1.45}}>{summary.hardest.name} was the main limiter today.</div>
+            </div>
+          )}
+        </div>
         <div style={{padding:16,background:"#0d0d0d",border:"1px solid #202020",borderRadius:12,marginBottom:14}}>
           <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:8}}>Coach Note</div>
           <div style={{fontSize:15,color:"#ddd",lineHeight:1.55}}>{summary.coachNote}</div>
+          {summary.nextChange&&<div style={{fontSize:13,color:accent,marginTop:10,lineHeight:1.45}}>{summary.nextChange}</div>}
           {summary.nextWorkout&&<div style={{fontSize:13,color:"#888",marginTop:10}}>Next up: Workout {summary.nextWorkout}</div>}
         </div>
         <button onClick={onClose}
@@ -704,6 +765,7 @@ function ThisWeek({ completed, setActiveTab }) {
 export default function WorkoutView({
   sets, setSets, history, setHistory, completed, setCompleted,
   progression, setProgression, settings,
+  setSettings,
   exConfig, setExConfig, xp, addXp, level,
   checkIns, setCheckIns,
   playSound, vibrate, setActiveView, theme="dark",
@@ -1047,6 +1109,11 @@ export default function WorkoutView({
     setExConfig(newConfig);
     setAssessmentDone(true);
   };
+
+  // Show assessment if not done yet and no history
+  if (!settings.onboardingDone && history.length === 0) {
+    return <FirstRunSetup settings={settings} setSettings={setSettings} accent={accent}/>;
+  }
 
   // Show assessment if not done yet and no history
   if (!assessmentDone && history.length===0) {

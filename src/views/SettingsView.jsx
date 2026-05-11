@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { DEFAULT_SETTINGS } from "../data.js";
-import { EQUIPMENT_PROFILES, TRAINING_GOALS } from "../coach.js";
+import { EQUIPMENT_PROFILES, JOINT_AREAS, TRAINING_GOALS } from "../coach.js";
 
 export default function SettingsView({
   settings,
@@ -134,6 +134,15 @@ export default function SettingsView({
         <Toggle label="Auto Deload" desc="Reduce load after repeated big misses" help="If the same exercise misses badly twice, the coach lowers the next load and rebuilds clean reps." value={settings.autoDeload !== false} onChange={v => update("autoDeload", v)} accent={accent} ui={ui} />
         <Toggle label="Readiness Check-In" desc="Ask energy, soreness, and time before workouts" help="The coach uses this to trim sets on rough days, push when you are fresh, and suggest swaps when soreness is high." value={settings.showReadiness !== false} onChange={v => update("showReadiness", v)} accent={accent} ui={ui} />
         <Toggle label="Fullscreen Rest Timer" desc="Use the focused rest screen between sets" value={settings.fullscreenRest !== false} onChange={v => update("fullscreenRest", v)} accent={accent} ui={ui} />
+        <Row label="Joint Caution" desc="Coach biases swaps around selected joints" help="Use this for recurring caution areas. During workouts, pain feedback still matters most." ui={ui}>
+          <MultiSelect
+            options={Object.entries(JOINT_AREAS).map(([v, item]) => ({ v, l:item.label }))}
+            value={settings.cautiousJoints || []}
+            onChange={v => update("cautiousJoints", v)}
+            accent={accent}
+            ui={ui}
+          />
+        </Row>
       </Section>
 
       <Section title="Offline" ui={ui}>
@@ -287,6 +296,29 @@ function SegControl({ options, value, onChange, accent, ui }) {
               fontFamily: "DM Mono, monospace",
               transition: "all 0.18s",
               boxShadow: active ? `0 0 12px ${accent}77` : "none",
+            }}>
+            {opt.l}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function MultiSelect({ options, value, onChange, accent, ui }) {
+  const selected = value || [];
+  return (
+    <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:6 }}>
+      {options.map(opt => {
+        const active = selected.includes(opt.v);
+        return (
+          <button key={opt.v} onClick={() => onChange(active ? selected.filter(v => v !== opt.v) : [...selected, opt.v])}
+            style={{
+              padding:"10px 8px", borderRadius:8,
+              border:`1px solid ${active ? accent : ui.border}`,
+              background:active ? `${accent}22` : ui.control,
+              color:active ? accent : ui.soft,
+              fontSize:13, fontWeight:active ? 700 : 400,
             }}>
             {opt.l}
           </button>

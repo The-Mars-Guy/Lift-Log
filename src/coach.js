@@ -55,6 +55,13 @@ export const TRAINING_GOALS = {
   },
 };
 
+export const JOINT_AREAS = {
+  knees: { label:"Knees", exercises:["Goblet Squat","Reverse Lunge"], note:"Knee caution: favor controlled depth, supported ranges, and glute-biased swaps." },
+  shoulders: { label:"Shoulders", exercises:["Arnold Press","Floor Press","Rear Delt Row"], note:"Shoulder caution: avoid forcing overhead work and prefer pain-free pressing angles." },
+  wrists: { label:"Wrists", exercises:["Floor Press","Push-Up","Hammer Curl","Tricep Kickback"], note:"Wrist caution: prefer neutral grips and stable dumbbell positions." },
+  back: { label:"Back", exercises:["Romanian Deadlift","Bent Over Row","Goblet Squat"], note:"Back caution: reduce hinge fatigue and favor supported rows or bridges when needed." },
+};
+
 export const SUBSTITUTIONS = {
   "Goblet Squat": [
     { name: "Box Goblet Squat", reason: "same squat pattern with a controlled depth target for knees and hips" },
@@ -432,8 +439,9 @@ export function buildCoachPlan({ workout, history, checkIns = [], exConfig, sett
 
   const focus = exerciseNotes[0]?.note || "Build clean reps today.";
   watch.push(...exerciseNotes.filter(n => n.priority >= 2).slice(0, 2).map(n => n.note));
-  const substitutions = suggestSubstitutions({ workout, history, exConfig, readiness }).slice(0, 2);
+  const substitutions = suggestSubstitutions({ workout, history, exConfig, readiness, settings }).slice(0, 2);
   const behavior = behaviorMemory(checkIns);
+  const jointNotes = (settings.cautiousJoints || []).map(j => JOINT_AREAS[j]?.note).filter(Boolean);
   const science = (settings.scienceCoach ? workout.exercises.map(ex => sciencePrescription({
     exercise: ex,
     history,
@@ -451,6 +459,7 @@ export function buildCoachPlan({ workout, history, checkIns = [], exConfig, sett
 
   adjustments.slice(0, 2).forEach(msg => cards.push({ icon: "🧭", cat: "Plan", msg }));
   if (science) cards.push({ icon:"🔬", cat:"Science", msg:`${science.label}: ${science.note}${science.est1RM ? ` Est. 1RM: ${science.est1RM}lbs.` : ""}` });
+  jointNotes.slice(0, 1).forEach(msg => cards.push({ icon:"🛡️", cat:"Joints", msg }));
   behavior.notes.slice(0, 2).forEach(msg => cards.push({ icon:"⏱️", cat:"Habits", msg }));
   substitutions.forEach(sub => cards.push({ icon: "🔁", cat: "Swap", msg: `${sub.exercise}: use ${sub.substitute} if ${sub.reason}.` }));
   watch.forEach(msg => cards.push({ icon: "👁️", cat: "Watch", msg }));
@@ -467,8 +476,9 @@ export function buildCoachPlan({ workout, history, checkIns = [], exConfig, sett
   };
 }
 
-export function suggestSubstitutions({ workout, history = [], exConfig = {}, readiness = DEFAULT_READINESS }) {
+export function suggestSubstitutions({ workout, history = [], exConfig = {}, readiness = DEFAULT_READINESS, settings = {} }) {
   const sore = readiness?.soreness === "sore";
+  const cautious = settings.cautiousJoints || [];
   return workout.exercises
     .map(ex => {
       const target = exConfig[ex.name]?.targetReps ?? ex.baseReps;
@@ -476,11 +486,12 @@ export function suggestSubstitutions({ workout, history = [], exConfig = {}, rea
       const swaps = SUBSTITUTIONS[ex.name] || [];
       const swap = swaps[0];
       if (!swap) return null;
-      if (sore || trend.status === "stalling") {
+      const joint = cautious.find(j => JOINT_AREAS[j]?.exercises.includes(ex.name));
+      if (sore || trend.status === "stalling" || joint) {
         return {
           exercise: ex.name,
           substitute: swap.name,
-          reason: sore ? swap.reason : "this movement has been stalling",
+          reason: joint ? JOINT_AREAS[joint].note : sore ? swap.reason : "this movement has been stalling",
           alternatives: swaps,
         };
       }
@@ -556,13 +567,18 @@ export function summarizeWorkout({ exercises, duration = 0, readiness, prs = [],
     const hardest = !acc.hardest || completion < acc.hardest.completion
       ? { name: ex.name, completion }
       : acc.hardest;
+    const bestSet = [...setLog].sort((a,b)=>((b.reps||0)*(b.weight||0))-((a.reps||0)*(a.weight||0)))[0];
+    const best = bestSet && (!acc.bestSet || (bestSet.reps||0)*(bestSet.weight||0) > (acc.bestSet.reps||0)*(acc.bestSet.weight||0))
+      ? { name: ex.name, reps: bestSet.reps || 0, weight: bestSet.weight || 0 }
+      : acc.bestSet;
     return {
       reps: acc.reps + reps,
       volume: acc.volume + volume,
       sets: acc.sets + setLog.length,
       hardest,
+      bestSet: best,
     };
-  }, { reps: 0, volume: 0, sets: 0, hardest: null });
+  }, { reps: 0, volume: 0, sets: 0, hardest: null, bestSet: null });
 
   const score = readinessScore(readiness);
   const coachNote = score <= -2
@@ -573,7 +589,13 @@ export function summarizeWorkout({ exercises, duration = 0, readiness, prs = [],
         ? "Strong session. The next plan can afford a small progression."
         : "Clean work. Keep stacking sessions and let the trend build.";
 
-  return { ...totals, duration, prs, coachNote, nextWorkout };
+  const nextChange = prs.length
+    ? "The next plan can afford a small progression where form stayed clean."
+    : totals.hardest?.completion < 0.9
+      ? `Next time, ${totals.hardest.name} should stay controlled before adding difficulty.`
+      : "Next time, repeat this quality and let the coach build volume gradually.";
+
+  return { ...totals, duration, prs, coachNote, nextWorkout, nextChange };
 }
 
 export function buildCoachMemory({ history = [], checkIns = [], exercises = [], exConfig = {} }) {

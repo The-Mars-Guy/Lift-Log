@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, evaluateProgression, exerciseFeedbackSignal, exerciseTrend, readinessScore, sciencePrescription, SUBSTITUTIONS, summarizeWorkout, tempoPrescription, variationPrescription } from "../src/coach.js";
+import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, evaluateProgression, exerciseFeedbackSignal, exerciseTrend, readinessScore, sciencePrescription, SUBSTITUTIONS, suggestSubstitutions, summarizeWorkout, tempoPrescription, variationPrescription } from "../src/coach.js";
 
 const exercise = { name: "Floor Press", sets: 3, baseReps: 10 };
 
@@ -141,6 +141,8 @@ test("summarizeWorkout totals logged work and creates a coach note", () => {
   assert.equal(summary.sets, 2);
   assert.equal(summary.reps, 19);
   assert.equal(summary.volume, 570);
+  assert.equal(summary.bestSet.name, "Floor Press");
+  assert.equal(summary.nextChange.length > 0, true);
   assert.ok(summary.coachNote.length > 0);
 });
 
@@ -224,4 +226,15 @@ test("substitution coverage includes every programmed movement", async () => {
   for (const name of allExercises) {
     assert.ok(SUBSTITUTIONS[name]?.length >= 2, `${name} needs same-area alternatives`);
   }
+});
+
+test("joint cautions bias same-area substitutions", () => {
+  const swaps = suggestSubstitutions({
+    workout: { exercises: [{ name: "Goblet Squat", sets: 3, baseReps: 10 }] },
+    settings: { cautiousJoints: ["knees"] },
+  });
+
+  assert.equal(swaps[0].exercise, "Goblet Squat");
+  assert.equal(swaps[0].substitute, "Box Goblet Squat");
+  assert.ok(swaps[0].reason.includes("Knee caution"));
 });

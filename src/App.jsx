@@ -240,6 +240,7 @@ export default function App() {
             completed={normalized.completed} setCompleted={setCompleted}
             progression={normalized.progression} setProgression={setProgression}
             settings={safeSettings}
+            setSettings={setSettings}
             exConfig={normalized.exConfig} setExConfig={setExConfig}
             xp={normalized.xp} addXp={addXp} level={level}
             checkIns={normalized.checkIns} setCheckIns={setCheckIns}
