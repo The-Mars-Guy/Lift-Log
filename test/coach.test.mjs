@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, evaluateProgression, exerciseFeedbackSignal, exerciseTrend, readinessScore, sciencePrescription, summarizeWorkout, tempoPrescription, variationPrescription } from "../src/coach.js";
+import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, evaluateProgression, exerciseFeedbackSignal, exerciseTrend, readinessScore, sciencePrescription, SUBSTITUTIONS, summarizeWorkout, tempoPrescription, variationPrescription } from "../src/coach.js";
 
 const exercise = { name: "Floor Press", sets: 3, baseReps: 10 };
 
@@ -216,4 +216,12 @@ test("buildWeeklyReview summarizes recent work", () => {
   assert.equal(review.sessions, 1);
   assert.equal(review.volume, 300);
   assert.equal(review.best.name, "Floor Press");
+});
+
+test("substitution coverage includes every programmed movement", async () => {
+  const { WORKOUTS } = await import("../src/data.js");
+  const allExercises = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises].map(ex => ex.name);
+  for (const name of allExercises) {
+    assert.ok(SUBSTITUTIONS[name]?.length >= 2, `${name} needs same-area alternatives`);
+  }
 });

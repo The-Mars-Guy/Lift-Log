@@ -56,10 +56,30 @@ export const TRAINING_GOALS = {
 };
 
 export const SUBSTITUTIONS = {
+  "Goblet Squat": [
+    { name: "Box Goblet Squat", reason: "same squat pattern with a controlled depth target for knees and hips" },
+    { name: "Glute Bridge", reason: "lower knee stress while still training glutes and legs" },
+    { name: "Reverse Lunge", reason: "single-leg lower-body work if squats feel awkward today" },
+  ],
+  "Floor Press": [
+    { name: "Push-Up", reason: "same chest and triceps pattern without dumbbells on the wrists" },
+    { name: "Close-Grip Floor Press", reason: "more triceps focus with a stable shoulder position" },
+    { name: "Dumbbell Squeeze Press", reason: "chest work with lighter joint stress and constant tension" },
+  ],
+  "Bent Over Row": [
+    { name: "One-Arm Dumbbell Row", reason: "same back muscles with more support for the lower back" },
+    { name: "Chest-Supported Row", reason: "upper-back work with less hip hinge fatigue" },
+    { name: "Suitcase Row", reason: "controlled pulling if both-dumbbell rows feel unstable" },
+  ],
   "Arnold Press": [
     { name: "Lateral Raise", reason: "shoulder-friendly pressing alternative" },
     { name: "Front Raise", reason: "lighter front-delt work with less overhead demand" },
     { name: "Seated Shoulder Press", reason: "more stable pressing if balance is the limiter" },
+  ],
+  "Hammer Curl": [
+    { name: "Alternating Hammer Curl", reason: "same biceps and forearms with less total fatigue per rep" },
+    { name: "Cross-Body Hammer Curl", reason: "same muscles with a comfortable shoulder position" },
+    { name: "Concentration Curl", reason: "stricter biceps work if swinging or elbow stress shows up" },
   ],
   "Reverse Lunge": [
     { name: "Glute Bridge", reason: "lower knee stress while keeping glutes working" },
@@ -80,6 +100,11 @@ export const SUBSTITUTIONS = {
     { name: "Close-Grip Floor Press", reason: "more stable triceps work" },
     { name: "Overhead Triceps Extension", reason: "long-head triceps focus" },
     { name: "Diamond Push-Up", reason: "bodyweight triceps option if dumbbells feel awkward" },
+  ],
+  "Calf Raise": [
+    { name: "Seated Calf Raise", reason: "same calves with less balance demand" },
+    { name: "Supported Calf Raise", reason: "same movement while holding a wall or chair for stability" },
+    { name: "Single-Leg Calf Raise", reason: "harder calf work with bodyweight if dumbbells feel awkward" },
   ],
 };
 
