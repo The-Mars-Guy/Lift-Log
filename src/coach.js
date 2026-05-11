@@ -83,6 +83,59 @@ export const SUBSTITUTIONS = {
   ],
 };
 
+export const VARIATION_LADDERS = {
+  "Goblet Squat": [
+    { level:1, name:"Goblet Squat", cue:"full range, controlled bottom" },
+    { level:2, name:"1.5-Rep Goblet Squat", cue:"go down, halfway up, down again, then stand" },
+    { level:3, name:"Bulgarian Split Squat", cue:"single-leg bias makes 15s feel heavy fast" },
+  ],
+  "Floor Press": [
+    { level:1, name:"Dumbbell Floor Press", cue:"pause each rep on the floor" },
+    { level:2, name:"Slow Eccentric Floor Press", cue:"3 seconds down, hard pause, drive up" },
+    { level:3, name:"Feet-Elevated Push-Up", cue:"use bodyweight if 15s are too easy" },
+  ],
+  "Bent Over Row": [
+    { level:1, name:"Bent Over Row", cue:"pull elbow toward back pocket" },
+    { level:2, name:"Paused Bent Over Row", cue:"hold 1 second at the top" },
+    { level:3, name:"Single-Arm Row", cue:"brace and use a longer range of motion" },
+  ],
+  "Arnold Press": [
+    { level:1, name:"Arnold Press", cue:"smooth rotation, no leg drive" },
+    { level:2, name:"Slow Arnold Press", cue:"3 seconds down with strict control" },
+    { level:3, name:"Lateral Raise", cue:"lighter-feeling load, harder side-delt leverage" },
+  ],
+  "Hammer Curl": [
+    { level:1, name:"Hammer Curl", cue:"neutral grip, elbows still" },
+    { level:2, name:"Slow Hammer Curl", cue:"3-4 seconds down every rep" },
+    { level:3, name:"Cross-Body Hammer Curl", cue:"squeeze hard and avoid swinging" },
+  ],
+  "Romanian Deadlift": [
+    { level:1, name:"Romanian Deadlift", cue:"hips back, soft knees" },
+    { level:2, name:"Paused Romanian Deadlift", cue:"pause in the stretched position" },
+    { level:3, name:"Single-Leg Romanian Deadlift", cue:"single-leg hinge for more challenge" },
+  ],
+  "Reverse Lunge": [
+    { level:1, name:"Reverse Lunge", cue:"front shin vertical" },
+    { level:2, name:"Slow Reverse Lunge", cue:"3 seconds down, light knee tap" },
+    { level:3, name:"Bulgarian Split Squat", cue:"harder range and single-leg load" },
+  ],
+  "Rear Delt Row": [
+    { level:1, name:"Rear Delt Row", cue:"elbows wide" },
+    { level:2, name:"Paused Rear Delt Row", cue:"hold the top position" },
+    { level:3, name:"Rear Delt Fly", cue:"longer lever for rear delts" },
+  ],
+  "Tricep Kickback": [
+    { level:1, name:"Tricep Kickback", cue:"upper arm fixed" },
+    { level:2, name:"Paused Kickback", cue:"squeeze 1 second at lockout" },
+    { level:3, name:"Close-Grip Push-Up", cue:"bodyweight triceps overload" },
+  ],
+  "Calf Raise": [
+    { level:1, name:"Calf Raise", cue:"full stretch and full lockout" },
+    { level:2, name:"Paused Calf Raise", cue:"2 seconds at the top and bottom" },
+    { level:3, name:"Single-Leg Calf Raise", cue:"one leg at a time" },
+  ],
+};
+
 export function readinessScore(readiness = DEFAULT_READINESS) {
   return (READINESS.energy[readiness.energy]?.score || 0)
     + (READINESS.soreness[readiness.soreness]?.score || 0)
@@ -158,10 +211,44 @@ export function behaviorMemory(checkIns = []) {
   return { restEvents: totalRest, restSkips: skips, restCompletes: completes, restSkipRate, avgRestSeconds: Math.round(avgRestSeconds || 0), skippedLogs, savedLogs, logSkipRate, notes };
 }
 
+export function repRangeFor({ goal = "general", fixedLoad = false, baseTarget = 10, score = 0 }) {
+  if (goal === "strength" && !fixedLoad) return { min:4, max:6 };
+  if (goal === "strength" && fixedLoad) return { min:6, max:10 };
+  if (goal === "fatigue_friendly") return { min:Math.max(6, baseTarget - 2), max:Math.max(10, baseTarget + 1) };
+  if (goal === "hypertrophy") return fixedLoad ? { min:12, max:20 } : { min:8, max:15 };
+  return score >= 1 ? { min:8, max:15 } : { min:10, max:15 };
+}
+
+export function tempoPrescription({ goal = "general", fixedLoad = false, feedbackStatus = "neutral", trendStatus = "new" }) {
+  if (feedbackStatus === "pain") return { code:"2-0-2", label:"smooth pain-free reps", note:"Move evenly and stop if discomfort returns." };
+  if (goal === "hypertrophy" && fixedLoad) {
+    if (feedbackStatus === "easy" || trendStatus === "ready") return { code:"4-1-1", label:"slow eccentric + pause", note:"Lower for 4 seconds, pause 1 second, then lift." };
+    return { code:"3-1-1", label:"controlled hypertrophy tempo", note:"Lower for 3 seconds, pause 1 second, then lift." };
+  }
+  if (goal === "strength") return { code:"2-1-X", label:"controlled down, fast up", note:"Control the lowering, pause, then drive up hard." };
+  return { code:"2-1-2", label:"clean control", note:"Control both directions and own the pause." };
+}
+
+export function variationPrescription({ exerciseName, fixedLoad = false, targetReps = 10, feedbackStatus = "neutral", trendStatus = "new" }) {
+  const ladder = VARIATION_LADDERS[exerciseName] || [];
+  if (!fixedLoad || !ladder.length || feedbackStatus === "pain") return null;
+  const level = (feedbackStatus === "easy" || trendStatus === "ready" || targetReps >= 18) ? 2 : 1;
+  const next = ladder.find(item => item.level === level) || ladder[0];
+  const future = ladder.find(item => item.level === level + 1);
+  return {
+    ...next,
+    next: future || null,
+    note: future && level > 1
+      ? `If you can hit the top of the range cleanly, progress toward ${future.name}.`
+      : `Use ${next.cue}; make 15lbs harder before adding more reps.`,
+  };
+}
+
 export function sciencePrescription({ exercise, history = [], checkIns = [], settings = {}, readiness = DEFAULT_READINESS, baseTarget = exercise.baseReps }) {
   const enabled = settings.scienceCoach === true;
   const goal = settings.trainingGoal || "general";
   const equipment = EQUIPMENT_PROFILES[settings.equipmentProfile || "fixed_dumbbells"] || EQUIPMENT_PROFILES.fixed_dumbbells;
+  const fixedLoad = !equipment.canLoad;
   const score = readinessScore(readiness);
   const exerciseName = exercise.configName || exercise.originalName || exercise.name;
   const est1RM = bestEstimated1RM(history, exerciseName);
@@ -174,6 +261,9 @@ export function sciencePrescription({ exercise, history = [], checkIns = [], set
   }
 
   const canLoad = equipment.canLoad && est1RM;
+  const repRange = repRangeFor({ goal, fixedLoad, baseTarget, score });
+  let tempo = null;
+  let variation = null;
   let targetReps = baseTarget;
   let sets = exercise.sets;
   let pct = null;
@@ -240,9 +330,15 @@ export function sciencePrescription({ exercise, history = [], checkIns = [], set
     targetReps = Math.max(3, targetReps - 1);
     note += " Rest skips are frequent, so intensity is kept slightly conservative.";
   }
+  tempo = tempoPrescription({ goal, fixedLoad, feedbackStatus:feedback.status, trendStatus:trend.status });
+  variation = variationPrescription({ exerciseName, fixedLoad, targetReps, feedbackStatus:feedback.status, trendStatus:trend.status });
+  if (fixedLoad && goal === "hypertrophy") {
+    const top = repRange.max;
+    note += ` Work in the ${repRange.min}-${top} rep range; when all sets reach the top cleanly, progress tempo or variation.`;
+  }
 
   const suggestedWeight = pct && est1RM ? Math.max(2.5, Math.round((est1RM * pct) * 2) / 2) : null;
-  return { enabled:true, targetReps, sets, est1RM, suggestedWeight, label, note, percent:pct, trend, feedback, load, behavior };
+  return { enabled:true, targetReps, repRange, tempo, variation, sets, est1RM, suggestedWeight, label, note, percent:pct, trend, feedback, load, behavior };
 }
 
 function lastExerciseSessions(history, exerciseName, count = 3) {

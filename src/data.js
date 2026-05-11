@@ -49,9 +49,9 @@ export const DEFAULT_SETTINGS = {
   showReadiness: true,
   fullscreenRest: true,
   visualTheme: "pop_light",
-  scienceCoach: false,
+  scienceCoach: true,
   equipmentProfile: "fixed_dumbbells",
-  trainingGoal: "general",
+  trainingGoal: "hypertrophy",
 };
 
 // Default starting weights per exercise (lbs, per dumbbell)

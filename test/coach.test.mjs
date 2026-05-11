@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, evaluateProgression, exerciseFeedbackSignal, exerciseTrend, readinessScore, sciencePrescription, summarizeWorkout } from "../src/coach.js";
+import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, evaluateProgression, exerciseFeedbackSignal, exerciseTrend, readinessScore, sciencePrescription, summarizeWorkout, tempoPrescription, variationPrescription } from "../src/coach.js";
 
 const exercise = { name: "Floor Press", sets: 3, baseReps: 10 };
 
@@ -74,8 +74,20 @@ test("sciencePrescription uses reps and sets when fixed weights limit loading", 
 
   assert.equal(prescription.label, "Volume");
   assert.equal(prescription.targetReps, 12);
+  assert.deepEqual(prescription.repRange, { min: 12, max: 20 });
+  assert.equal(prescription.tempo.code, "3-1-1");
+  assert.equal(prescription.variation.name, "Dumbbell Floor Press");
   assert.equal(prescription.sets, 4);
   assert.equal(prescription.suggestedWeight, null);
+});
+
+test("tempo and variation progress fixed dumbbells before chasing load", () => {
+  const tempo = tempoPrescription({ goal: "hypertrophy", fixedLoad: true, feedbackStatus: "easy", trendStatus: "ready" });
+  const variation = variationPrescription({ exerciseName: "Floor Press", fixedLoad: true, targetReps: 20, feedbackStatus: "easy", trendStatus: "ready" });
+
+  assert.equal(tempo.code, "4-1-1");
+  assert.equal(variation.name, "Slow Eccentric Floor Press");
+  assert.equal(variation.next.name, "Feet-Elevated Push-Up");
 });
 
 test("sciencePrescription reacts to pain and hard feedback", () => {

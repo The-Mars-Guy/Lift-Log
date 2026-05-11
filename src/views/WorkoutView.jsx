@@ -496,7 +496,7 @@ function TodayPlan({ plan, readiness, accent, substitutions, onApplySubstitution
 
 function FocusWorkoutMode({
   workout, accent, activeTab, doneSets, totalSets, setDone, sessionLogs, logKey,
-  getTargetReps, getSetCount, getWeight, toggleSet, onExit, onFinish, allDone, isCompleted,
+  getTargetReps, getSetCount, getWeight, getScience, toggleSet, onExit, onFinish, allDone, isCompleted,
 }) {
   const next = (() => {
     for (let i=0;i<workout.exercises.length;i++) {
@@ -508,6 +508,8 @@ function FocusWorkoutMode({
     return { ex:workout.exercises[workout.exercises.length-1], exIdx:workout.exercises.length-1, setIdx:workout.exercises[workout.exercises.length-1].sets-1 };
   })();
   const target = getTargetReps(next.ex);
+  const science = getScience(next.ex);
+  const repText = science.enabled && science.repRange ? `${science.repRange.min}-${science.repRange.max}` : `x${target}`;
   const weight = getWeight(next.ex);
   const plannedSets = getSetCount(next.ex);
   const currentDone = Array.from({length:plannedSets},(_,j)=>setDone(next.exIdx,j)).filter(Boolean).length;
@@ -526,7 +528,7 @@ function FocusWorkoutMode({
         <div style={{fontSize:11,color:accent,letterSpacing:".16em",textTransform:"uppercase",marginBottom:6}}>Focus Mode</div>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:38,color:"#f5f5f5",letterSpacing:".06em",lineHeight:.92,marginBottom:5}}>{next.ex.name}</div>
         <div style={{fontSize:13,color:"#aaa",lineHeight:1.35,marginBottom:8}}>
-          Set {Math.min(currentDone+1,plannedSets)} of {plannedSets} · {weight}lbs · target ×{target}{next.ex.repSuffix||""}
+          Set {Math.min(currentDone+1,plannedSets)} of {plannedSets} · {weight}lbs · target {repText}{next.ex.repSuffix||""}
         </div>
 
         <ExerciseAnimation folder={next.ex.folder} video={next.ex.video} accent={accent} compact bare/>
@@ -547,6 +549,11 @@ function FocusWorkoutMode({
         <div style={{marginTop:10,padding:"10px 12px",background:"#0d0d0d",border:"1px solid #202020",borderRadius:11}}>
           <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:4}}>Cue</div>
           <div style={{fontSize:13,color:"#ddd",lineHeight:1.38}}>{next.ex.tip}</div>
+          {science.enabled&&science.tempo&&(
+            <div style={{fontSize:12,color:accent,lineHeight:1.4,marginTop:7}}>
+              Tempo {science.tempo.code}: {science.tempo.label}
+            </div>
+          )}
         </div>
 
         <div style={{height:6,background:"#181818",borderRadius:5,overflow:"hidden",marginTop:12}}>
@@ -1152,9 +1159,10 @@ export default function WorkoutView({
                     <span style={{fontSize:11,color:open?accent:"#888",transform:open?"rotate(180deg)":"none",transition:"all .2s",display:"inline-block"}}>▼</span>
                   </div>
                   <div style={{fontSize:14,color:"#bbb",marginTop:5,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                    <span>{getSetCount(ex)} × ×{reps}{ex.repSuffix||""}</span>
+                    <span>{getSetCount(ex)} × {science.enabled&&science.repRange ? `${science.repRange.min}-${science.repRange.max}` : `×${reps}`}{ex.repSuffix||""}</span>
                     <span style={{color:"#666"}}>@ {curW}lbs</span>
                     {science.enabled&&<span style={{color:"#a78bfa",fontSize:12,padding:"2px 7px",borderRadius:5,background:"#a78bfa18",fontWeight:500}}>{science.label}</span>}
+                    {science.tempo&&<span style={{color:"#a78bfa",fontSize:12,padding:"2px 7px",borderRadius:5,background:"#a78bfa18",fontWeight:500}}>tempo {science.tempo.code}</span>}
                     {hasNxtW&&<span style={{color:accent,fontSize:12,padding:"2px 7px",borderRadius:5,background:`${accent}18`,fontWeight:500}}>next: {nextW}lbs</span>}
                     {maxTest&&<span style={{color:"#888",fontSize:11}}>max: {maxTest}</span>}
                   </div>
@@ -1201,9 +1209,13 @@ export default function WorkoutView({
                       <SLabel small>Science Coach</SLabel>
                       <div style={{fontSize:14,color:"#ddd",marginTop:5,lineHeight:1.55}}>{science.note}</div>
                       <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:9}}>
+                        {science.repRange&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",border:"1px solid #a78bfa44",borderRadius:7,padding:"6px 8px"}}>{science.repRange.min}-{science.repRange.max} reps</span>}
+                        {science.tempo&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",border:"1px solid #a78bfa44",borderRadius:7,padding:"6px 8px"}}>tempo {science.tempo.code}</span>}
                         {science.est1RM&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",border:"1px solid #a78bfa44",borderRadius:7,padding:"6px 8px"}}>est. 1RM {science.est1RM}lbs</span>}
                         {science.percent&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",border:"1px solid #a78bfa44",borderRadius:7,padding:"6px 8px"}}>{Math.round(science.percent*100)}% target</span>}
                       </div>
+                      {science.tempo&&<div style={{fontSize:13,color:"#aaa",lineHeight:1.45,marginTop:9}}>{science.tempo.note}</div>}
+                      {science.variation&&<div style={{fontSize:13,color:"#aaa",lineHeight:1.45,marginTop:7}}>Variation: <span style={{color:"#d8b4fe"}}>{science.variation.name}</span>. {science.variation.note}</div>}
                     </div>
                   )}
 
@@ -1306,6 +1318,7 @@ export default function WorkoutView({
           doneSets={doneSets} totalSets={totalSets} setDone={setDone}
           sessionLogs={sessionLogs} logKey={logKey}
           getTargetReps={getTargetReps} getSetCount={getSetCount} getWeight={getWeight}
+          getScience={getScience}
           toggleSet={toggleSet} onExit={()=>setFocusMode(false)}
           onFinish={finishWorkout} allDone={allDone} isCompleted={isCompleted}
         />
