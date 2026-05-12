@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, evaluateProgression, exerciseFeedbackSignal, exerciseTrend, readinessScore, sciencePrescription, SUBSTITUTIONS, suggestSubstitutions, summarizeWorkout, tempoPrescription, variationPrescription, weeklyMuscleCoverage } from "../src/coach.js";
+import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, computePersonalRecords, detectWeakPoints, evaluateProgression, exerciseFeedbackSignal, exerciseTrend, plateauFixes, readinessScore, recommendDeload, sciencePrescription, SUBSTITUTIONS, suggestSubstitutions, summarizeWorkout, tempoPrescription, variationPrescription, weeklyMuscleCoverage } from "../src/coach.js";
 
 const exercise = { name: "Floor Press", sets: 3, baseReps: 10 };
 
@@ -236,6 +236,58 @@ test("weeklyMuscleCoverage reports planned and completed muscle work", () => {
   assert.equal(coverage.chest.done, 1);
   assert.equal(coverage.triceps.planned, 0.5);
   assert.equal(coverage.triceps.done, 0.5);
+});
+
+test("detectWeakPoints reports low coverage", () => {
+  const weak = detectWeakPoints({
+    history: [],
+    exercises: [{ name: "Crunch", baseReps: 12, primary: ["core"], secondary: [] }],
+    exConfig: {},
+  });
+
+  assert.equal(weak[0].type, "coverage");
+  assert.equal(weak[0].muscle, "core");
+});
+
+test("plateauFixes gives actionable fixes for stalling lifts", () => {
+  const fixes = plateauFixes({
+    exercise,
+    targetReps: 10,
+    history: [
+      { timestamp: 2, exercises: [{ name: "Floor Press", sets: 3, setLog: [{ reps: 10 }, { reps: 6 }, { reps: 5 }] }] },
+      { timestamp: 1, exercises: [{ name: "Floor Press", sets: 3, setLog: [{ reps: 9 }, { reps: 7 }, { reps: 6 }] }] },
+    ],
+  });
+
+  assert.ok(fixes.length >= 2);
+  assert.ok(fixes.some(fix => fix.includes("rest") || fix.includes("load")));
+});
+
+test("recommendDeload reacts to repeated hard or painful workouts", () => {
+  const deload = recommendDeload({
+    checkIns: [
+      { kind: "workout_feedback", feeling: "hard", timestamp: 2 },
+      { kind: "workout_feedback", feeling: "pain", timestamp: 1 },
+    ],
+  });
+
+  assert.equal(deload.recommended, true);
+});
+
+test("computePersonalRecords finds exercise and session records", () => {
+  const records = computePersonalRecords({
+    history: [{
+      date: "May 12",
+      workout: "A",
+      duration: 600,
+      exercises: [{ name: "Floor Press", setLog: [{ weight: 15, reps: 10 }, { weight: 20, reps: 8 }] }],
+    }],
+  });
+
+  assert.equal(records.exerciseRecords["Floor Press"].maxWeight.value, 20);
+  assert.equal(records.exerciseRecords["Floor Press"].maxReps.value, 10);
+  assert.equal(records.bestSessionVolume.value, 620);
+  assert.equal(records.fastestSession.value, 600);
 });
 
 test("substitution coverage includes every programmed movement", async () => {

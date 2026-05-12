@@ -135,6 +135,7 @@ export default function SettingsView({
         <Toggle label="Auto Deload" desc="Reduce load after repeated big misses" help="If the same exercise misses badly twice, the coach lowers the next load and rebuilds clean reps." value={settings.autoDeload !== false} onChange={v => update("autoDeload", v)} accent={accent} ui={ui} />
         <Toggle label="Readiness Check-In" desc="Ask energy, soreness, and time before workouts" help="The coach uses this to trim sets on rough days, push when you are fresh, and suggest swaps when soreness is high." value={settings.showReadiness !== false} onChange={v => update("showReadiness", v)} accent={accent} ui={ui} />
         <Toggle label="Fullscreen Rest Timer" desc="Use the focused rest screen between sets" value={settings.fullscreenRest !== false} onChange={v => update("fullscreenRest", v)} accent={accent} ui={ui} />
+        <Toggle label="Beginner Form Mode" desc="Larger cues and less noise during focus mode" help="Best when you want one clear instruction at a time instead of more advanced coaching detail." value={settings.beginnerFormMode === true} onChange={v => update("beginnerFormMode", v)} accent={accent} ui={ui} />
         <Action label="Edit Benchmark Test" desc="Update the initial max-rep numbers the coach uses for targets" onClick={editBenchmarkTest} ui={ui} />
         <Row label="Joint Caution" desc="Coach biases swaps around selected joints" help="Use this for recurring caution areas. During workouts, pain feedback still matters most." ui={ui}>
           <MultiSelect

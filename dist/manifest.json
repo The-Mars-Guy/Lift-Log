@@ -1,10 +1,12 @@
 {
   "name": "Lift Log",
   "short_name": "Lift Log",
+  "id": "/Lift-Log/",
   "description": "Minimal dumbbell workout tracker with auto-progression",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
   "background_color": "#f8fffb",
   "theme_color": "#f8fffb",
   "orientation": "portrait",

@@ -55,6 +55,7 @@ export const DEFAULT_SETTINGS = {
   trainingGoal: "hypertrophy",
   onboardingDone: false,
   cautiousJoints: [],
+  beginnerFormMode: false,
 };
 
 // Default starting weights per exercise (lbs, per dumbbell)
