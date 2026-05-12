@@ -5,10 +5,14 @@ export function useLocalStorage(key, initial) {
     try {
       const v = localStorage.getItem(key);
       return v ? JSON.parse(v) : initial;
-    } catch { return initial; }
+    } catch (err) {
+      console.warn(`useLocalStorage: failed to read "${key}"`, err);
+      return initial;
+    }
   });
   useEffect(() => {
-    try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+    try { localStorage.setItem(key, JSON.stringify(value)); }
+    catch (err) { console.warn(`useLocalStorage: failed to write "${key}"`, err); }
   }, [key, value]);
   return [value, setValue];
 }
