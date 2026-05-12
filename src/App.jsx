@@ -37,10 +37,13 @@ export default function App() {
   const playSound = makePlay(safeSettings);
   const vibrate   = (p) => vib(safeSettings, p);
 
-  // Migrate settings
+  // Migrate settings — merge in any missing defaults on first mount.
   useEffect(() => {
     const merged = { ...DEFAULT_SETTINGS, ...normalized.settings };
-    if (JSON.stringify(merged) !== JSON.stringify(settings)) setSettings(merged);
+    const keys = new Set([...Object.keys(merged), ...Object.keys(settings || {})]);
+    for (const k of keys) {
+      if (merged[k] !== (settings || {})[k]) { setSettings(merged); break; }
+    }
   }, []); // eslint-disable-line
 
   // Normalize older or malformed localStorage data.
@@ -113,7 +116,8 @@ export default function App() {
       };
       localStorage.setItem("wt_last_backup", JSON.stringify(backup));
       return true;
-    } catch {
+    } catch (err) {
+      console.warn("createBackupSnapshot failed", err);
       return false;
     }
   };
@@ -163,7 +167,8 @@ export default function App() {
       }
       window.location.reload();
       return true;
-    } catch {
+    } catch (err) {
+      console.warn("refreshAppCache failed", err);
       return false;
     }
   };
@@ -194,7 +199,8 @@ export default function App() {
       setCheckIns(data.checkIns);
       setAssessmentDone(data.assessmentDone);
       return true;
-    } catch {
+    } catch (err) {
+      console.warn("importData failed", err);
       return false;
     }
   };
@@ -212,7 +218,8 @@ export default function App() {
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
       return true;
-    } catch {
+    } catch (err) {
+      console.warn("exportLastBackup failed", err);
       return false;
     }
   };

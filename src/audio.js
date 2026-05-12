@@ -5,7 +5,10 @@ function getCtx() {
   if (!ctx) {
     try {
       ctx = new (window.AudioContext || window.webkitAudioContext)();
-    } catch { return null; }
+    } catch (err) {
+      console.warn("AudioContext unavailable", err);
+      return null;
+    }
   }
   if (ctx.state === "suspended") ctx.resume();
   return ctx;
@@ -65,5 +68,6 @@ export function makePlay(settings) {
 
 export function vibrate(settings, pattern) {
   if (!settings.vibrationEnabled) return;
-  try { navigator.vibrate?.(pattern); } catch {}
+  try { navigator.vibrate?.(pattern); }
+  catch (err) { console.warn("vibrate failed", err); }
 }

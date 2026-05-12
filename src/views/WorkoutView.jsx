@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   WORKOUTS, SCHEDULE, DAYS, MUSCLE_LABELS, DEFAULT_WEIGHTS,
   todayName, dateStr, calcDynamicTarget, assessmentTarget,
@@ -10,223 +10,9 @@ import MuscleDiagram from "../components/MuscleDiagram.jsx";
 import { completionKey, defaultWorkoutDay, scheduledDate, logKey as makeLogKey } from "../session.js";
 import { buildCoachMemory, buildCoachPlan, coachSetCount, coachTargetReps, DEFAULT_READINESS, evaluateProgression, readinessLabel, sciencePrescription, summarizeWorkout } from "../coach.js";
 import { Confetti, XpFloat } from "./workout/Effects.jsx";
-
-// ── INITIAL ASSESSMENT FLOW ───────────────────────────────────────────────────
-const ALL_EXERCISES = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
-
-function FirstRunSetup({ settings, setSettings, accent }) {
-  const [goal, setGoal] = useState(settings.trainingGoal || "hypertrophy");
-  const [joints, setJoints] = useState(settings.cautiousJoints || []);
-  const toggleJoint = (key) => setJoints(p => p.includes(key) ? p.filter(x => x !== key) : [...p, key]);
-  const finish = () => setSettings(s => ({
-    ...s,
-    scienceCoach: true,
-    trainingGoal: goal,
-    equipmentProfile: "fixed_dumbbells",
-    coachStyle: "balanced",
-    autoDeload: true,
-    showReadiness: true,
-    cautiousJoints: joints,
-    onboardingDone: true,
-  }));
-
-  return (
-    <div style={{minHeight:"100vh",padding:"44px 20px",background:"linear-gradient(180deg,#f8fffb,#eef7ff)",color:"#172033"}}>
-      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:50,letterSpacing:".05em",lineHeight:.9,color:"#123047",marginBottom:12}}>SET UP<br/>YOUR COACH</div>
-      <div style={{fontSize:15,color:"#435166",lineHeight:1.6,marginBottom:22}}>Built around two 15lb dumbbells, clean reps, and steady muscle gain.</div>
-      <div style={{display:"grid",gap:12}}>
-        <SetupBlock title="Goal">
-          {[["hypertrophy","Build muscle"],["general","General fitness"],["fatigue_friendly","Easy recovery bias"]].map(([key,label])=>(
-            <button key={key} onClick={()=>setGoal(key)} style={{padding:"13px 12px",borderRadius:11,border:`1.5px solid ${goal===key?accent:"#d7e3ef"}`,background:goal===key?`${accent}22`:"#fff",color:"#172033",fontWeight:700,textAlign:"left"}}>{label}</button>
-          ))}
-        </SetupBlock>
-        <SetupBlock title="Joints to protect">
-          {["knees","shoulders","wrists","back"].map(key=>(
-            <button key={key} onClick={()=>toggleJoint(key)} style={{padding:"12px",borderRadius:11,border:`1.5px solid ${joints.includes(key)?accent:"#d7e3ef"}`,background:joints.includes(key)?`${accent}22`:"#fff",color:"#172033",textTransform:"capitalize",fontWeight:700}}>{key}</button>
-          ))}
-        </SetupBlock>
-      </div>
-      <button onClick={finish} style={{width:"100%",marginTop:24,padding:"20px",border:"none",borderRadius:15,background:accent,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:27,letterSpacing:".12em",boxShadow:`0 16px 42px ${accent}55`}}>SAVE SETUP</button>
-    </div>
-  );
-}
-
-function SetupBlock({ title, children }) {
-  return (
-    <div style={{padding:15,background:"rgba(255,255,255,.82)",border:"1px solid rgba(112,132,160,.25)",borderRadius:14}}>
-      <div style={{fontSize:11,color:"#25536f",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,marginBottom:10}}>{title}</div>
-      <div style={{display:"grid",gap:8}}>{children}</div>
-    </div>
-  );
-}
-
-function AssessmentFlow({ onComplete, accent, theme="dark", initialResults=null, editing=false, onCancel }) {
-  const [step, setStep] = useState(-1);
-  const [results, setResults] = useState(initialResults || {});
-  const [count, setCount] = useState(10);
-
-  const total = ALL_EXERCISES.length;
-  const light = theme === "pop_light";
-  const ui = {
-    page: light ? "linear-gradient(180deg,#f8fffb 0%,#eef7ff 58%,#ffffff 100%)" : "#050505",
-    card: light ? "rgba(255,255,255,.88)" : "#0d0d0d",
-    control: light ? "#f3f8fd" : "#141414",
-    border: light ? "rgba(103,122,150,.32)" : "#1c1c1c",
-    text: light ? "#172033" : "#f0f0f0",
-    title: light ? "#123047" : "#fafafa",
-    soft: light ? "#435166" : "#ccc",
-    muted: light ? "#6b788c" : "#888",
-    rail: light ? "#d8e4ef" : "#1a1a1a",
-    shadow: light ? `0 14px 34px ${accent}16` : "none",
-  };
-
-  useEffect(() => {
-    if (step < 0 || step >= total) return;
-    const ex = ALL_EXERCISES[step];
-    setCount(results[ex.name] || 10);
-  }, [step, total]); // eslint-disable-line
-
-  // ── INTRO ──
-  if (step === -1) return (
-    <div style={{minHeight:"100vh",overflowY:"auto",padding:"40px 20px 40px",background:ui.page,color:ui.text}}>
-      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(44px, 14vw, 54px)",color:accent,letterSpacing:".04em",lineHeight:.9,marginBottom:20,filter:`drop-shadow(0 0 20px ${accent}55)`}}>
-        {editing ? "EDIT" : "STRENGTH"}<br/>{editing ? "BENCHMARK" : "ASSESSMENT"}
-      </div>
-      <div style={{fontSize:16,color:ui.soft,lineHeight:1.65,marginBottom:28}}>
-        {editing
-          ? "Update your clean max reps if the original test was off, skipped, or no longer matches your current ability."
-          : "Before your first workout, set a safe starting point. Stop any test if form breaks or something hurts."}
-      </div>
-      <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:36}}>
-        {[
-          {n:"01", t:"Do each exercise", d:"As many clean reps as you can. Stop before ugly reps."},
-          {n:"02", t:"Log your count",   d:"Tap + until you hit your number, or skip a movement."},
-          {n:"03", t:"We do the math",   d:"Targets start conservative and adapt as you train."},
-        ].map(s=>(
-          <div key={s.n} style={{display:"flex",gap:14,padding:"16px",background:ui.card,borderRadius:13,border:`1px solid ${ui.border}`,alignItems:"flex-start",boxShadow:ui.shadow}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:accent,opacity:.6,flexShrink:0,lineHeight:1,marginTop:2}}>{s.n}</div>
-            <div>
-              <div style={{fontSize:15,color:ui.text,fontWeight:500,marginBottom:3}}>{s.t}</div>
-              <div style={{fontSize:13,color:ui.muted,lineHeight:1.55}}>{s.d}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{fontSize:13,color:ui.muted,marginBottom:20,textAlign:"center"}}>{editing ? "Current numbers are prefilled" : "Takes about 5-10 minutes · done only once"}</div>
-        <button onClick={()=>setStep(0)}
-        style={{width:"100%",padding:"22px",background:accent,border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#050505",letterSpacing:".1em",boxShadow:`0 0 50px ${accent}66`}}>
-        {editing ? "EDIT BENCHMARKS" : "BEGIN ASSESSMENT"}
-      </button>
-      <button onClick={()=>editing ? onCancel?.() : onComplete(null)}
-        style={{width:"100%",marginTop:12,padding:"16px",background:light ? "rgba(255,255,255,.58)" : "transparent",border:`1px solid ${light ? "rgba(103,122,150,.32)" : "#2a2a2a"}`,borderRadius:12,fontSize:13,color:ui.soft,letterSpacing:".08em"}}>
-        {editing ? "CANCEL" : "USE DEFAULTS FOR NOW"}
-      </button>
-    </div>
-  );
-
-  // ── SUMMARY ──
-  if (step >= total) {
-    const targets = Object.entries(results).map(([name, max]) => ({ name, max, target: assessmentTarget(max) }));
-    return (
-      <div style={{minHeight:"100vh",overflowY:"auto",padding:"44px 24px 40px",background:ui.page,color:ui.text}}>
-        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:44,color:"#4ade80",letterSpacing:".06em",lineHeight:.9,marginBottom:12}}>
-          ASSESSMENT<br/>COMPLETE ✓
-        </div>
-        <div style={{fontSize:14,color:ui.soft,marginBottom:24,lineHeight:1.55}}>Your personalized starting targets. They'll adjust each week based on how each session feels.</div>
-        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:28}}>
-          {targets.map(t=>(
-            <div key={t.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 18px",background:ui.card,borderRadius:11,border:`1px solid ${ui.border}`,boxShadow:ui.shadow}}>
-              <div>
-                <div style={{fontSize:15,color:ui.text,fontWeight:500}}>{t.name}</div>
-                <div style={{fontSize:12,color:ui.muted,marginTop:2}}>Max: {t.max} reps</div>
-              </div>
-              <div style={{textAlign:"right"}}>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#4ade80",letterSpacing:".04em"}}>×{t.target}</div>
-                <div style={{fontSize:11,color:ui.muted}}>starting target</div>
-              </div>
-            </div>
-          ))}
-        </div>
-        <button onClick={()=>onComplete(results)}
-          style={{width:"100%",padding:"22px",background:"#4ade80",border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#050505",letterSpacing:".1em",boxShadow:"0 0 50px #4ade8066"}}>
-          {editing ? "SAVE BENCHMARKS →" : "START TRAINING →"}
-        </button>
-      </div>
-    );
-  }
-
-  // ── PER-EXERCISE ──
-  const ex = ALL_EXERCISES[step];
-  const exColor = WORKOUTS.A.exercises.some(e=>e.name===ex.name) ? WORKOUTS.A.color : WORKOUTS.B.color;
-
-  return (
-    <div style={{minHeight:"100vh",overflowY:"auto",padding:"32px 20px 40px",background:ui.page,color:ui.text}}>
-      {/* Progress */}
-      <div style={{marginBottom:22}}>
-        <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:ui.muted,marginBottom:7,letterSpacing:".1em",textTransform:"uppercase"}}>
-          <span>Exercise {step+1} of {total}</span>
-          <span style={{color:exColor}}>{ex.name}</span>
-        </div>
-        <div style={{height:5,background:ui.rail,borderRadius:3,overflow:"hidden"}}>
-          <div style={{height:"100%",width:`${(step/total)*100}%`,background:exColor,transition:"width .4s",boxShadow:`0 0 8px ${exColor}`}}/>
-        </div>
-      </div>
-
-      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:36,color:ui.title,letterSpacing:".06em",lineHeight:.95,marginBottom:5}}>{ex.name}</div>
-      <div style={{fontSize:14,color:ui.muted,marginBottom:16,lineHeight:1.45}}>→ {ex.tip}</div>
-
-      {/* Animation */}
-      <div style={{marginBottom:16}}>
-        <ExerciseAnimation folder={ex.folder} accent={exColor}/>
-      </div>
-
-      {/* Instruction */}
-      <div style={{padding:"14px 18px",background:ui.card,borderRadius:12,border:`1.5px solid ${exColor}44`,marginBottom:24,boxShadow:ui.shadow}}>
-        <div style={{fontSize:14,color:ui.soft,lineHeight:1.55}}>
-          Do as many clean <strong style={{color:exColor}}>{ex.name}</strong> reps as you can. Stop if form breaks, if pain appears, or if the movement feels unsafe today.
-        </div>
-      </div>
-
-      {/* Counter */}
-      <div style={{marginBottom:10}}>
-        <div style={{fontSize:12,color:ui.soft,letterSpacing:".14em",textTransform:"uppercase",textAlign:"center",marginBottom:12}}>How many did you do?</div>
-        <div style={{display:"flex",alignItems:"center",background:ui.control,borderRadius:16,border:`2px solid ${exColor}55`,overflow:"hidden",boxShadow:ui.shadow}}>
-          <button onClick={()=>setCount(c=>Math.max(1,c-1))}
-            style={{width:72,height:76,background:"transparent",border:"none",color:ui.soft,fontSize:34,fontWeight:300}}>−</button>
-          <div style={{flex:1,textAlign:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:56,color:ui.title,letterSpacing:".04em"}}>{count}</div>
-          <button onClick={()=>setCount(c=>c+1)}
-            style={{width:72,height:76,background:"transparent",border:"none",color:ui.soft,fontSize:34,fontWeight:300}}>+</button>
-        </div>
-        <div style={{fontSize:13,color:ui.muted,letterSpacing:".06em",textAlign:"center",marginTop:10}}>
-          Starting target → <strong style={{color:exColor}}>×{assessmentTarget(count)}</strong> per set
-        </div>
-      </div>
-
-      <button onClick={()=>{
-        setResults(r=>({...r,[ex.name]:count}));
-        setStep(s=>s+1);
-      }}
-        style={{width:"100%",padding:"20px",background:exColor,border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#050505",letterSpacing:".1em",marginTop:16,boxShadow:`0 0 40px ${exColor}66`}}>
-        {step < total-1 ? "NEXT EXERCISE →" : "SEE MY RESULTS →"}
-      </button>
-      <button onClick={()=>{
-        setResults(r=>{const n={...r};delete n[ex.name];return n;});
-        setStep(s=>s+1);
-      }}
-        style={{width:"100%",padding:"14px",background:light ? "rgba(255,255,255,.58)" : "transparent",border:`1px solid ${light ? "rgba(103,122,150,.32)" : "#2a2a2a"}`,borderRadius:12,fontSize:13,color:ui.muted,letterSpacing:".08em",marginTop:10}}>
-        SKIP THIS EXERCISE
-      </button>
-    </div>
-  );
-}
-
-// ── POST-WORKOUT FEEDBACK ─────────────────────────────────────────────────────
-const FEEDBACK_OPTIONS = [
-  { key:"easy",     label:"Easy",      emoji:"😴", desc:"+2 reps next session" },
-  { key:"good",     label:"Good",      emoji:"👍", desc:"+1 rep next session"  },
-  { key:"hard",     label:"Hard",      emoji:"💪", desc:"Keep same target"     },
-  { key:"pain",     label:"Pain",      emoji:"🛑", desc:"Lower target + bias swaps"  },
-];
+import { FirstRunSetup, AssessmentFlow } from "./workout/Assessment.jsx";
+import PostWorkoutFeedback from "./workout/PostWorkoutFeedback.jsx";
+import { buildSuggestions, CoachDrawer, CoachFab, CoachCard } from "./workout/Coach.jsx";
 
 const SET_FEELINGS = [
   { key:"easy", label:"EASY" },
@@ -234,208 +20,6 @@ const SET_FEELINGS = [
   { key:"hard", label:"HARD" },
   { key:"pain", label:"PAIN" },
 ];
-
-function PostWorkoutFeedback({ exercises, sessionLogs, getLogKey, exConfig, history, onComplete, accent }) {
-  const [step, setStep] = useState(0);
-  const [feedback, setFeedback] = useState({});
-
-  const submitFeedback = (key) => {
-    const newFb = { ...feedback, [exercises[step].name]: key };
-    setFeedback(newFb);
-    if (step >= exercises.length - 1) {
-      onComplete(newFb);
-    } else {
-      setStep(s=>s+1);
-    }
-  };
-
-  const ex = exercises[step];
-  const logs = Array.from({length:ex.sets},(_,j)=>sessionLogs[getLogKey(step,j)]).filter(Boolean);
-  const totalReps = logs.reduce((s,l)=>s+(l.reps||0),0);
-  const exColor = WORKOUTS.A.exercises.some(e=>e.name===ex.name) ? WORKOUTS.A.color : WORKOUTS.B.color;
-  const histData = getExerciseHistory(ex.configName || ex.originalName || ex.name, history);
-
-  return (
-    <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,.92)",display:"flex",alignItems:"flex-end"}}>
-      <div className="mobile-shell" style={{background:"#0a0a0a",borderTop:`2px solid ${accent}`,borderRadius:"18px 18px 0 0",padding:"24px 20px 36px",animation:"slideUp .3s ease-out"}}>
-        {/* Progress dots */}
-        <div style={{display:"flex",gap:5,justifyContent:"center",marginBottom:20}}>
-          {exercises.map((_,i)=>(
-            <div key={i} style={{width:i===step?20:7,height:7,borderRadius:4,background:i<step?"#4ade8088":i===step?accent:"#222",transition:"all .25s"}}/>
-          ))}
-        </div>
-
-        <div style={{fontSize:12,color:"#888",letterSpacing:".14em",textTransform:"uppercase",marginBottom:5}}>How did it feel?</div>
-        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:"#fafafa",letterSpacing:".06em",marginBottom:4}}>{ex.name}</div>
-
-        {logs.length > 0 && (
-          <div style={{fontSize:14,color:exColor,marginBottom:16}}>
-            {ex.sets} sets · <strong>{totalReps} total reps today</strong>
-            {logs[0]?.weight != null && <span style={{color:"#888"}}> @ {logs[0].weight > 0 ? `${logs[0].weight}lbs` : "bodyweight"}</span>}
-          </div>
-        )}
-
-        {/* Mini graph for context */}
-        {histData.length>=2&&(
-          <div style={{padding:"12px 14px",background:"#111",borderRadius:10,border:`1px solid ${exColor}22`,marginBottom:18}}>
-            <div style={{fontSize:11,color:"#888",letterSpacing:".12em",marginBottom:6}}>YOUR PROGRESS</div>
-            <MiniGraph data={histData} color={exColor} height={72}/>
-          </div>
-        )}
-
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          {FEEDBACK_OPTIONS.map(opt=>(
-            <button key={opt.key} onClick={()=>submitFeedback(opt.key)}
-              style={{padding:"16px 12px",background:"#141414",border:"1.5px solid #2a2a2a",borderRadius:13,cursor:"pointer",textAlign:"center",transition:"all .18s"}}
-              onMouseDown={e=>{ e.currentTarget.style.background="#1e1e1e"; e.currentTarget.style.borderColor=accent; }}
-              onMouseUp={e=>{ e.currentTarget.style.background="#141414"; e.currentTarget.style.borderColor="#2a2a2a"; }}
-            >
-              <div style={{fontSize:30,marginBottom:6}}>{opt.emoji}</div>
-              <div style={{fontSize:14,color:"#f0f0f0",fontWeight:500,marginBottom:3}}>{opt.label}</div>
-              <div style={{fontSize:11,color:"#888"}}>{opt.desc}</div>
-            </button>
-          ))}
-        </div>
-
-        <button onClick={()=>submitFeedback("good")}
-          style={{width:"100%",marginTop:14,padding:"12px",background:"transparent",border:"none",color:"#555",fontSize:13,letterSpacing:".06em"}}>
-          skip feedback for this exercise
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── COACH CARD ────────────────────────────────────────────────────────────────
-function buildSuggestions({ history, progression, settings, exConfig, workoutKey }) {
-  const workout = WORKOUTS[workoutKey];
-  const suggs = [];
-  const today = todayName();
-  const sorted = [...history].sort((a,b)=>b.timestamp-a.timestamp);
-  let streak=0;
-  if(sorted.length>0){streak=1;for(let i=1;i<sorted.length;i++){if((sorted[i-1].timestamp-sorted[i].timestamp)/86400000<=4.5)streak++;else break;}}
-  if(streak>=3&&streak<7) suggs.push({icon:"🔥",cat:"Streak",msg:`${streak} sessions in a row. You're building a real habit.`});
-  if(streak>=7) suggs.push({icon:"⚡",cat:"Streak",msg:`${streak}-session streak. Your body is different than when you started.`});
-
-  workout.exercises.forEach(ex=>{
-    const cfg=exConfig[ex.name];
-    if(cfg?.pendingAdj>0) suggs.push({icon:"↗️",cat:"Progression",msg:`${ex.name}: +${cfg.pendingAdj} rep${cfg.pendingAdj>1?"s":""} unlocked based on last session. New target: ×${cfg.targetReps}.`});
-    if(cfg?.pendingAdj<0) suggs.push({icon:"🎯",cat:"Adjustment",msg:`${ex.name}: target reduced to ×${cfg.targetReps}. Dialing in the right challenge.`});
-  });
-
-  const FORM={A:[
-    {icon:"🦵",cat:"Form",msg:"Goblet Squat: drive elbows between knees at the bottom. Creates a natural brace."},
-    {icon:"💪",cat:"Form",msg:"Floor Press: 45° elbows, pause at chest. Control over momentum."},
-    {icon:"🔙",cat:"Form",msg:"Row: elbow to back pocket — not hand to hip. Your lats do the work."},
-    {icon:"🙌",cat:"Form",msg:"Arnold Press: the rotation IS the point. Don't skip it."},
-    {icon:"💪",cat:"Form",msg:"Hammer Curl: 3s down on every rep. The eccentric is where muscle grows."},
-  ],B:[
-    {icon:"🍑",cat:"Form",msg:"RDL: push hips BACK before bending. Feel the hamstring stretch first."},
-    {icon:"⚡",cat:"Form",msg:"Kickback: lock upper arm parallel. If it drops, weight is too heavy."},
-    {icon:"🦵",cat:"Form",msg:"Lunge: step back far enough that front shin stays vertical."},
-    {icon:"🔙",cat:"Form",msg:"Rear Delt Row: lead with pinky, elbows wide. Rear delts, not biceps."},
-    {icon:"🦵",cat:"Form",msg:"Calf Raise: 2s pause at top. Rushing defeats the purpose."},
-  ]};
-  const tips=FORM[workoutKey]||[];
-  const pick=tips[(new Date().getDate())%tips.length];
-  if(pick) suggs.push(pick);
-  if(!DAYS.includes(today)) suggs.push({icon:"🛌",cat:"Recovery",msg:"Rest day. Muscle grows during recovery. Protein + sleep > extra sets."});
-  if(history.length===0) suggs.push({icon:"🌱",cat:"Welcome",msg:"Form now = gains forever. Feel the muscle work, don't just move weight."});
-  return suggs.filter(Boolean);
-}
-
-function CoachDrawer({ open, onClose, suggestions, memory, plan, accent }) {
-  const [idx, setIdx] = useState(0);
-  if (!open) return null;
-  const s = suggestions[idx] || suggestions[0];
-  const behavior = memory?.behavior || {};
-  return (
-    <div style={{position:"fixed",inset:0,zIndex:240,pointerEvents:"none"}}>
-      <button aria-label="Close coach" onClick={onClose} style={{position:"absolute",inset:0,border:"none",background:"rgba(0,0,0,.32)",pointerEvents:"auto"}} />
-      <div className="mobile-shell" style={{position:"absolute",left:0,right:0,bottom:"calc(82px + env(safe-area-inset-bottom))",padding:"0 14px",pointerEvents:"auto"}}>
-        <div style={{background:"#ffffff",color:"#172033",border:`1.5px solid ${accent}66`,borderRadius:18,boxShadow:"0 22px 70px rgba(20,40,80,.28)",overflow:"hidden",animation:"slideUp .24s ease-out"}}>
-          <div style={{padding:"16px 17px",background:`linear-gradient(135deg,${accent}24,#ffffff)`,borderBottom:"1px solid rgba(120,135,160,.22)",display:"flex",alignItems:"center",gap:12}}>
-            <div style={{width:42,height:42,borderRadius:13,background:accent,color:"#050505",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,boxShadow:`0 10px 26px ${accent}55`}}>AI</div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:11,color:"#25536f",letterSpacing:".16em",textTransform:"uppercase",fontWeight:700}}>Coach</div>
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,letterSpacing:".05em",lineHeight:1,color:"#123047"}}>{plan?.headline || "Training assistant"}</div>
-            </div>
-            <button onClick={onClose} style={{width:34,height:34,borderRadius:10,border:"1px solid rgba(112,132,160,.28)",background:"rgba(255,255,255,.68)",color:"#435166",fontSize:18}}>×</button>
-          </div>
-          <div style={{padding:"15px 17px",display:"grid",gap:12,maxHeight:"58vh",overflowY:"auto"}}>
-            {s&&(
-              <div style={{padding:"13px 14px",background:"#f3f8fd",border:"1px solid rgba(112,132,160,.24)",borderRadius:13}}>
-                <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,marginBottom:7}}>{s.cat}</div>
-                <div style={{fontSize:14,lineHeight:1.55,color:"#263348"}}>{s.icon} {s.msg}</div>
-                {suggestions.length>1&&(
-                  <div style={{display:"flex",gap:8,marginTop:12}}>
-                    <button onClick={()=>setIdx(i=>(i+suggestions.length-1)%suggestions.length)} style={{flex:1,padding:"10px",borderRadius:10,border:"1px solid #d9e4ef",background:"#fff",color:"#435166"}}>BACK</button>
-                    <button onClick={()=>setIdx(i=>(i+1)%suggestions.length)} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:accent,color:"#050505",fontWeight:700}}>NEXT</button>
-                  </div>
-                )}
-              </div>
-            )}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
-              <MiniStat label="Memory" value={`${memory?.readinessCount || 0}+${memory?.setFeedbackCount || 0}`} />
-              <MiniStat label="Rests Skipped" value={behavior.restSkips || 0} />
-              <MiniStat label="Avg Rest" value={behavior.avgRestSeconds ? `${behavior.avgRestSeconds}s` : "-"} />
-            </div>
-            <div style={{padding:"13px 14px",background:"#fff",border:"1px solid rgba(112,132,160,.24)",borderRadius:13}}>
-              <div style={{fontSize:11,color:"#25536f",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,marginBottom:7}}>What I remember</div>
-              <div style={{fontSize:13,lineHeight:1.55,color:"#435166"}}>{memory?.summary || "I am still collecting enough sessions to spot patterns."}</div>
-              {behavior.notes?.length>0&&<div style={{fontSize:13,lineHeight:1.55,color:"#435166",marginTop:8}}>{behavior.notes[0]}</div>}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MiniStat({ label, value }) {
-  return (
-    <div style={{padding:"11px 8px",background:"#f3f8fd",border:"1px solid rgba(112,132,160,.22)",borderRadius:11,textAlign:"center"}}>
-      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#123047",letterSpacing:".05em"}}>{value}</div>
-      <div style={{fontSize:10,color:"#6b788c",letterSpacing:".1em",textTransform:"uppercase"}}>{label}</div>
-    </div>
-  );
-}
-
-function CoachFab({ onClick, accent, count }) {
-  return (
-    <button onClick={onClick} style={{position:"fixed",right:16,bottom:"calc(98px + env(safe-area-inset-bottom))",zIndex:130,width:62,height:62,borderRadius:19,border:`1.5px solid ${accent}88`,background:accent,color:"#050505",boxShadow:`0 16px 42px ${accent}66`,fontWeight:900,letterSpacing:".04em"}}>
-      AI
-      {count>0&&<span style={{position:"absolute",right:-4,top:-5,minWidth:20,height:20,borderRadius:10,background:"#123047",color:"#fff",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid #fff"}}>{Math.min(count,9)}</span>}
-    </button>
-  );
-}
-
-function CoachCard({ suggestions, accent, onOpen }) {
-  const [idx, setIdx] = useState(0);
-  const [key, setKey] = useState(0);
-  if (!suggestions.length) return null;
-  const s = suggestions[idx];
-  const cc = {Streak:"#fb923c",Form:"#60a5fa",Progress:accent,Progression:accent,Adjustment:"#fbbf24",Recovery:"#a78bfa",Welcome:accent}[s.cat]||accent;
-  return (
-    <div style={{margin:"0 16px 18px",padding:"13px 14px",background:"#0e0e0e",border:`1.5px solid ${cc}44`,borderRadius:14,boxShadow:`0 0 28px ${cc}15`}}>
-      <div style={{display:"flex",alignItems:"flex-start",gap:14}}>
-        <span style={{fontSize:28,flexShrink:0,marginTop:1}}>{s.icon}</span>
-        <div style={{flex:1}}>
-          <div style={{fontSize:11,color:cc,letterSpacing:".14em",textTransform:"uppercase",marginBottom:5,fontWeight:500}}>{s.cat}</div>
-          <div key={key} style={{fontSize:15,color:"#eee",lineHeight:1.55,animation:"coachSlide .3s ease-out"}}>{s.msg}</div>
-        </div>
-        <button onClick={onOpen}
-          style={{background:"transparent",border:`1px solid ${cc}44`,color:cc,borderRadius:8,padding:"8px 10px",fontSize:12,flexShrink:0,alignSelf:"center",letterSpacing:".08em"}}>OPEN</button>
-      </div>
-      {suggestions.length>1&&(
-        <div style={{display:"flex",gap:5,justifyContent:"center",marginTop:12}}>
-          {suggestions.map((_,i)=><div key={i} onClick={()=>{setIdx(i);setKey(k=>k+1);}}
-            style={{width:i===idx?18:6,height:5,borderRadius:3,background:i===idx?cc:"#333",transition:"all .25s",cursor:"pointer"}}/>)}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function ReadinessCheckIn({ value, onSave, accent }) {
   const [draft, setDraft] = useState(value || DEFAULT_READINESS);
@@ -808,19 +392,21 @@ export default function WorkoutView({
   const wKey    = SCHEDULE[activeTab];
   const workout = WORKOUTS[wKey];
   const accent  = workout.color;
-  const applySubstitution = (ex) => {
-    const sub = substitutions[ex.name];
-    if (!sub) return ex;
-    return {
-      ...ex,
-      name: sub.name,
-      originalName: ex.name,
-      configName: ex.name,
-      substitutedFor: ex.name,
-      tip: `Substitute for ${ex.name}: ${sub.reason}. Keep the reps controlled and pain-free.`,
+  const workoutPlan = useMemo(() => {
+    const applySubstitution = (ex) => {
+      const sub = substitutions[ex.name];
+      if (!sub) return ex;
+      return {
+        ...ex,
+        name: sub.name,
+        originalName: ex.name,
+        configName: ex.name,
+        substitutedFor: ex.name,
+        tip: `Substitute for ${ex.name}: ${sub.reason}. Keep the reps controlled and pain-free.`,
+      };
     };
-  };
-  const workoutPlan = { ...workout, exercises: workout.exercises.map(applySubstitution) };
+    return { ...workout, exercises: workout.exercises.map(applySubstitution) };
+  }, [workout, substitutions]);
 
   const sessionKey = completionKey(activeTab);
   const logKey  = (i,j) => makeLogKey(sessionKey,i,j);
@@ -846,21 +432,34 @@ export default function WorkoutView({
     setSubstitutions({});
   }, [sessionKey]);
 
-  const readinessEntry = (checkIns||[]).find(ci=>ci.kind==="readiness"&&ci.sessionKey===sessionKey);
+  const readinessEntry = useMemo(
+    () => (checkIns||[]).find(ci=>ci.kind==="readiness"&&ci.sessionKey===sessionKey),
+    [checkIns, sessionKey]
+  );
   const readiness = readinessEntry?.readiness;
-  const coachPlan = buildCoachPlan({workout,history,checkIns,exConfig,settings,readiness:readiness||DEFAULT_READINESS});
-  const suggestions = [...coachPlan.cards, ...buildSuggestions({history,progression,settings,exConfig,workoutKey:wKey})];
-  const coachMemory = buildCoachMemory({ history, checkIns, exercises:[...WORKOUTS.A.exercises,...WORKOUTS.B.exercises], exConfig });
+  const effectiveReadiness = readiness || DEFAULT_READINESS;
+  const coachPlan = useMemo(
+    () => buildCoachPlan({workout,history,checkIns,exConfig,settings,readiness:effectiveReadiness}),
+    [workout, history, checkIns, exConfig, settings, effectiveReadiness]
+  );
+  const suggestions = useMemo(
+    () => [...coachPlan.cards, ...buildSuggestions({history,progression,settings,exConfig,workoutKey:wKey})],
+    [coachPlan, history, progression, settings, exConfig, wKey]
+  );
+  const coachMemory = useMemo(
+    () => buildCoachMemory({ history, checkIns, exercises:[...WORKOUTS.A.exercises,...WORKOUTS.B.exercises], exConfig }),
+    [history, checkIns, exConfig]
+  );
   const exerciseKey = (exOrName) => typeof exOrName === "string" ? exOrName : (exOrName.configName || exOrName.name);
   const getBaseTargetReps = (ex) => exConfig[exerciseKey(ex)]?.targetReps ?? (ex.baseReps + (progression[exerciseKey(ex)]?.repBonus||0));
-  const getScience = (ex) => sciencePrescription({ exercise:ex, history, checkIns, settings, readiness:readiness||DEFAULT_READINESS, baseTarget:getBaseTargetReps(ex) });
+  const getScience = (ex) => sciencePrescription({ exercise:ex, history, checkIns, settings, readiness:effectiveReadiness, baseTarget:getBaseTargetReps(ex) });
   const getTargetReps = (ex) => {
     const science = getScience(ex);
-    return science.enabled ? science.targetReps : coachTargetReps(getBaseTargetReps(ex), readiness||DEFAULT_READINESS);
+    return science.enabled ? science.targetReps : coachTargetReps(getBaseTargetReps(ex), effectiveReadiness);
   };
   const getSetCount = (ex) => {
     const science = getScience(ex);
-    return science.enabled ? science.sets : coachSetCount(ex.sets, readiness||DEFAULT_READINESS);
+    return science.enabled ? science.sets : coachSetCount(ex.sets, effectiveReadiness);
   };
   const getWeight     = (n)  => {
     const configured = exConfig[exerciseKey(n)]?.weight ?? DEFAULT_WEIGHTS[exerciseKey(n)] ?? settings.dumbbellWeight;
@@ -879,12 +478,12 @@ export default function WorkoutView({
   const sessionRunning = doneSets>0&&!isCompleted;
   const sessionElapsed = useSessionTimer(sessionRunning);
 
-  const streak = (() => {
+  const streak = useMemo(() => {
     if(!history.length) return 0;
     const s=[...history].sort((a,b)=>b.timestamp-a.timestamp);
     let r=1; for(let i=1;i<s.length;i++){if((s[i-1].timestamp-s[i].timestamp)/86400000<=4.5)r++;else break;}
     return r;
-  })();
+  }, [history]);
 
   const saveReadiness = (nextReadiness) => {
     const entry = {
@@ -1088,11 +687,11 @@ export default function WorkoutView({
     setWorkoutSummary(summarizeWorkout({
       exercises:exSnap,
       duration:sessionElapsed,
-      readiness:readiness||DEFAULT_READINESS,
+      readiness:effectiveReadiness,
       prs,
       nextWorkout:wKey==="A"?"B":"A",
     }));
-    setHistory(p=>[{day:activeTab,workout:wKey,date:dateStr(scheduledDate(activeTab)),timestamp:scheduledDate(activeTab).getTime(),duration:sessionElapsed,exercises:exSnap,readiness:readiness||DEFAULT_READINESS},...p].slice(0,120));
+    setHistory(p=>[{day:activeTab,workout:wKey,date:dateStr(scheduledDate(activeTab)),timestamp:scheduledDate(activeTab).getTime(),duration:sessionElapsed,exercises:exSnap,readiness:effectiveReadiness},...p].slice(0,120));
     setCompleted(p=>({...p,[sessionKey]:dateStr(scheduledDate(activeTab))}));
     playSound("workoutDone"); vibrate([100,60,100]);
     setConfetti(true);
