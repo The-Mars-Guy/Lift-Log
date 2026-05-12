@@ -18,6 +18,7 @@ export const WORKOUTS = {
       { name:"Rear Delt Row",     sets:3, baseReps:12, repLabel:"×", tip:"Lead with pinky, flare elbows wide",             folder:"Bent_Over_Dumbbell_Rear_Delt_Raise_With_Head_On_Bench",  primary:["rearDelts","upperBack"],secondary:["lats"]                 },
       { name:"Tricep Kickback",   sets:3, baseReps:12, repLabel:"×", tip:"Lock upper arm parallel — only forearm moves",   folder:"Tricep_Dumbbell_Kickback",                               primary:["triceps"],              secondary:[]                       },
       { name:"Calf Raise",        sets:3, baseReps:15, repLabel:"×", tip:"Pause 2s at top, slow lower",                    folder:"Standing_Dumbbell_Calf_Raise",                           primary:["calves"],               secondary:[]                       },
+      { name:"Crunch",            sets:2, baseReps:12, repLabel:"×", tip:"Curl ribs toward hips, keep lower back gently pressed down", folder:"Crunch",                                          primary:["core"],                 secondary:[]                       },
     ],
   },
 };
@@ -61,7 +62,7 @@ export const DEFAULT_WEIGHTS = {
   "Goblet Squat": 15,   "Floor Press": 12,    "Bent Over Row": 15,
   "Arnold Press": 10,   "Hammer Curl": 10,    "Romanian Deadlift": 15,
   "Reverse Lunge": 10,  "Rear Delt Row": 8,   "Tricep Kickback": 8,
-  "Calf Raise": 15,
+  "Calf Raise": 15,     "Crunch": 0,
 };
 
 // ─── XP & LEVELS ─────────────────────────────────────────────────────────────

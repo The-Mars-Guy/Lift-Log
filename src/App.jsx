@@ -29,6 +29,7 @@ export default function App() {
   const [achievementToast, setAchievementToast] = useState(null);
   const [assessmentDone, setAssessmentDone] = useLocalStorage("wt_assessment_done", false);
   const [updateReady, setUpdateReady] = useState(null);
+  const [benchmarkEditorOpen, setBenchmarkEditorOpen] = useState(false);
 
   const normalized = normalizeLiftLogData({ sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, assessmentDone });
   const safeSettings = { ...DEFAULT_SETTINGS, ...normalized.settings };
@@ -63,7 +64,7 @@ export default function App() {
     let changed = false;
     const allEx = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
     allEx.forEach(ex => {
-      if (!normalized.exConfig[ex.name]) { seed[ex.name] = { weight: DEFAULT_WEIGHTS[ex.name] || safeSettings.dumbbellWeight }; changed = true; }
+      if (!normalized.exConfig[ex.name]) { seed[ex.name] = { weight: DEFAULT_WEIGHTS[ex.name] ?? safeSettings.dumbbellWeight }; changed = true; }
     });
     if (changed) setExConfig(p => ({ ...p, ...seed }));
   }, []); // eslint-disable-line
@@ -142,6 +143,12 @@ export default function App() {
     createBackupSnapshot("before_clear_workout_state");
     setSets({});
     setCompleted({});
+  };
+
+  const editBenchmarkTest = () => {
+    createBackupSnapshot("before_benchmark_edit");
+    setBenchmarkEditorOpen(true);
+    setActiveView("workout");
   };
 
   const refreshAppCache = async () => {
@@ -245,6 +252,7 @@ export default function App() {
             xp={normalized.xp} addXp={addXp} level={level}
             checkIns={normalized.checkIns} setCheckIns={setCheckIns}
             assessmentDone={normalized.assessmentDone} setAssessmentDone={setAssessmentDone}
+            benchmarkEditorOpen={benchmarkEditorOpen} setBenchmarkEditorOpen={setBenchmarkEditorOpen}
             playSound={playSound} vibrate={vibrate}
             setActiveView={setActiveView}
             theme={visualTheme}
@@ -263,7 +271,8 @@ export default function App() {
             resetAllData={resetAllData} exportData={exportData} importData={importData}
             repairSavedData={repairSavedData} clearWorkoutState={clearWorkoutState}
             refreshAppCache={refreshAppCache} exportLastBackup={exportLastBackup}
-            createBackupSnapshot={createBackupSnapshot} accent={accent} theme={visualTheme} />
+            createBackupSnapshot={createBackupSnapshot} editBenchmarkTest={editBenchmarkTest}
+            accent={accent} theme={visualTheme} />
         )}
       </div>
 

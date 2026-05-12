@@ -60,9 +60,9 @@ function SetupBlock({ title, children }) {
   );
 }
 
-function AssessmentFlow({ onComplete, accent, theme="dark" }) {
+function AssessmentFlow({ onComplete, accent, theme="dark", initialResults=null, editing=false, onCancel }) {
   const [step, setStep] = useState(-1);
-  const [results, setResults] = useState({});
+  const [results, setResults] = useState(initialResults || {});
   const [count, setCount] = useState(10);
 
   const total = ALL_EXERCISES.length;
@@ -80,14 +80,22 @@ function AssessmentFlow({ onComplete, accent, theme="dark" }) {
     shadow: light ? `0 14px 34px ${accent}16` : "none",
   };
 
+  useEffect(() => {
+    if (step < 0 || step >= total) return;
+    const ex = ALL_EXERCISES[step];
+    setCount(results[ex.name] || 10);
+  }, [step, total]); // eslint-disable-line
+
   // ── INTRO ──
   if (step === -1) return (
     <div style={{minHeight:"100vh",overflowY:"auto",padding:"40px 20px 40px",background:ui.page,color:ui.text}}>
       <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(44px, 14vw, 54px)",color:accent,letterSpacing:".04em",lineHeight:.9,marginBottom:20,filter:`drop-shadow(0 0 20px ${accent}55)`}}>
-        STRENGTH<br/>ASSESSMENT
+        {editing ? "EDIT" : "STRENGTH"}<br/>{editing ? "BENCHMARK" : "ASSESSMENT"}
       </div>
       <div style={{fontSize:16,color:ui.soft,lineHeight:1.65,marginBottom:28}}>
-        Before your first workout, set a safe starting point. Stop any test if form breaks or something hurts.
+        {editing
+          ? "Update your clean max reps if the original test was off, skipped, or no longer matches your current ability."
+          : "Before your first workout, set a safe starting point. Stop any test if form breaks or something hurts."}
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:36}}>
         {[
@@ -104,14 +112,14 @@ function AssessmentFlow({ onComplete, accent, theme="dark" }) {
           </div>
         ))}
       </div>
-      <div style={{fontSize:13,color:ui.muted,marginBottom:20,textAlign:"center"}}>Takes about 5-10 minutes · done only once</div>
-        <button onClick={()=>{setStep(0);setCount(10);}}
+      <div style={{fontSize:13,color:ui.muted,marginBottom:20,textAlign:"center"}}>{editing ? "Current numbers are prefilled" : "Takes about 5-10 minutes · done only once"}</div>
+        <button onClick={()=>setStep(0)}
         style={{width:"100%",padding:"22px",background:accent,border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#050505",letterSpacing:".1em",boxShadow:`0 0 50px ${accent}66`}}>
-        BEGIN ASSESSMENT
+        {editing ? "EDIT BENCHMARKS" : "BEGIN ASSESSMENT"}
       </button>
-      <button onClick={()=>onComplete(null)}
+      <button onClick={()=>editing ? onCancel?.() : onComplete(null)}
         style={{width:"100%",marginTop:12,padding:"16px",background:light ? "rgba(255,255,255,.58)" : "transparent",border:`1px solid ${light ? "rgba(103,122,150,.32)" : "#2a2a2a"}`,borderRadius:12,fontSize:13,color:ui.soft,letterSpacing:".08em"}}>
-        USE DEFAULTS FOR NOW
+        {editing ? "CANCEL" : "USE DEFAULTS FOR NOW"}
       </button>
     </div>
   );
@@ -141,7 +149,7 @@ function AssessmentFlow({ onComplete, accent, theme="dark" }) {
         </div>
         <button onClick={()=>onComplete(results)}
           style={{width:"100%",padding:"22px",background:"#4ade80",border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#050505",letterSpacing:".1em",boxShadow:"0 0 50px #4ade8066"}}>
-          START TRAINING →
+          {editing ? "SAVE BENCHMARKS →" : "START TRAINING →"}
         </button>
       </div>
     );
@@ -196,7 +204,6 @@ function AssessmentFlow({ onComplete, accent, theme="dark" }) {
 
       <button onClick={()=>{
         setResults(r=>({...r,[ex.name]:count}));
-        setCount(10);
         setStep(s=>s+1);
       }}
         style={{width:"100%",padding:"20px",background:exColor,border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#050505",letterSpacing:".1em",marginTop:16,boxShadow:`0 0 40px ${exColor}66`}}>
@@ -204,7 +211,6 @@ function AssessmentFlow({ onComplete, accent, theme="dark" }) {
       </button>
       <button onClick={()=>{
         setResults(r=>{const n={...r};delete n[ex.name];return n;});
-        setCount(10);
         setStep(s=>s+1);
       }}
         style={{width:"100%",padding:"14px",background:light ? "rgba(255,255,255,.58)" : "transparent",border:`1px solid ${light ? "rgba(103,122,150,.32)" : "#2a2a2a"}`,borderRadius:12,fontSize:13,color:ui.muted,letterSpacing:".08em",marginTop:10}}>
@@ -265,7 +271,7 @@ function PostWorkoutFeedback({ exercises, sessionLogs, getLogKey, exConfig, hist
         {logs.length > 0 && (
           <div style={{fontSize:14,color:exColor,marginBottom:16}}>
             {ex.sets} sets · <strong>{totalReps} total reps today</strong>
-            {logs[0]?.weight && <span style={{color:"#888"}}> @ {logs[0].weight}lbs</span>}
+            {logs[0]?.weight != null && <span style={{color:"#888"}}> @ {logs[0].weight > 0 ? `${logs[0].weight}lbs` : "bodyweight"}</span>}
           </div>
         )}
 
@@ -557,6 +563,7 @@ function FocusWorkoutMode({
   const science = getScience(next.ex);
   const repText = science.enabled && science.repRange ? `${science.repRange.min}-${science.repRange.max}` : `x${target}`;
   const weight = getWeight(next.ex);
+  const weightText = weight > 0 ? `${weight}lbs` : "bodyweight";
   const plannedSets = getSetCount(next.ex);
   const currentDone = Array.from({length:plannedSets},(_,j)=>setDone(next.exIdx,j)).filter(Boolean).length;
 
@@ -574,7 +581,7 @@ function FocusWorkoutMode({
         <div style={{fontSize:11,color:accent,letterSpacing:".16em",textTransform:"uppercase",marginBottom:6}}>Focus Mode</div>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:38,color:"#f5f5f5",letterSpacing:".06em",lineHeight:.92,marginBottom:5}}>{next.ex.name}</div>
         <div style={{fontSize:13,color:"#aaa",lineHeight:1.35,marginBottom:8}}>
-          Set {Math.min(currentDone+1,plannedSets)} of {plannedSets} · {weight}lbs · target {repText}{next.ex.repSuffix||""}
+          Set {Math.min(currentDone+1,plannedSets)} of {plannedSets} · {weightText} · target {repText}{next.ex.repSuffix||""}
         </div>
 
         <ExerciseAnimation folder={next.ex.folder} video={next.ex.video} accent={accent} compact bare/>
@@ -656,7 +663,7 @@ function WorkoutSummary({ summary, accent, onClose }) {
           {summary.bestSet&&(
             <div style={{padding:14,background:"#0d0d0d",border:"1px solid #202020",borderRadius:12}}>
               <div style={{fontSize:11,color:"#888",letterSpacing:".14em",textTransform:"uppercase",marginBottom:6}}>Best Set</div>
-              <div style={{fontSize:15,color:"#eee",lineHeight:1.45}}>{summary.bestSet.name}: {summary.bestSet.weight}lbs x {summary.bestSet.reps}</div>
+              <div style={{fontSize:15,color:"#eee",lineHeight:1.45}}>{summary.bestSet.name}: {summary.bestSet.weight > 0 ? `${summary.bestSet.weight}lbs` : "bodyweight"} x {summary.bestSet.reps}</div>
             </div>
           )}
           {summary.hardest&&(
@@ -705,9 +712,15 @@ function SummaryStat({ label, value, sub, accent }) {
 }
 
 // ── SET LOGGER ────────────────────────────────────────────────────────────────
-function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, onSave, onSkip }) {
+function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, onSave, onSkip, editing }) {
   const [weight, setWeight] = useState(defaultWeight);
   const [reps,   setReps]   = useState(defaultReps);
+  useEffect(() => {
+    setWeight(defaultWeight);
+    setReps(defaultReps);
+  }, [defaultWeight, defaultReps, exerciseName, setNum]);
+  const cleanWeight = Number.isFinite(Number(weight)) ? Math.max(Number(weight), 0) : 0;
+  const cleanReps = Number.isFinite(Number(reps)) ? Math.max(Math.round(Number(reps)), 0) : 0;
   return (
     <div style={{position:"fixed",bottom:82,left:0,right:0,zIndex:220,background:"#0a0a0a",borderTop:`1.5px solid ${accent}99`,padding:"14px 18px 12px",boxShadow:`0 -8px 32px ${accent}44`,animation:"slideUp .22s ease-out"}}>
       <div className="mobile-shell">
@@ -716,23 +729,25 @@ function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, o
           <div style={{flex:1}}>
             <div style={{fontSize:11,color:"#888",letterSpacing:".1em",marginBottom:5}}>WEIGHT (lbs)</div>
             <div style={{display:"flex",alignItems:"center",background:"#141414",borderRadius:10,border:`1px solid ${accent}33`,overflow:"hidden"}}>
-              <button onClick={()=>setWeight(w=>Math.max(w-2.5,0))} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>−</button>
-              <div style={{flex:1,textAlign:"center",fontSize:18,fontWeight:500,color:"#fff"}}>{weight}</div>
-              <button onClick={()=>setWeight(w=>w+2.5)} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>+</button>
+              <button onClick={()=>setWeight(w=>Math.max((Number(w)||0)-2.5,0))} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>−</button>
+              <input value={weight} onChange={e=>setWeight(e.target.value)} inputMode="decimal" type="number" min="0" step="2.5" aria-label="Weight used in pounds"
+                style={{flex:1,minWidth:0,textAlign:"center",fontSize:18,fontWeight:500,color:"#fff",background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono, monospace"}}/>
+              <button onClick={()=>setWeight(w=>(Number(w)||0)+2.5)} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>+</button>
             </div>
           </div>
           <div style={{flex:1}}>
             <div style={{fontSize:11,color:"#888",letterSpacing:".1em",marginBottom:5}}>REPS DONE</div>
             <div style={{display:"flex",alignItems:"center",background:"#141414",borderRadius:10,border:`1px solid ${accent}33`,overflow:"hidden"}}>
-              <button onClick={()=>setReps(r=>Math.max(r-1,0))} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>−</button>
-              <div style={{flex:1,textAlign:"center",fontSize:18,fontWeight:500,color:"#fff"}}>{reps}</div>
-              <button onClick={()=>setReps(r=>r+1)} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>+</button>
+              <button onClick={()=>setReps(r=>Math.max((Number(r)||0)-1,0))} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>−</button>
+              <input value={reps} onChange={e=>setReps(e.target.value)} inputMode="numeric" type="number" min="0" step="1" aria-label="Reps completed"
+                style={{flex:1,minWidth:0,textAlign:"center",fontSize:18,fontWeight:500,color:"#fff",background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono, monospace"}}/>
+              <button onClick={()=>setReps(r=>(Number(r)||0)+1)} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>+</button>
             </div>
           </div>
-          <button onClick={()=>onSave({weight,reps})}
+          <button onClick={()=>onSave({weight:cleanWeight,reps:cleanReps})}
             style={{width:54,height:46,background:accent,border:"none",borderRadius:10,color:"#0a0a0a",fontSize:13,fontWeight:700,flexShrink:0,alignSelf:"flex-end",boxShadow:`0 0 16px ${accent}66`}}>LOG</button>
         </div>
-        <button onClick={onSkip} style={{background:"none",border:"none",color:"#555",fontSize:12,letterSpacing:".08em",marginTop:10,width:"100%",textAlign:"center",padding:4}}>skip logging</button>
+        <button onClick={onSkip} style={{background:"none",border:"none",color:"#555",fontSize:12,letterSpacing:".08em",marginTop:10,width:"100%",textAlign:"center",padding:4}}>{editing ? "keep current log" : "use planned numbers"}</button>
       </div>
     </div>
   );
@@ -770,6 +785,7 @@ export default function WorkoutView({
   checkIns, setCheckIns,
   playSound, vibrate, setActiveView, theme="dark",
   assessmentDone, setAssessmentDone,
+  benchmarkEditorOpen=false, setBenchmarkEditorOpen,
 }) {
   const [activeTab,    setActiveTab]   = useState(()=>defaultWorkoutDay());
   const [expanded,     setExpanded]    = useState(null);
@@ -847,7 +863,7 @@ export default function WorkoutView({
     return science.enabled ? science.sets : coachSetCount(ex.sets, readiness||DEFAULT_READINESS);
   };
   const getWeight     = (n)  => {
-    const configured = exConfig[exerciseKey(n)]?.weight || DEFAULT_WEIGHTS[exerciseKey(n)] || settings.dumbbellWeight;
+    const configured = exConfig[exerciseKey(n)]?.weight ?? DEFAULT_WEIGHTS[exerciseKey(n)] ?? settings.dumbbellWeight;
     if (typeof n !== "string") {
       const science = getScience(n);
       if (science.suggestedWeight && science.suggestedWeight > 0) return science.suggestedWeight;
@@ -921,6 +937,37 @@ export default function WorkoutView({
     setTimeout(()=>setXpVisible(false),900);
   };
 
+  const completeLoggedSet = (i, j, log, action = "save") => {
+    const k = setKey(i,j);
+    const ex = workoutPlan.exercises[i];
+    const lk = logKey(i,j);
+    const cleanLog = {
+      weight: Number.isFinite(Number(log.weight)) ? Math.max(Number(log.weight), 0) : getWeight(ex),
+      reps: Number.isFinite(Number(log.reps)) ? Math.max(Math.round(Number(log.reps)), 0) : getTargetReps(ex),
+    };
+
+    setSets(p=>({...p,[k]:true}));
+    setSessionLogs(p=>({...p,[lk]:cleanLog}));
+    logCoachEvent({kind:"set_log",action,exercise:ex.name,set:j+1,weight:cleanLog.weight,reps:cleanLog.reps});
+    if(!xpAwards[lk]){
+      setXpAwards(p=>({...p,[lk]:true}));
+      spawnXp(XP_VALUES.set);
+    }
+    setUndoSet({exIdx:i,setIdx:j,setKey:k,logKey:lk,label:`${ex.name} set ${j+1}`});
+    playSound("setComplete"); vibrate([28]);
+    setBounceSets(p=>({...p,[lk]:true}));
+    setTimeout(()=>setBounceSets(p=>{const n={...p};delete n[lk];return n;}),500);
+    const remaining=getSetCount(ex)-(j+1);
+    const hasNextExercise=i+1<workoutPlan.exercises.length;
+    const next=remaining>0?`Set ${j+2} of ${ex.name}`:hasNextExercise?`Up next: ${workoutPlan.exercises[i+1].name}`:null;
+    if(next) {
+      const restId = `${sessionKey}_${i}_${j}_${Date.now()}`;
+      logCoachEvent({kind:"rest",action:"start",restId,exercise:ex.name,set:j+1,plannedSeconds:settings.restSeconds});
+      setRestState({label:next,accent,restId,startedAt:Date.now(),plannedSeconds:settings.restSeconds});
+    }
+    else setRestState(null);
+  };
+
   const toggleSet = (i,j) => {
     const k=setKey(i,j); const was=!!sets[k];
     const ex=workoutPlan.exercises[i];
@@ -932,26 +979,7 @@ export default function WorkoutView({
       return;
     }
 
-    setSets(p=>({...p,[k]:true}));
-    setSessionLogs(p=>({...p,[lk]:{weight:getWeight(ex),reps:getTargetReps(ex)}}));
-    if(!xpAwards[lk]){
-      setXpAwards(p=>({...p,[lk]:true}));
-      spawnXp(XP_VALUES.set);
-    }
-    setUndoSet({exIdx:i,setIdx:j,setKey:k,logKey:lk,label:`${ex.name} set ${j+1}`});
-    playSound("setComplete"); vibrate([28]);
-    const bk=lk;
-      setBounceSets(p=>({...p,[bk]:true}));
-      setTimeout(()=>setBounceSets(p=>{const n={...p};delete n[bk];return n;}),500);
-    const remaining=getSetCount(ex)-(j+1);
-    const hasNextExercise=i+1<workoutPlan.exercises.length;
-    const next=remaining>0?`Set ${j+2} of ${ex.name}`:hasNextExercise?`Up next: ${workoutPlan.exercises[i+1].name}`:null;
-    if(next) {
-      const restId = `${sessionKey}_${i}_${j}_${Date.now()}`;
-      logCoachEvent({kind:"rest",action:"start",restId,exercise:ex.name,set:j+1,plannedSeconds:settings.restSeconds});
-      setRestState({label:next,accent,restId,startedAt:Date.now(),plannedSeconds:settings.restSeconds});
-    }
-    else setRestState(null);
+    setLoggerState({exIdx:i,setIdx:j,weight:getWeight(ex),reps:getTargetReps(ex),editing:false});
   };
 
   const saveSetFeedback = (feeling) => {
@@ -997,26 +1025,24 @@ export default function WorkoutView({
     if(!loggerState) return;
     const {exIdx,setIdx,editing}=loggerState;
     const lk=logKey(exIdx,setIdx);
-    setSessionLogs(p=>({...p,[lk]:{weight,reps}}));
-    logCoachEvent({kind:"set_log",action:"save",exercise:workoutPlan.exercises[exIdx].name,set:setIdx+1,weight,reps});
-    if(!editing&&!xpAwards[lk]){
-      setXpAwards(p=>({...p,[lk]:true}));
-      spawnXp(XP_VALUES.set);
+    if(editing){
+      setSessionLogs(p=>({...p,[lk]:{weight,reps}}));
+      logCoachEvent({kind:"set_log",action:"edit",exercise:workoutPlan.exercises[exIdx].name,set:setIdx+1,weight,reps});
+    } else {
+      completeLoggedSet(exIdx,setIdx,{weight,reps},"save");
     }
     setLoggerState(null);
   };
 
   const skipLog = () => {
     if(!loggerState) return;
-    const {exIdx,setIdx}=loggerState;
-    const ex=workoutPlan.exercises[exIdx];
-    const lk=logKey(exIdx,setIdx);
-    setSessionLogs(p=>({...p,[lk]:{weight:getWeight(ex),reps:getTargetReps(ex)}}));
-    logCoachEvent({kind:"set_log",action:"skip",exercise:ex.name,set:setIdx+1,weight:getWeight(ex),reps:getTargetReps(ex)});
-    if(!xpAwards[lk]){
-      setXpAwards(p=>({...p,[lk]:true}));
-      spawnXp(XP_VALUES.set);
+    const {exIdx,setIdx,editing}=loggerState;
+    if(editing){
+      setLoggerState(null);
+      return;
     }
+    const ex=workoutPlan.exercises[exIdx];
+    completeLoggedSet(exIdx,setIdx,{weight:getWeight(ex),reps:getTargetReps(ex)},"skip");
     setLoggerState(null);
   };
 
@@ -1099,20 +1125,45 @@ export default function WorkoutView({
     setLoggerState(null);
   };
 
+  const getAssessmentResults = () => Object.fromEntries(ALL_EXERCISES.map(ex => {
+    const config = exConfig[ex.name] || {};
+    const fromTarget = config.targetReps ? Math.max(1, Math.round(config.targetReps / 0.65)) : ex.baseReps;
+    return [ex.name, config.maxRepsTest || fromTarget];
+  }));
+
   const completeAssessment = (results) => {
     const newConfig={...exConfig};
     ALL_EXERCISES.forEach(ex=>{
       const maxReps=results?.[ex.name];
       const target=maxReps ? assessmentTarget(maxReps) : ex.baseReps;
-      newConfig[ex.name]={...newConfig[ex.name],maxRepsTest:maxReps||null,targetReps:target,weight:DEFAULT_WEIGHTS[ex.name]||settings.dumbbellWeight};
+      newConfig[ex.name]={
+        ...newConfig[ex.name],
+        maxRepsTest:maxReps||null,
+        targetReps:target,
+        weight:newConfig[ex.name]?.weight ?? DEFAULT_WEIGHTS[ex.name] ?? settings.dumbbellWeight,
+      };
     });
     setExConfig(newConfig);
     setAssessmentDone(true);
+    setBenchmarkEditorOpen?.(false);
   };
 
   // Show assessment if not done yet and no history
   if (!settings.onboardingDone && history.length === 0) {
     return <FirstRunSetup settings={settings} setSettings={setSettings} accent={accent}/>;
+  }
+
+  if (benchmarkEditorOpen) {
+    return (
+      <AssessmentFlow
+        onComplete={completeAssessment}
+        onCancel={()=>setBenchmarkEditorOpen?.(false)}
+        accent={accent}
+        theme={theme}
+        initialResults={getAssessmentResults()}
+        editing
+      />
+    );
   }
 
   // Show assessment if not done yet and no history
@@ -1227,7 +1278,7 @@ export default function WorkoutView({
                   </div>
                   <div style={{fontSize:14,color:"#bbb",marginTop:5,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                     <span>{getSetCount(ex)} × {science.enabled&&science.repRange ? `${science.repRange.min}-${science.repRange.max}` : `×${reps}`}{ex.repSuffix||""}</span>
-                    <span style={{color:"#666"}}>@ {curW}lbs</span>
+                    <span style={{color:"#666"}}>{curW > 0 ? `@ ${curW}lbs` : "bodyweight"}</span>
                     {science.enabled&&<span style={{color:"#a78bfa",fontSize:12,padding:"2px 7px",borderRadius:5,background:"#a78bfa18",fontWeight:500}}>{science.label}</span>}
                     {science.tempo&&<span style={{color:"#a78bfa",fontSize:12,padding:"2px 7px",borderRadius:5,background:"#a78bfa18",fontWeight:500}}>tempo {science.tempo.code}</span>}
                     {hasNxtW&&<span style={{color:accent,fontSize:12,padding:"2px 7px",borderRadius:5,background:`${accent}18`,fontWeight:500}}>next: {nextW}lbs</span>}
@@ -1303,7 +1354,7 @@ export default function WorkoutView({
                     </div>
                     <div style={{display:"flex",alignItems:"center",background:"#101010",borderRadius:10,border:`1px solid ${accent}33`,overflow:"hidden"}}>
                       <button onClick={()=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:Math.max((p[exKey]?.weight||curW)-2.5,0)}}))} style={{width:52,height:52,background:"transparent",border:"none",color:"#ccc",fontSize:24}}>−</button>
-                      <div style={{flex:1,textAlign:"center",fontSize:20,fontWeight:500,color:"#fff"}}>{curW} lbs</div>
+                      <div style={{flex:1,textAlign:"center",fontSize:20,fontWeight:500,color:"#fff"}}>{curW > 0 ? `${curW} lbs` : "bodyweight"}</div>
                       <button onClick={()=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:(p[exKey]?.weight||curW)+2.5}}))} style={{width:52,height:52,background:"transparent",border:"none",color:"#ccc",fontSize:24}}>+</button>
                     </div>
                   </div>
@@ -1314,7 +1365,7 @@ export default function WorkoutView({
                       <SLabel small>Today's Sets</SLabel>
                       <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
                         {Array.from({length:getSetCount(ex)},(_,j)=>{const lg=sessionLogs[logKey(i,j)];return lg?(
-                          <div key={j} style={{padding:"8px 12px",background:`${accent}15`,borderRadius:8,border:`1px solid ${accent}44`,fontSize:13,color:accent,fontWeight:500}}>S{j+1}: {lg.weight}lbs × {lg.reps}</div>
+                          <div key={j} style={{padding:"8px 12px",background:`${accent}15`,borderRadius:8,border:`1px solid ${accent}44`,fontSize:13,color:accent,fontWeight:500}}>S{j+1}: {lg.weight > 0 ? `${lg.weight}lbs` : "bodyweight"} × {lg.reps}</div>
                         ):null;})}
                       </div>
                     </div>
@@ -1363,7 +1414,7 @@ export default function WorkoutView({
       <div style={{height:32}}/>
 
       {/* OVERLAYS */}
-      {loggerState&&<SetLogger exerciseName={workoutPlan.exercises[loggerState.exIdx].name} setNum={loggerState.setIdx+1} defaultWeight={loggerState.weight} defaultReps={loggerState.reps} accent={accent} onSave={saveLog} onSkip={skipLog}/>}
+      {loggerState&&<SetLogger exerciseName={workoutPlan.exercises[loggerState.exIdx].name} setNum={loggerState.setIdx+1} defaultWeight={loggerState.weight} defaultReps={loggerState.reps} accent={accent} editing={loggerState.editing} onSave={saveLog} onSkip={skipLog}/>}
       {undoSet&&(
         <div style={{position:"fixed",left:16,right:16,bottom:"calc(82px + env(safe-area-inset-bottom))",zIndex:260,pointerEvents:"none"}}>
           <div className="mobile-shell" style={{background:"#111",border:`1.5px solid ${accent}66`,borderRadius:12,padding:"13px 14px",boxShadow:`0 0 28px ${accent}33`,pointerEvents:"auto"}}>

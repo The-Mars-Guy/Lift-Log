@@ -59,7 +59,7 @@ export const JOINT_AREAS = {
   knees: { label:"Knees", exercises:["Goblet Squat","Reverse Lunge"], note:"Knee caution: favor controlled depth, supported ranges, and glute-biased swaps." },
   shoulders: { label:"Shoulders", exercises:["Arnold Press","Floor Press","Rear Delt Row"], note:"Shoulder caution: avoid forcing overhead work and prefer pain-free pressing angles." },
   wrists: { label:"Wrists", exercises:["Floor Press","Push-Up","Hammer Curl","Tricep Kickback"], note:"Wrist caution: prefer neutral grips and stable dumbbell positions." },
-  back: { label:"Back", exercises:["Romanian Deadlift","Bent Over Row","Goblet Squat"], note:"Back caution: reduce hinge fatigue and favor supported rows or bridges when needed." },
+  back: { label:"Back", exercises:["Romanian Deadlift","Bent Over Row","Goblet Squat","Crunch"], note:"Back caution: reduce hinge fatigue and favor supported rows or bridges when needed." },
 };
 
 export const SUBSTITUTIONS = {
@@ -113,6 +113,11 @@ export const SUBSTITUTIONS = {
     { name: "Supported Calf Raise", reason: "same movement while holding a wall or chair for stability" },
     { name: "Single-Leg Calf Raise", reason: "harder calf work with bodyweight if dumbbells feel awkward" },
   ],
+  "Crunch": [
+    { name: "Dead Bug", reason: "same core focus with more back-friendly control" },
+    { name: "Heel Tap", reason: "simple ab work with a smaller range of motion" },
+    { name: "Plank", reason: "core bracing without repeated spinal flexion" },
+  ],
 };
 
 export const VARIATION_LADDERS = {
@@ -165,6 +170,11 @@ export const VARIATION_LADDERS = {
     { level:1, name:"Calf Raise", cue:"full stretch and full lockout" },
     { level:2, name:"Paused Calf Raise", cue:"2 seconds at the top and bottom" },
     { level:3, name:"Single-Leg Calf Raise", cue:"one leg at a time" },
+  ],
+  "Crunch": [
+    { level:1, name:"Crunch", cue:"curl ribs toward hips, no neck pulling" },
+    { level:2, name:"Paused Crunch", cue:"hold the top for 1 second each rep" },
+    { level:3, name:"Reverse Crunch", cue:"control the pelvis and avoid swinging" },
   ],
 };
 
