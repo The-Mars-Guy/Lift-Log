@@ -30,6 +30,8 @@ export default function App() {
   const [assessmentDone, setAssessmentDone] = useLocalStorage("wt_assessment_done", false);
   const [updateReady, setUpdateReady] = useState(null);
   const [benchmarkEditorOpen, setBenchmarkEditorOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [installDismissed, setInstallDismissed] = useLocalStorage("wt_install_dismissed", false);
 
   const normalized = normalizeLiftLogData({ sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, assessmentDone });
   const safeSettings = { ...DEFAULT_SETTINGS, ...normalized.settings };
@@ -91,6 +93,23 @@ export default function App() {
     window.addEventListener("lift-log-update", onUpdate);
     return () => window.removeEventListener("lift-log-update", onUpdate);
   }, []);
+
+  useEffect(() => {
+    const onBeforeInstall = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    const onInstalled = () => {
+      setInstallPrompt(null);
+      setInstallDismissed(true);
+    };
+    window.addEventListener("beforeinstallprompt", onBeforeInstall);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstall);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []); // eslint-disable-line
 
   const addXp = (amount) => setXp(p => Math.max(0, p + amount));
 
@@ -230,6 +249,14 @@ export default function App() {
     else window.location.reload();
   };
 
+  const installApp = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    try { await installPrompt.userChoice; } catch {}
+    setInstallPrompt(null);
+    setInstallDismissed(true);
+  };
+
   const day  = todayName();
   const accent = WORKOUTS[DAYS.includes(day) ? SCHEDULE[day] : "A"].color;
   const level  = getLevel(normalized.xp);
@@ -289,6 +316,19 @@ export default function App() {
         <Toast icon={achievementToast.icon} title={achievementToast.title}
           msg={achievementToast.msg} accent={achievementToast.accent}
           onClose={() => setAchievementToast(null)} duration={5000} />
+      )}
+
+      {installPrompt && !installDismissed && (
+        <div style={{position:"fixed",left:16,right:16,bottom:"calc(92px + env(safe-area-inset-bottom))",zIndex:255,pointerEvents:"none"}}>
+          <div className="mobile-shell" style={{background:lightMode?"#ffffff":"#101010",border:`1.5px solid ${accent}55`,borderRadius:13,padding:"14px 15px",boxShadow:`0 16px 38px ${accent}24`,pointerEvents:"auto",display:"flex",alignItems:"center",gap:12}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:700}}>Install Lift Log</div>
+              <div style={{fontSize:13,color:lightMode?"#435166":"#ddd",marginTop:3,lineHeight:1.35}}>Add it to your phone for fullscreen, app-like workouts.</div>
+            </div>
+            <button onClick={installApp} style={{background:accent,border:"none",borderRadius:9,color:"#050505",padding:"10px 12px",fontSize:12,letterSpacing:".08em",fontWeight:700}}>INSTALL</button>
+            <button onClick={()=>setInstallDismissed(true)} style={{background:"transparent",border:"none",color:lightMode?"#8a97a8":"#666",fontSize:18,padding:"4px"}}>×</button>
+          </div>
+        </div>
       )}
 
       {updateReady && (

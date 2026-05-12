@@ -605,7 +605,14 @@ export function summarizeWorkout({ exercises, duration = 0, readiness, prs = [],
       ? `Next time, ${totals.hardest.name} should stay controlled before adding difficulty.`
       : "Next time, repeat this quality and let the coach build volume gradually.";
 
-  return { ...totals, duration, prs, coachNote, nextWorkout, nextChange };
+  const reasoning = [
+    `Readiness: ${readinessLabel(readiness)}.`,
+    totals.hardest ? `Limiter: ${totals.hardest.name} finished at ${Math.round(totals.hardest.completion * 100)}% of target volume.` : "Limiter: none yet.",
+    prs.length ? `Progression signal: ${prs.length} new PR${prs.length === 1 ? "" : "s"} logged.` : "Progression signal: no new PR, so the coach favors repeatable quality.",
+    totals.volume > 0 ? `Logged load: ${Math.round(totals.volume).toLocaleString()} lbs of volume.` : "Logged load: bodyweight or unloaded work counted by reps.",
+  ];
+
+  return { ...totals, duration, prs, coachNote, nextWorkout, nextChange, reasoning };
 }
 
 export function buildCoachMemory({ history = [], checkIns = [], exercises = [], exConfig = {} }) {
@@ -704,4 +711,24 @@ export function buildWeeklyReview({ history = [], checkIns = [] }) {
     consistency,
     focus,
   };
+}
+
+export function weeklyMuscleCoverage({ completed = {}, schedule, workouts, completionKeyFn }) {
+  const coverage = {};
+  Object.entries(schedule).forEach(([day, key]) => {
+    const workout = workouts[key];
+    const done = completionKeyFn ? !!completed[completionKeyFn(day)] : false;
+    workout.exercises.forEach(ex => {
+      [...(ex.primary || []), ...(ex.secondary || [])].forEach(muscle => {
+        if (!coverage[muscle]) coverage[muscle] = { planned: 0, done: 0, days: new Set() };
+        coverage[muscle].planned += ex.primary?.includes(muscle) ? 1 : 0.5;
+        coverage[muscle].days.add(day);
+        if (done) coverage[muscle].done += ex.primary?.includes(muscle) ? 1 : 0.5;
+      });
+    });
+  });
+  return Object.fromEntries(Object.entries(coverage).map(([muscle, item]) => [
+    muscle,
+    { planned: item.planned, done: item.done, days: [...item.days] },
+  ]));
 }

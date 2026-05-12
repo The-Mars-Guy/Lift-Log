@@ -1,16 +1,16 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   WORKOUTS, SCHEDULE, DAYS, MUSCLE_LABELS, DEFAULT_WEIGHTS,
-  todayName, dateStr, calcDynamicTarget, assessmentTarget,
+  EXERCISE_GUIDES, todayName, dateStr, calcDynamicTarget, assessmentTarget,
   getExerciseHistory, XP_VALUES, getLevel
 } from "../data.js";
 import { useSessionTimer, fmtDuration } from "../hooks.js";
 import { ExerciseAnimation, RestTimer, Toast, MiniGraph } from "../components/shared.jsx";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
 import { completionKey, defaultWorkoutDay, scheduledDate, logKey as makeLogKey } from "../session.js";
-import { buildCoachMemory, buildCoachPlan, coachSetCount, coachTargetReps, DEFAULT_READINESS, evaluateProgression, readinessLabel, sciencePrescription, summarizeWorkout } from "../coach.js";
+import { buildCoachMemory, buildCoachPlan, coachSetCount, coachTargetReps, DEFAULT_READINESS, evaluateProgression, readinessLabel, sciencePrescription, summarizeWorkout, weeklyMuscleCoverage } from "../coach.js";
 import { Confetti, XpFloat } from "./workout/Effects.jsx";
-import { FirstRunSetup, AssessmentFlow } from "./workout/Assessment.jsx";
+import { FirstRunSetup, AssessmentFlow, ASSESSMENT_EXERCISES } from "./workout/Assessment.jsx";
 import PostWorkoutFeedback from "./workout/PostWorkoutFeedback.jsx";
 import { buildSuggestions, CoachDrawer, CoachFab, CoachCard } from "./workout/Coach.jsx";
 
@@ -133,6 +133,7 @@ function TodayPlan({ plan, readiness, accent, substitutions, onApplySubstitution
 function FocusWorkoutMode({
   workout, accent, activeTab, doneSets, totalSets, setDone, sessionLogs, logKey,
   getTargetReps, getSetCount, getWeight, getScience, toggleSet, onExit, onFinish, allDone, isCompleted,
+  substitutions = [], onApplySubstitution, onRemoveSubstitution,
 }) {
   const next = (() => {
     for (let i=0;i<workout.exercises.length;i++) {
@@ -150,6 +151,9 @@ function FocusWorkoutMode({
   const weightText = weight > 0 ? `${weight}lbs` : "bodyweight";
   const plannedSets = getSetCount(next.ex);
   const currentDone = Array.from({length:plannedSets},(_,j)=>setDone(next.exIdx,j)).filter(Boolean).length;
+  const originalName = next.ex.configName || next.ex.originalName || next.ex.name;
+  const focusSwap = substitutions.find(sub => sub.exercise === originalName);
+  const guide = EXERCISE_GUIDES[originalName] || EXERCISE_GUIDES[next.ex.name];
 
   return (
     <div style={{position:"fixed",inset:0,zIndex:150,background:"#050505",overflowY:"auto",padding:"calc(10px + env(safe-area-inset-top)) 16px 18px"}}>
@@ -192,6 +196,27 @@ function FocusWorkoutMode({
             </div>
           )}
         </div>
+
+        {focusSwap&&(
+          <div style={{marginTop:10,padding:"10px 12px",background:"#0d0d0d",border:`1px solid ${accent}44`,borderRadius:11}}>
+            <div style={{fontSize:10,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:4}}>Safer Option</div>
+            <div style={{fontSize:13,color:"#ddd",lineHeight:1.4}}>If this feels rough today, swap to {focusSwap.substitute}. {focusSwap.reason}</div>
+            <div style={{display:"flex",gap:7,flexWrap:"wrap",marginTop:8}}>
+              <button onClick={()=>onApplySubstitution?.(focusSwap)}
+                style={{background:accent,border:"none",borderRadius:8,color:"#050505",padding:"8px 10px",fontSize:11,letterSpacing:".08em",fontWeight:700}}>USE SWAP</button>
+              {next.ex.substitutedFor&&<button onClick={()=>onRemoveSubstitution?.(next.ex.substitutedFor)}
+                style={{background:"transparent",border:`1px solid ${accent}66`,borderRadius:8,color:accent,padding:"8px 10px",fontSize:11,letterSpacing:".08em"}}>ORIGINAL</button>}
+            </div>
+          </div>
+        )}
+
+        {guide&&(
+          <div style={{marginTop:10,padding:"10px 12px",background:"#0d0d0d",border:"1px solid #202020",borderRadius:11}}>
+            <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:5}}>Quick Form</div>
+            <div style={{fontSize:13,color:"#ddd",lineHeight:1.45}}>{guide.movement[0]}</div>
+            <div style={{fontSize:12,color:"#888",lineHeight:1.45,marginTop:4}}>Avoid: {guide.mistakes.slice(0,2).join(", ")}.</div>
+          </div>
+        )}
 
         <div style={{height:6,background:"#181818",borderRadius:5,overflow:"hidden",marginTop:12}}>
           <div style={{height:"100%",width:`${(doneSets/totalSets)*100}%`,background:accent,boxShadow:`0 0 12px ${accent}`,transition:"width .25s"}}/>
@@ -261,12 +286,43 @@ function WorkoutSummary({ summary, accent, onClose }) {
           <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:8}}>Coach Note</div>
           <div style={{fontSize:15,color:"#ddd",lineHeight:1.55}}>{summary.coachNote}</div>
           {summary.nextChange&&<div style={{fontSize:13,color:accent,marginTop:10,lineHeight:1.45}}>{summary.nextChange}</div>}
+          {summary.reasoning?.length>0&&(
+            <div style={{display:"grid",gap:7,marginTop:12}}>
+              {summary.reasoning.map((reason,i)=>(
+                <div key={i} style={{fontSize:12,color:"#aaa",lineHeight:1.45,padding:"8px 9px",background:"#080808",border:"1px solid #1d1d1d",borderRadius:8}}>{reason}</div>
+              ))}
+            </div>
+          )}
           {summary.nextWorkout&&<div style={{fontSize:13,color:"#888",marginTop:10}}>Next up: Workout {summary.nextWorkout}</div>}
         </div>
         <button onClick={onClose}
           style={{width:"100%",padding:19,background:accent,border:"none",borderRadius:14,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:26,letterSpacing:".12em",boxShadow:`0 0 42px ${accent}66`}}>
           DONE
         </button>
+      </div>
+    </div>
+  );
+}
+
+function ExerciseGuide({ guide, accent }) {
+  if (!guide) return null;
+  return (
+    <div style={{marginTop:14,padding:"13px 16px",background:"#080808",borderRadius:10,border:`1.5px solid ${accent}33`}}>
+      <SLabel small>How To Do It</SLabel>
+      <GuideLine title="Setup" items={guide.setup} color={accent}/>
+      <GuideLine title="Move" items={guide.movement} color={accent}/>
+      <GuideLine title="Avoid" items={guide.mistakes} color="#fb923c"/>
+      <div style={{fontSize:12,color:"#fb7185",lineHeight:1.45,marginTop:9,padding:"8px 9px",background:"#2a101422",border:"1px solid #fb718533",borderRadius:8}}>{guide.pain}</div>
+    </div>
+  );
+}
+
+function GuideLine({ title, items, color }) {
+  return (
+    <div style={{marginTop:9}}>
+      <div style={{fontSize:10,color,letterSpacing:".14em",textTransform:"uppercase",marginBottom:5}}>{title}</div>
+      <div style={{display:"grid",gap:5}}>
+        {items.map(item=><div key={item} style={{fontSize:13,color:"#ddd",lineHeight:1.4}}>• {item}</div>)}
       </div>
     </div>
   );
@@ -355,6 +411,44 @@ function ThisWeek({ completed, setActiveTab }) {
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function WeeklyMusclePlan({ completed, accent }) {
+  const coverage = weeklyMuscleCoverage({ completed, schedule:SCHEDULE, workouts:WORKOUTS, completionKeyFn:completionKey });
+  const rows = Object.entries(coverage)
+    .map(([muscle, item]) => ({ muscle, label:MUSCLE_LABELS[muscle] || muscle, ...item }))
+    .sort((a,b)=>b.planned-a.planned);
+  const undertrained = rows.filter(row => row.planned < 1).map(row => row.label);
+  return (
+    <div style={{padding:"0 16px 20px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div>
+          <div style={{fontSize:13,color:"#999",letterSpacing:".14em",textTransform:"uppercase",fontWeight:500}}>Muscle Coverage</div>
+          <div style={{fontSize:12,color:"#777",marginTop:3}}>planned for this week</div>
+        </div>
+        <div style={{fontSize:12,color:accent}}>{rows.filter(r=>r.done>0).length}/{rows.length} active</div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
+        {rows.slice(0,12).map(row=>{
+          const pct = Math.min(100, Math.round((row.done / Math.max(row.planned, 1)) * 100));
+          return (
+            <div key={row.muscle} style={{padding:"10px 11px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",gap:8,marginBottom:7}}>
+                <span style={{fontSize:12,color:"#ddd",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{row.label}</span>
+                <span style={{fontSize:11,color:pct>0?accent:"#666"}}>{pct}%</span>
+              </div>
+              <div style={{height:5,background:"#1a1a1a",borderRadius:4,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${pct}%`,background:accent,boxShadow:pct?`0 0 8px ${accent}88`:"none"}}/>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{fontSize:12,color:"#888",lineHeight:1.45,marginTop:10}}>
+        {undertrained.length ? `Watch next: ${undertrained.slice(0,3).join(", ")}.` : "Every listed muscle has at least one planned touch this week."}
       </div>
     </div>
   );
@@ -724,7 +818,7 @@ export default function WorkoutView({
     setLoggerState(null);
   };
 
-  const getAssessmentResults = () => Object.fromEntries(ALL_EXERCISES.map(ex => {
+  const getAssessmentResults = () => Object.fromEntries(ASSESSMENT_EXERCISES.map(ex => {
     const config = exConfig[ex.name] || {};
     const fromTarget = config.targetReps ? Math.max(1, Math.round(config.targetReps / 0.65)) : ex.baseReps;
     return [ex.name, config.maxRepsTest || fromTarget];
@@ -732,7 +826,7 @@ export default function WorkoutView({
 
   const completeAssessment = (results) => {
     const newConfig={...exConfig};
-    ALL_EXERCISES.forEach(ex=>{
+    ASSESSMENT_EXERCISES.forEach(ex=>{
       const maxReps=results?.[ex.name];
       const target=maxReps ? assessmentTarget(maxReps) : ex.baseReps;
       newConfig[ex.name]={
@@ -864,6 +958,7 @@ export default function WorkoutView({
           const science=getScience(ex);
           const exColor=WORKOUTS.A.exercises.some(e=>e.name===ex.name)?WORKOUTS.A.color:WORKOUTS.B.color;
           const histData=getExerciseHistory(exKey,history);
+          const guide=EXERCISE_GUIDES[exKey] || EXERCISE_GUIDES[ex.name];
 
           return(
             <div key={i} style={{padding:"18px 16px",borderBottom:"1px solid #1a1a1a",background:done?`${accent}08`:"transparent",transition:"background .3s"}}>
@@ -918,6 +1013,8 @@ export default function WorkoutView({
                     <div style={{fontSize:15,color:"#f0f0f0",marginTop:5,lineHeight:1.55}}>→ {ex.tip}</div>
                     {ex.substitutedFor&&<div style={{fontSize:12,color:"#888",marginTop:8}}>Original: {ex.substitutedFor}</div>}
                   </div>
+
+                  <ExerciseGuide guide={guide} accent={accent}/>
 
                   <CoachCard suggestions={suggestions.filter(s => s.cat === "Form" || s.cat === "Science" || s.cat === "Watch" || s.cat === "Habits").slice(0, 4)} accent={accent} onOpen={()=>setCoachOpen(true)}/>
 
@@ -993,6 +1090,7 @@ export default function WorkoutView({
       </div>
 
       <ThisWeek completed={completed} setActiveTab={setActiveTab}/>
+      <WeeklyMusclePlan completed={completed} accent={accent}/>
 
       {history.length>0&&(
         <div style={{padding:"0 16px"}}>
@@ -1038,6 +1136,9 @@ export default function WorkoutView({
           getScience={getScience}
           toggleSet={toggleSet} onExit={()=>setFocusMode(false)}
           onFinish={finishWorkout} allDone={allDone} isCompleted={isCompleted}
+          substitutions={coachPlan.substitutions || []}
+          onApplySubstitution={useSubstitution}
+          onRemoveSubstitution={removeSubstitution}
         />
       )}
       {workoutSummary&&<WorkoutSummary summary={workoutSummary} accent={accent} onClose={()=>{setWorkoutSummary(null);setShowFeedback(true);}}/>}

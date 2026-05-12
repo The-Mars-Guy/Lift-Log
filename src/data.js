@@ -18,7 +18,7 @@ export const WORKOUTS = {
       { name:"Rear Delt Row",     sets:3, baseReps:12, repLabel:"×", tip:"Lead with pinky, flare elbows wide",             folder:"Bent_Over_Dumbbell_Rear_Delt_Raise_With_Head_On_Bench",  primary:["rearDelts","upperBack"],secondary:["lats"]                 },
       { name:"Tricep Kickback",   sets:3, baseReps:12, repLabel:"×", tip:"Lock upper arm parallel — only forearm moves",   folder:"Tricep_Dumbbell_Kickback",                               primary:["triceps"],              secondary:[]                       },
       { name:"Calf Raise",        sets:3, baseReps:15, repLabel:"×", tip:"Pause 2s at top, slow lower",                    folder:"Standing_Dumbbell_Calf_Raise",                           primary:["calves"],               secondary:[]                       },
-      { name:"Crunch",            sets:2, baseReps:12, repLabel:"×", tip:"Curl ribs toward hips, keep lower back gently pressed down", folder:"Crunch",                                          primary:["core"],                 secondary:[]                       },
+      { name:"Crunch",            sets:2, baseReps:12, repLabel:"×", tip:"Curl ribs toward hips, exhale at the top, and avoid pulling on your neck", folder:"Crunches",                                          primary:["core"],                 secondary:[]                       },
     ],
   },
 };
@@ -63,6 +63,75 @@ export const DEFAULT_WEIGHTS = {
   "Arnold Press": 10,   "Hammer Curl": 10,    "Romanian Deadlift": 15,
   "Reverse Lunge": 10,  "Rear Delt Row": 8,   "Tricep Kickback": 8,
   "Calf Raise": 15,     "Crunch": 0,
+};
+
+export const EXERCISE_GUIDES = {
+  "Goblet Squat": {
+    setup: ["Hold one dumbbell tight at chest height", "Feet around shoulder width", "Brace before each rep"],
+    movement: ["Sit between your hips", "Keep chest tall", "Stand by pushing the floor away"],
+    mistakes: ["Knees collapsing inward", "Heels lifting", "Rushing the bottom"],
+    pain: "If knees complain, reduce depth or swap to a box squat or glute bridge.",
+  },
+  "Floor Press": {
+    setup: ["Lie flat with knees bent", "Elbows about 45 degrees from your body", "Wrists stacked over elbows"],
+    movement: ["Lower until upper arms touch the floor", "Pause briefly", "Press without bouncing"],
+    mistakes: ["Flaring elbows wide", "Letting wrists bend back", "Losing shoulder control"],
+    pain: "If shoulders or wrists complain, use a neutral grip or swap to push-ups.",
+  },
+  "Bent Over Row": {
+    setup: ["Hinge until torso is angled forward", "Keep back long", "Let dumbbells hang under shoulders"],
+    movement: ["Pull elbows toward back pockets", "Pause at the top", "Lower with control"],
+    mistakes: ["Standing up each rep", "Shrugging into the neck", "Swinging the dumbbells"],
+    pain: "If lower back feels loaded, brace on a chair and row one arm at a time.",
+  },
+  "Arnold Press": {
+    setup: ["Start dumbbells in front of shoulders", "Ribs down", "Palms face you"],
+    movement: ["Rotate as you press", "Finish overhead without leaning back", "Lower through the same path"],
+    mistakes: ["Arching the low back", "Turning it into a push press", "Dropping too fast"],
+    pain: "If overhead pressing pinches, use lateral raises or front raises today.",
+  },
+  "Hammer Curl": {
+    setup: ["Stand tall", "Palms face each other", "Elbows stay near your sides"],
+    movement: ["Curl without swinging", "Squeeze briefly", "Lower for 3 seconds"],
+    mistakes: ["Rocking the torso", "Elbows drifting forward", "Letting the weight drop"],
+    pain: "If elbows or wrists complain, use alternating reps and a smaller range.",
+  },
+  "Romanian Deadlift": {
+    setup: ["Dumbbells in front of thighs", "Soft knees", "Brace your trunk"],
+    movement: ["Push hips back", "Stop when hamstrings stretch", "Stand by squeezing glutes"],
+    mistakes: ["Squatting instead of hinging", "Rounding the back", "Chasing too much range"],
+    pain: "If back feels sketchy, swap to glute bridges or shorten the range.",
+  },
+  "Reverse Lunge": {
+    setup: ["Stand tall with dumbbells at sides", "Brace before stepping", "Keep front foot planted"],
+    movement: ["Step back under control", "Front shin stays mostly vertical", "Drive through front foot"],
+    mistakes: ["Pushing off the back leg", "Knee diving inward", "Taking a tiny unstable step"],
+    pain: "If knees complain, swap to glute bridges or split squat holds.",
+  },
+  "Rear Delt Row": {
+    setup: ["Hinge or support your head", "Let arms hang", "Keep neck relaxed"],
+    movement: ["Lead with elbows wide", "Think upper back and rear shoulders", "Lower slowly"],
+    mistakes: ["Turning it into a lat row", "Shrugging", "Using momentum"],
+    pain: "If shoulders complain, reduce range or use a lighter rear delt fly pattern.",
+  },
+  "Tricep Kickback": {
+    setup: ["Hinge forward", "Upper arms parallel to torso", "Elbows fixed"],
+    movement: ["Extend only the forearm", "Squeeze at lockout", "Return slowly"],
+    mistakes: ["Dropping upper arms", "Swinging the weight", "Overarching the back"],
+    pain: "If elbows complain, swap to close-grip floor press.",
+  },
+  "Calf Raise": {
+    setup: ["Stand tall near support", "Feet hip width", "Hold dumbbells if useful"],
+    movement: ["Rise as high as possible", "Pause at the top", "Lower to a full stretch"],
+    mistakes: ["Bouncing reps", "Rolling ankles out", "Skipping the bottom stretch"],
+    pain: "If balance is limiting, hold a wall or do seated calf raises.",
+  },
+  "Crunch": {
+    setup: ["Lie on your back with knees bent", "Hands lightly beside head or across chest", "Lower back gently stays down"],
+    movement: ["Exhale and curl ribs toward hips", "Lift shoulder blades only", "Pause, then lower slowly"],
+    mistakes: ["Pulling on the neck", "Sitting all the way up", "Holding your breath"],
+    pain: "If your back or neck complains, swap to dead bugs, heel taps, or planks.",
+  },
 };
 
 // ─── XP & LEVELS ─────────────────────────────────────────────────────────────

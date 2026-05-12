@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, evaluateProgression, exerciseFeedbackSignal, exerciseTrend, readinessScore, sciencePrescription, SUBSTITUTIONS, suggestSubstitutions, summarizeWorkout, tempoPrescription, variationPrescription } from "../src/coach.js";
+import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, evaluateProgression, exerciseFeedbackSignal, exerciseTrend, readinessScore, sciencePrescription, SUBSTITUTIONS, suggestSubstitutions, summarizeWorkout, tempoPrescription, variationPrescription, weeklyMuscleCoverage } from "../src/coach.js";
 
 const exercise = { name: "Floor Press", sets: 3, baseReps: 10 };
 
@@ -144,6 +144,7 @@ test("summarizeWorkout totals logged work and creates a coach note", () => {
   assert.equal(summary.bestSet.name, "Floor Press");
   assert.equal(summary.nextChange.length > 0, true);
   assert.ok(summary.coachNote.length > 0);
+  assert.ok(summary.reasoning.some(item => item.includes("Readiness")));
 });
 
 test("buildCoachMemory exposes learned readiness and exercise trends", () => {
@@ -218,6 +219,23 @@ test("buildWeeklyReview summarizes recent work", () => {
   assert.equal(review.sessions, 1);
   assert.equal(review.volume, 300);
   assert.equal(review.best.name, "Floor Press");
+});
+
+test("weeklyMuscleCoverage reports planned and completed muscle work", () => {
+  const workouts = {
+    A: { exercises: [{ name: "Floor Press", primary: ["chest"], secondary: ["triceps"] }] },
+  };
+  const coverage = weeklyMuscleCoverage({
+    workouts,
+    schedule: { Monday: "A" },
+    completed: { "monday": true },
+    completionKeyFn: day => day.toLowerCase(),
+  });
+
+  assert.equal(coverage.chest.planned, 1);
+  assert.equal(coverage.chest.done, 1);
+  assert.equal(coverage.triceps.planned, 0.5);
+  assert.equal(coverage.triceps.done, 0.5);
 });
 
 test("substitution coverage includes every programmed movement", async () => {
