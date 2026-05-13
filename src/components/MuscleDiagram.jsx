@@ -2,9 +2,14 @@
 
 const C = { body: "#181818", bodyStroke: "#2c2c2c", inactive: "#222", inactiveStroke: "#2e2e2e" };
 
-export default function MuscleDiagram({ primary = [], secondary = [], accent = "#4ade80" }) {
-  const fill   = (m) => primary.includes(m)   ? accent : secondary.includes(m) ? accent + "60" : C.inactive;
-  const stroke = (m) => primary.includes(m) || secondary.includes(m) ? accent : C.inactiveStroke;
+export default function MuscleDiagram({ primary = [], secondary = [], activation = null, accent = "#4ade80" }) {
+  const activeValue = (m) => activation && Number.isFinite(Number(activation[m])) ? Math.max(0, Math.min(1, Number(activation[m]))) : null;
+  const fill = (m) => {
+    const value = activeValue(m);
+    if (value != null) return value > 0 ? `${accent}${Math.round(45 + value * 165).toString(16).padStart(2, "0")}` : C.inactive;
+    return primary.includes(m) ? accent : secondary.includes(m) ? accent + "60" : C.inactive;
+  };
+  const stroke = (m) => activeValue(m) > 0 || primary.includes(m) || secondary.includes(m) ? accent : C.inactiveStroke;
   const attr   = (m) => ({ fill: fill(m), stroke: stroke(m), strokeWidth: 0.4, style:{ transition:"fill .35s,stroke .35s" } });
 
   return (
