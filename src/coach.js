@@ -582,6 +582,8 @@ export function evaluateProgression({
   style = "balanced",
   autoDeload = true,
 }) {
+  const cleanIncrement = Number.isFinite(Number(increment)) && Number(increment) > 0 ? Number(increment) : 1;
+  const cleanCurrentWeight = Number.isFinite(Number(currentWeight)) ? Number(currentWeight) : 0;
   const allHit = setLog.length > 0 && setLog.every(l => (l.reps || 0) >= targetReps);
   const anyFail = setLog.some(l => (l.reps || 0) < Math.round(targetReps * 0.75));
   const cleanSessions = allHit ? (previous.cleanSessions || 0) + 1 : 0;
@@ -591,7 +593,7 @@ export function evaluateProgression({
   if (autoDeload && missSessions >= 2) {
     return {
       action: "deload",
-      nextWeight: Math.max(Math.round((currentWeight - increment) * 4) / 4, increment),
+      nextWeight: Math.max(roundWeight(cleanCurrentWeight - cleanIncrement), 0),
       cleanSessions,
       missSessions,
       note: "Repeated misses. Reduce load and rebuild clean reps.",
@@ -601,7 +603,7 @@ export function evaluateProgression({
   if (cleanSessions >= requiredCleanSessions) {
     return {
       action: "increase",
-      nextWeight: Math.round((currentWeight + increment) * 4) / 4,
+      nextWeight: roundWeight(cleanCurrentWeight + cleanIncrement),
       cleanSessions: 0,
       missSessions: 0,
       note: `${requiredCleanSessions} clean session${requiredCleanSessions === 1 ? "" : "s"}. Ready to progress.`,
@@ -610,11 +612,55 @@ export function evaluateProgression({
 
   return {
     action: "maintain",
-    nextWeight: currentWeight,
+    nextWeight: cleanCurrentWeight,
     cleanSessions,
     missSessions,
     note: allHit ? "Clean session logged. Repeat before increasing." : "Keep the same load.",
   };
+}
+
+export function roundWeight(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+export function explainExerciseDecision({
+  exercise,
+  history = [],
+  exConfig = {},
+  targetReps,
+  science,
+  progressionRec,
+  settings = {},
+  checkIns = [],
+}) {
+  const name = exercise?.configName || exercise?.originalName || exercise?.name;
+  const cfg = exConfig[name] || {};
+  const latest = [...history]
+    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+    .map(session => session.exercises?.find(ex => (ex.originalName || ex.substitutedFor || ex.name) === name))
+    .find(Boolean);
+  const logs = latest?.setLog || [];
+  const lastTotal = logs.reduce((sum, log) => sum + (log.reps || 0), 0);
+  const lastBest = logs.reduce((best, log) => Math.max(best, log.reps || 0), 0);
+  const misses = logs.filter(log => (log.reps || 0) < Math.round((targetReps || 0) * 0.75)).length;
+  const restEvents = checkIns.filter(ci => ci.kind === "rest" && (ci.originalName === name || ci.exercise === exercise?.name || ci.exercise === name));
+  const skippedRests = restEvents.filter(ci => ci.action === "skip").length;
+  const lines = [];
+  if (targetReps) lines.push(`Target is ${targetReps} reps from your benchmark, readiness, and recent feedback.`);
+  if (logs.length) lines.push(`Last time: ${logs.length} sets, ${lastTotal} total reps, best set ${lastBest} reps.`);
+  else lines.push("No logged set history yet, so the coach is using your current plan as the baseline.");
+  if (misses) lines.push(`${misses} recent set${misses === 1 ? "" : "s"} missed badly, so progression is held back.`);
+  if (cfg.cleanSessions) lines.push(`${cfg.cleanSessions} clean session${cfg.cleanSessions === 1 ? "" : "s"} banked toward the next increase.`);
+  if (cfg.missSessions) lines.push(`${cfg.missSessions} miss session${cfg.missSessions === 1 ? "" : "s"} recorded for auto-deload logic.`);
+  if (skippedRests) lines.push(`${skippedRests} rest skip${skippedRests === 1 ? "" : "s"} logged around this movement.`);
+  if (science?.note) lines.push(science.note);
+  if (progressionRec?.note || cfg.lastRecNote) lines.push(progressionRec?.note || cfg.lastRecNote);
+  if ((settings.equipmentProfile || "fixed_dumbbells") === "fixed_dumbbells") {
+    lines.push("Fixed dumbbell mode prefers reps, tempo, cleaner form, and variations before big load jumps.");
+  }
+  return lines.slice(0, 6);
 }
 
 export function coachTargetReps(baseTarget, readiness = DEFAULT_READINESS) {

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, computePersonalRecords, detectWeakPoints, evaluateProgression, exerciseFeedbackSignal, exerciseTrend, plateauFixes, readinessScore, recommendDeload, sciencePrescription, SUBSTITUTIONS, suggestSubstitutions, summarizeWorkout, tempoPrescription, variationPrescription, weeklyMuscleCoverage } from "../src/coach.js";
+import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, computePersonalRecords, detectWeakPoints, evaluateProgression, exerciseFeedbackSignal, exerciseTrend, explainExerciseDecision, plateauFixes, readinessScore, recommendDeload, sciencePrescription, SUBSTITUTIONS, suggestSubstitutions, summarizeWorkout, tempoPrescription, variationPrescription, weeklyMuscleCoverage } from "../src/coach.js";
 
 const exercise = { name: "Floor Press", sets: 3, baseReps: 10 };
 
@@ -204,6 +204,39 @@ test("evaluateProgression respects coach style and deload settings", () => {
   assert.equal(aggressive.action, "increase");
   assert.equal(noDeload.action, "maintain");
   assert.equal(noDeload.missSessions, 2);
+});
+
+test("evaluateProgression supports fully custom weight increments", () => {
+  const increase = evaluateProgression({
+    setLog: [{ reps: 10 }, { reps: 10 }],
+    targetReps: 10,
+    currentWeight: 5,
+    increment: 1,
+    style: "aggressive",
+  });
+  const deload = evaluateProgression({
+    setLog: [{ reps: 4 }, { reps: 5 }],
+    targetReps: 10,
+    currentWeight: 5,
+    previous: { missSessions: 1 },
+    increment: 1,
+  });
+
+  assert.equal(increase.nextWeight, 6);
+  assert.equal(deload.nextWeight, 4);
+});
+
+test("explainExerciseDecision surfaces the coach reasoning", () => {
+  const lines = explainExerciseDecision({
+    exercise,
+    targetReps: 10,
+    settings: { equipmentProfile: "fixed_dumbbells" },
+    exConfig: { "Floor Press": { cleanSessions: 1, lastRecNote: "Clean session logged." } },
+    history: [{ timestamp: 1, exercises: [{ name: "Floor Press", setLog: [{ reps: 10, weight: 5 }, { reps: 8, weight: 5 }] }] }],
+  });
+
+  assert.ok(lines.some(line => line.includes("Last time")));
+  assert.ok(lines.some(line => line.includes("Fixed dumbbell")));
 });
 
 test("buildWeeklyReview summarizes recent work", () => {

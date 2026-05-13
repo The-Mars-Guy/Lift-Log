@@ -8,7 +8,7 @@ import { useSessionTimer, fmtDuration } from "../hooks.js";
 import { ExerciseAnimation, RestTimer, Toast, MiniGraph } from "../components/shared.jsx";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
 import { completionKey, defaultWorkoutDay, scheduledDate, logKey as makeLogKey } from "../session.js";
-import { buildCoachMemory, buildCoachPlan, coachSetCount, coachTargetReps, DEFAULT_READINESS, evaluateProgression, plateauFixes, readinessLabel, sciencePrescription, summarizeWorkout, weeklyMuscleCoverage, SUBSTITUTIONS } from "../coach.js";
+import { buildCoachMemory, buildCoachPlan, coachSetCount, coachTargetReps, DEFAULT_READINESS, evaluateProgression, explainExerciseDecision, plateauFixes, readinessLabel, sciencePrescription, summarizeWorkout, weeklyMuscleCoverage, SUBSTITUTIONS } from "../coach.js";
 import { Confetti, XpFloat } from "./workout/Effects.jsx";
 import { FirstRunSetup, AssessmentFlow, ASSESSMENT_EXERCISES } from "./workout/Assessment.jsx";
 import PostWorkoutFeedback from "./workout/PostWorkoutFeedback.jsx";
@@ -362,7 +362,7 @@ function SummaryStat({ label, value, sub, accent }) {
 }
 
 // ── SET LOGGER ────────────────────────────────────────────────────────────────
-function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, onSave, onSkip, editing }) {
+function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, onSave, onSkip, editing, increment = 1 }) {
   const [weight, setWeight] = useState(defaultWeight);
   const [reps,   setReps]   = useState(defaultReps);
   useEffect(() => {
@@ -371,6 +371,7 @@ function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, o
   }, [defaultWeight, defaultReps, exerciseName, setNum]);
   const cleanWeight = Number.isFinite(Number(weight)) ? Math.max(Number(weight), 0) : 0;
   const cleanReps = Number.isFinite(Number(reps)) ? Math.max(Math.round(Number(reps)), 0) : 0;
+  const step = Number.isFinite(Number(increment)) && Number(increment) > 0 ? Number(increment) : 1;
   return (
     <div style={{position:"fixed",bottom:82,left:0,right:0,zIndex:220,background:"#0a0a0a",borderTop:`1.5px solid ${accent}99`,padding:"14px 18px 12px",boxShadow:`0 -8px 32px ${accent}44`,animation:"slideUp .22s ease-out"}}>
       <div className="mobile-shell">
@@ -379,10 +380,10 @@ function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, o
           <div style={{flex:1}}>
             <div style={{fontSize:11,color:"#888",letterSpacing:".1em",marginBottom:5}}>WEIGHT (lbs)</div>
             <div style={{display:"flex",alignItems:"center",background:"#141414",borderRadius:10,border:`1px solid ${accent}33`,overflow:"hidden"}}>
-              <button onClick={()=>setWeight(w=>Math.max((Number(w)||0)-2.5,0))} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>−</button>
-              <input value={weight} onChange={e=>setWeight(e.target.value)} inputMode="decimal" type="number" min="0" step="2.5" aria-label="Weight used in pounds"
+              <button onClick={()=>setWeight(w=>Math.max((Number(w)||0)-step,0))} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>−</button>
+              <input value={weight} onChange={e=>setWeight(e.target.value)} inputMode="decimal" type="number" min="0" step="any" aria-label="Weight used in pounds"
                 style={{flex:1,minWidth:0,textAlign:"center",fontSize:18,fontWeight:500,color:"#fff",background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono, monospace"}}/>
-              <button onClick={()=>setWeight(w=>(Number(w)||0)+2.5)} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>+</button>
+              <button onClick={()=>setWeight(w=>(Number(w)||0)+step)} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>+</button>
             </div>
           </div>
           <div style={{flex:1}}>
@@ -400,6 +401,20 @@ function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, o
         <button onClick={onSkip} style={{background:"none",border:"none",color:"#555",fontSize:12,letterSpacing:".08em",marginTop:10,width:"100%",textAlign:"center",padding:4}}>{editing ? "keep current log" : "use planned numbers"}</button>
       </div>
     </div>
+  );
+}
+
+function CoachWhyPanel({ lines, accent }) {
+  if (!lines?.length) return null;
+  return (
+    <details style={{marginTop:14,padding:"13px 16px",background:"#080808",borderRadius:10,border:`1.5px solid ${accent}33`}}>
+      <summary style={{fontSize:10,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,cursor:"pointer"}}>Why This Plan</summary>
+      <div style={{display:"grid",gap:7,marginTop:10}}>
+        {lines.map(line=>(
+          <div key={line} style={{fontSize:13,color:"#ddd",lineHeight:1.45}}>• {line}</div>
+        ))}
+      </div>
+    </details>
   );
 }
 
@@ -1072,6 +1087,16 @@ export default function WorkoutView({
           const histData=getExerciseHistory(exKey,history);
           const guide=EXERCISE_GUIDES[exKey] || EXERCISE_GUIDES[ex.name];
           const fixes=plateauFixes({history,exercise:{...ex,name:exKey},targetReps:reps});
+          const why=explainExerciseDecision({
+            exercise:ex,
+            history,
+            exConfig,
+            targetReps:reps,
+            science,
+            progressionRec:exConfig[exKey],
+            settings,
+            checkIns,
+          });
 
           return(
             <div key={i} style={{padding:"18px 16px",borderBottom:"1px solid #1a1a1a",background:done?`${accent}08`:"transparent",transition:"background .3s"}}>
@@ -1128,6 +1153,7 @@ export default function WorkoutView({
                   </div>
 
                   <ExerciseGuide guide={guide} accent={accent}/>
+                  <CoachWhyPanel lines={why} accent={accent}/>
                   <PlateauFixPanel fixes={fixes} accent={accent}/>
                   <SwapLibrary
                     exerciseName={exKey}
@@ -1170,10 +1196,12 @@ export default function WorkoutView({
                       {hasNxtW&&<span style={{fontSize:12,color:accent,background:`${accent}18`,padding:"3px 9px",borderRadius:6}}>→ Try {nextW}lbs</span>}
                     </div>
                     <div style={{display:"flex",alignItems:"center",background:"#101010",borderRadius:10,border:`1px solid ${accent}33`,overflow:"hidden"}}>
-                      <button onClick={()=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:Math.max((p[exKey]?.weight||curW)-2.5,0)}}))} style={{width:52,height:52,background:"transparent",border:"none",color:"#ccc",fontSize:24}}>−</button>
-                      <div style={{flex:1,textAlign:"center",fontSize:20,fontWeight:500,color:"#fff"}}>{curW > 0 ? `${curW} lbs` : "bodyweight"}</div>
-                      <button onClick={()=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:(p[exKey]?.weight||curW)+2.5}}))} style={{width:52,height:52,background:"transparent",border:"none",color:"#ccc",fontSize:24}}>+</button>
+                      <button onClick={()=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:Math.max((p[exKey]?.weight||curW)-(settings.weightIncrement||1),0)}}))} style={{width:52,height:52,background:"transparent",border:"none",color:"#ccc",fontSize:24}}>−</button>
+                      <input value={curW} onChange={e=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:Math.max(Number(e.target.value)||0,0)}}))} type="number" inputMode="decimal" min="0" step="any" aria-label={`${ex.name} working weight`}
+                        style={{flex:1,minWidth:0,textAlign:"center",fontSize:20,fontWeight:500,color:"#fff",background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono, monospace"}}/>
+                      <button onClick={()=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:(p[exKey]?.weight||curW)+(settings.weightIncrement||1)}}))} style={{width:52,height:52,background:"transparent",border:"none",color:"#ccc",fontSize:24}}>+</button>
                     </div>
+                    <div style={{fontSize:11,color:"#777",lineHeight:1.45,marginTop:8}}>Type any number, including 5, 7.5, 12, or 15. The +/- buttons use your progression increment.</div>
                   </div>
 
                   {/* Logged sets today */}
@@ -1235,7 +1263,7 @@ export default function WorkoutView({
       <div style={{height:32}}/>
 
       {/* OVERLAYS */}
-      {loggerState&&<SetLogger exerciseName={workoutPlan.exercises[loggerState.exIdx].name} setNum={loggerState.setIdx+1} defaultWeight={loggerState.weight} defaultReps={loggerState.reps} accent={accent} editing={loggerState.editing} onSave={saveLog} onSkip={skipLog}/>}
+      {loggerState&&<SetLogger exerciseName={workoutPlan.exercises[loggerState.exIdx].name} setNum={loggerState.setIdx+1} defaultWeight={loggerState.weight} defaultReps={loggerState.reps} accent={accent} editing={loggerState.editing} increment={settings.weightIncrement || 1} onSave={saveLog} onSkip={skipLog}/>}
       {undoSet&&(
         <div style={{position:"fixed",left:16,right:16,bottom:"calc(82px + env(safe-area-inset-bottom))",zIndex:260,pointerEvents:"none"}}>
           <div className="mobile-shell" style={{background:"#111",border:`1.5px solid ${accent}66`,borderRadius:12,padding:"13px 14px",boxShadow:`0 0 28px ${accent}33`,pointerEvents:"auto"}}>

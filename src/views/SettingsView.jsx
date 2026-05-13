@@ -65,12 +65,19 @@ export default function SettingsView({
             ui={ui}
           />
         </Row>
-        <Row label="Dumbbell Weight" desc="Used for volume calculations" ui={ui}>
-          <SegControl
-            options={[{ v: 10, l: "10" }, { v: 15, l: "15" }, { v: 20, l: "20" }, { v: 25, l: "25" }]}
+        <Row label="Dumbbell Weight" desc="Default weight for new exercises" ui={ui}>
+          <NumberInput
             value={settings.dumbbellWeight}
             onChange={v => update("dumbbellWeight", v)}
-            accent={accent}
+            suffix="lb"
+            ui={ui}
+          />
+        </Row>
+        <Row label="Progression Increment" desc="How much +/- buttons and coach load jumps change weight" help="Use 1 for full freedom, 2.5 for adjustable dumbbells, or 5 for bigger jumps. You can still type any exact weight while logging sets." ui={ui}>
+          <NumberInput
+            value={settings.weightIncrement || 1}
+            onChange={v => update("weightIncrement", Math.max(v, 0.1))}
+            suffix="lb"
             ui={ui}
           />
         </Row>
@@ -327,6 +334,27 @@ function MultiSelect({ options, value, onChange, accent, ui }) {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function NumberInput({ value, onChange, suffix, ui }) {
+  return (
+    <div style={{display:"flex",alignItems:"center",background:ui.control,border:`1px solid ${ui.border}`,borderRadius:9,overflow:"hidden"}}>
+      <input
+        value={value}
+        onChange={e => onChange(Number(e.target.value) || 0)}
+        type="number"
+        inputMode="decimal"
+        min="0"
+        step="any"
+        style={{
+          flex:1,minWidth:0,padding:"12px 12px",
+          background:"transparent",border:"none",outline:"none",
+          color:ui.text,fontFamily:"DM Mono, monospace",fontSize:16,
+        }}
+      />
+      <span style={{fontSize:12,color:ui.muted,paddingRight:12}}>{suffix}</span>
     </div>
   );
 }

@@ -304,7 +304,7 @@ export default function App() {
             bodyMetrics={normalized.bodyMetrics} setBodyMetrics={setBodyMetrics} />
         )}
         {activeView === "calendar" && (
-          <CalendarView history={normalized.history} progression={normalized.progression} settings={safeSettings} accent={accent} />
+          <CalendarView history={normalized.history} progression={normalized.progression} settings={safeSettings} accent={accent} theme={visualTheme} />
         )}
         {activeView === "settings" && (
           <SettingsView settings={safeSettings} setSettings={setSettings}

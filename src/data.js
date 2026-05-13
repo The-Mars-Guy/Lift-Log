@@ -44,7 +44,7 @@ export const DEFAULT_SETTINGS = {
   vibrationEnabled: true,
   sessionsPerProgression: 6,
   maxRepBonus: 5,
-  weightIncrement: 2.5,  // lbs to add when progression triggers
+  weightIncrement: 1,    // lbs to add when progression triggers or +/- buttons are tapped
   coachStyle: "balanced",
   autoDeload: true,
   showReadiness: true,
@@ -187,11 +187,13 @@ export const epley1RM = (weight, reps) => reps <= 0 ? 0 : reps === 1 ? weight : 
 // Returns { action: 'increase'|'maintain'|'decrease', nextWeight, note }
 export function calcNextLoad(setLogs, targetReps, currentWeight, increment=2.5) {
   if (!setLogs?.length) return { action:"maintain", nextWeight:currentWeight, note:"No data yet" };
+  const cleanIncrement = Number.isFinite(Number(increment)) && Number(increment) > 0 ? Number(increment) : 1;
+  const cleanWeight = Number.isFinite(Number(currentWeight)) ? Number(currentWeight) : 0;
   const allHit  = setLogs.every(l => (l.reps||0) >= targetReps);
   const anyFail = setLogs.some(l => (l.reps||0) < Math.round(targetReps * 0.75));
-  if (allHit)  return { action:"increase", nextWeight: Math.round((currentWeight + increment) * 4) / 4, note:`Hit all reps → add ${increment}lbs` };
-  if (anyFail) return { action:"decrease", nextWeight: Math.max(Math.round((currentWeight - increment*2) * 4)/4, increment), note:`Failed reps → reduce load` };
-  return { action:"maintain", nextWeight:currentWeight, note:"Almost there — same weight" };
+  if (allHit)  return { action:"increase", nextWeight: Math.round((cleanWeight + cleanIncrement) * 100) / 100, note:`Hit all reps → add ${cleanIncrement}lbs` };
+  if (anyFail) return { action:"decrease", nextWeight: Math.max(Math.round((cleanWeight - cleanIncrement*2) * 100)/100, 0), note:`Failed reps → reduce load` };
+  return { action:"maintain", nextWeight:cleanWeight, note:"Almost there — same weight" };
 }
 
 // ─── DYNAMIC PROGRESSION ─────────────────────────────────────────────────────
