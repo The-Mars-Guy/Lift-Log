@@ -1,5 +1,6 @@
 // Web Audio synthesized sound effects — no asset files needed
 let ctx = null;
+const VOLUME_MULTIPLIER = 3;
 
 function getCtx() {
   if (!ctx) {
@@ -18,10 +19,11 @@ function tone({ freq, duration = 0.15, type = "sine", gain = 0.15, attack = 0.00
   const c = getCtx(); if (!c) return;
   const osc = c.createOscillator();
   const g = c.createGain();
+  const boostedGain = Math.min(gain * VOLUME_MULTIPLIER, 0.9);
   osc.type = type;
   osc.frequency.value = freq;
   g.gain.setValueAtTime(0, c.currentTime);
-  g.gain.linearRampToValueAtTime(gain, c.currentTime + attack);
+  g.gain.linearRampToValueAtTime(boostedGain, c.currentTime + attack);
   g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + duration);
   osc.connect(g); g.connect(c.destination);
   osc.start(c.currentTime);
