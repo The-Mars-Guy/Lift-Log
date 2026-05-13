@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { WORKOUTS, assessmentTarget } from "../../data.js";
 import { ExerciseAnimation } from "../../components/shared.jsx";
 
-const ALL_EXERCISES = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
+export const ASSESSMENT_EXERCISES = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
 
 export function FirstRunSetup({ settings, setSettings, accent }) {
   const [goal, setGoal] = useState(settings.trainingGoal || "hypertrophy");
@@ -55,7 +55,7 @@ export function AssessmentFlow({ onComplete, accent, theme="dark", initialResult
   const [results, setResults] = useState(initialResults || {});
   const [count, setCount] = useState(10);
 
-  const total = ALL_EXERCISES.length;
+  const total = ASSESSMENT_EXERCISES.length;
   const light = theme === "pop_light";
   const ui = {
     page: light ? "linear-gradient(180deg,#f8fffb 0%,#eef7ff 58%,#ffffff 100%)" : "#050505",
@@ -72,7 +72,7 @@ export function AssessmentFlow({ onComplete, accent, theme="dark", initialResult
 
   useEffect(() => {
     if (step < 0 || step >= total) return;
-    const ex = ALL_EXERCISES[step];
+    const ex = ASSESSMENT_EXERCISES[step];
     setCount(results[ex.name] || 10);
   }, [step, total]); // eslint-disable-line
 
@@ -143,7 +143,7 @@ export function AssessmentFlow({ onComplete, accent, theme="dark", initialResult
     );
   }
 
-  const ex = ALL_EXERCISES[step];
+  const ex = ASSESSMENT_EXERCISES[step];
   const exColor = WORKOUTS.A.exercises.some(e=>e.name===ex.name) ? WORKOUTS.A.color : WORKOUTS.B.color;
 
   return (

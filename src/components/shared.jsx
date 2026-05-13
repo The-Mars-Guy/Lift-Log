@@ -304,8 +304,9 @@ export function BarChart({ data, color="#4ade80", height=130, label }) {
 }
 
 // ── Heatmap ──────────────────────────────────────────────────────────────────
-export function Heatmap({ history }) {
+export function Heatmap({ history, theme = "dark" }) {
   const today = new Date(); today.setHours(0,0,0,0);
+  const light = theme === "pop_light";
   const weeksBack = 12;
   const dateMap = {};
   for (const h of history) {
@@ -331,19 +332,19 @@ export function Heatmap({ history }) {
         {cells.map((week,ci) => (
           <div key={ci} style={{ display:"flex", flexDirection:"column", gap }}>
             {week.map((c,ri) => {
-              const color = c.workout ? WORKOUTS[c.workout].color : c.isFuture ? "#0a0a0a" : "#161616";
+              const color = c.workout ? WORKOUTS[c.workout].color : c.isFuture ? (light ? "#edf4fb" : "#0a0a0a") : (light ? "#dce7f2" : "#161616");
               const isToday = c.iso === isoDate(today);
               return (
                 <div key={ri} title={`${dateStr(c.date)}${c.workout?" — "+WORKOUTS[c.workout].label:""}`}
                   style={{ width:cSz, height:cSz, background:color, borderRadius:3,
-                    border:isToday?"1.5px solid #f0f0f0":"1px solid transparent",
+                    border:isToday?`1.5px solid ${light ? "#123047" : "#f0f0f0"}`:"1px solid transparent",
                     boxShadow: c.workout ? `0 0 6px ${WORKOUTS[c.workout].color}66` : "none" }}/>
               );
             })}
           </div>
         ))}
       </div>
-      <div style={{ display:"flex", justifyContent:"space-between", marginTop:11, fontSize:10, color:"#888", letterSpacing:"0.1em" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", marginTop:11, fontSize:10, color:light ? "#6b788c" : "#888", letterSpacing:"0.1em" }}>
         <span>{weeksBack} WEEKS AGO</span><span>TODAY</span>
       </div>
     </div>

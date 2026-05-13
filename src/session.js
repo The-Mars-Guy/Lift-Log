@@ -51,6 +51,7 @@ export function normalizeLiftLogData(data = {}) {
   if (!Array.isArray(normalized.history)) normalized.history = [];
   if (!Array.isArray(normalized.achievements)) normalized.achievements = [];
   if (!Array.isArray(normalized.checkIns)) normalized.checkIns = [];
+  if (!Array.isArray(normalized.bodyMetrics)) normalized.bodyMetrics = [];
   if (!normalized.sets || typeof normalized.sets !== "object" || Array.isArray(normalized.sets)) normalized.sets = {};
   if (!normalized.completed || typeof normalized.completed !== "object" || Array.isArray(normalized.completed)) normalized.completed = {};
   if (!normalized.progression || typeof normalized.progression !== "object" || Array.isArray(normalized.progression)) normalized.progression = {};

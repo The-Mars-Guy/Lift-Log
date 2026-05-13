@@ -296,7 +296,9 @@ export function sciencePrescription({ exercise, history = [], checkIns = [], set
   const est1RM = bestEstimated1RM(history, exerciseName);
   const trend = exerciseTrend(history, { ...exercise, name: exerciseName }, baseTarget);
   const feedback = exerciseFeedbackSignal(checkIns, exerciseName);
+  const workoutFeedback = [...checkIns].filter(ci => ci.kind === "workout_feedback").sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))[0];
   const load = recentTrainingLoad(history);
+  const deload = recommendDeload({ history, checkIns });
   const behavior = behaviorMemory(checkIns);
   if (!enabled) {
     return { enabled:false, targetReps:baseTarget, sets:exercise.sets, est1RM:null, suggestedWeight:null, label:"Standard", note:null };
@@ -349,6 +351,13 @@ export function sciencePrescription({ exercise, history = [], checkIns = [], set
     sets = Math.max(1, sets - 1);
     note += " Recent weekly load is high, so total sets are capped today.";
   }
+  if (deload.recommended) {
+    targetReps = Math.max(3, targetReps - 1);
+    sets = Math.max(1, sets - 1);
+    pct = pct ? Math.max(0.55, pct - 0.08) : pct;
+    label = label === "Protect" ? label : "Deload";
+    note += ` Deload signal: ${deload.reason}`;
+  }
   if (trend.status === "stalling") {
     targetReps = Math.max(3, targetReps - 1);
     note += " Recent set drop-off is showing, so the target is nudged down.";
@@ -367,6 +376,18 @@ export function sciencePrescription({ exercise, history = [], checkIns = [], set
     targetReps += equipment.canLoad ? 0 : 1;
     pct = pct ? Math.min(0.82, pct + 0.03) : pct;
     note += " Recent feedback says this is easy, so the coach allows a small push.";
+  }
+  if (workoutFeedback?.feeling === "hard") {
+    sets = Math.max(1, sets - 1);
+    note += " Last workout was rated hard, so volume is trimmed slightly.";
+  } else if (workoutFeedback?.feeling === "pain") {
+    targetReps = Math.max(3, targetReps - 1);
+    sets = Math.max(1, sets - 1);
+    label = "Protect";
+    note += " Last workout was rated painful, so today's plan is more conservative.";
+  } else if (workoutFeedback?.feeling === "easy" && score >= 0 && trend.status !== "stalling") {
+    targetReps += fixedLoad ? 1 : 0;
+    note += " Last workout was rated easy, so the coach allows a small rep push.";
   }
   if (behavior.restSkipRate >= 0.5 && behavior.restEvents >= 3 && (goal === "strength" || pct)) {
     targetReps = Math.max(3, targetReps - 1);
@@ -431,6 +452,12 @@ export function buildCoachPlan({ workout, history, checkIns = [], exConfig, sett
   if (readiness?.time === "short") {
     adjustments.push("Short session: complete the first two sets for every exercise, then finish if time is tight.");
   }
+  const latestWorkoutFeedback = [...checkIns].filter(ci => ci.kind === "workout_feedback").sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))[0];
+  const deload = recommendDeload({ history, checkIns });
+  if (latestWorkoutFeedback?.feeling === "hard") adjustments.push("Last workout was hard: trim one set if form fades.");
+  if (latestWorkoutFeedback?.feeling === "pain") adjustments.push("Last workout had pain: use swaps early and keep reps smooth.");
+  if (latestWorkoutFeedback?.feeling === "easy") adjustments.push("Last workout was easy: chase cleaner top-end reps before adding load.");
+  if (deload.recommended) adjustments.unshift(`Deload signal: ${deload.reason}`);
 
   const exerciseNotes = workout.exercises.map(ex => {
     const target = exConfig[ex.name]?.targetReps ?? ex.baseReps;
@@ -471,6 +498,7 @@ export function buildCoachPlan({ workout, history, checkIns = [], exConfig, sett
   if (science) cards.push({ icon:"🔬", cat:"Science", msg:`${science.label}: ${science.note}${science.est1RM ? ` Est. 1RM: ${science.est1RM}lbs.` : ""}` });
   jointNotes.slice(0, 1).forEach(msg => cards.push({ icon:"🛡️", cat:"Joints", msg }));
   behavior.notes.slice(0, 2).forEach(msg => cards.push({ icon:"⏱️", cat:"Habits", msg }));
+  if (deload.recommended) cards.push({ icon:"↓", cat:"Deload", msg:`${deload.reason} Keep reps smooth and leave extra reps in reserve.` });
   substitutions.forEach(sub => cards.push({ icon: "🔁", cat: "Swap", msg: `${sub.exercise}: use ${sub.substitute} if ${sub.reason}.` }));
   watch.forEach(msg => cards.push({ icon: "👁️", cat: "Watch", msg }));
 
@@ -484,6 +512,41 @@ export function buildCoachPlan({ workout, history, checkIns = [], exConfig, sett
     substitutions,
     cards,
   };
+}
+
+export function plateauFixes({ history = [], exercise, targetReps }) {
+  const key = exercise?.name;
+  if (!key) return [];
+  const trend = exerciseTrend(history, exercise, targetReps ?? exercise.baseReps);
+  if (trend.status !== "stalling" && trend.status !== "building") return [];
+  const fixes = [];
+  if (trend.dropoff >= 4) {
+    fixes.push("Reduce the target by 1-2 reps and keep every set cleaner.");
+    fixes.push("Add 15-30 seconds rest before this exercise.");
+  }
+  if (trend.recentMisses >= 2) {
+    fixes.push("Use the same load next time and stop 1 rep before form breaks.");
+    fixes.push("Try the first swap option for one session if joints or form feel off.");
+  }
+  if (!fixes.length) fixes.push("Repeat the same target once more before increasing difficulty.");
+  return fixes.slice(0, 3);
+}
+
+export function recommendDeload({ history = [], checkIns = [] }) {
+  const recent = [...history].sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).slice(0, 4);
+  const recentFeedback = [...checkIns].filter(ci => ci.kind === "workout_feedback").sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).slice(0, 4);
+  const hardOrPain = recentFeedback.filter(ci => ci.feeling === "hard" || ci.feeling === "pain").length;
+  const lowEnergy = checkIns
+    .filter(ci => ci.kind === "readiness" && ci.readiness && Date.now() - (ci.timestamp || 0) <= 14 * 86400000)
+    .filter(ci => ci.readiness.energy === "low" || ci.readiness.soreness === "sore").length;
+  const missedSets = recent.reduce((sum, session) => sum + (session.exercises || []).reduce((s, ex) => {
+    const target = ex.reps || 0;
+    return s + (ex.setLog || []).filter(log => target && (log.reps || 0) < Math.round(target * 0.75)).length;
+  }, 0), 0);
+  if (hardOrPain >= 2) return { recommended:true, reason:"two recent workouts were rated hard or painful." };
+  if (missedSets >= 4) return { recommended:true, reason:"several recent sets missed badly." };
+  if (lowEnergy >= 3 && recent.length >= 2) return { recommended:true, reason:"readiness has been low or sore repeatedly." };
+  return { recommended:false, reason:"no deload needed yet." };
 }
 
 export function suggestSubstitutions({ workout, history = [], exConfig = {}, readiness = DEFAULT_READINESS, settings = {} }) {
@@ -519,6 +582,8 @@ export function evaluateProgression({
   style = "balanced",
   autoDeload = true,
 }) {
+  const cleanIncrement = Number.isFinite(Number(increment)) && Number(increment) > 0 ? Number(increment) : 1;
+  const cleanCurrentWeight = Number.isFinite(Number(currentWeight)) ? Number(currentWeight) : 0;
   const allHit = setLog.length > 0 && setLog.every(l => (l.reps || 0) >= targetReps);
   const anyFail = setLog.some(l => (l.reps || 0) < Math.round(targetReps * 0.75));
   const cleanSessions = allHit ? (previous.cleanSessions || 0) + 1 : 0;
@@ -528,7 +593,7 @@ export function evaluateProgression({
   if (autoDeload && missSessions >= 2) {
     return {
       action: "deload",
-      nextWeight: Math.max(Math.round((currentWeight - increment) * 4) / 4, increment),
+      nextWeight: Math.max(roundWeight(cleanCurrentWeight - cleanIncrement), 0),
       cleanSessions,
       missSessions,
       note: "Repeated misses. Reduce load and rebuild clean reps.",
@@ -538,7 +603,7 @@ export function evaluateProgression({
   if (cleanSessions >= requiredCleanSessions) {
     return {
       action: "increase",
-      nextWeight: Math.round((currentWeight + increment) * 4) / 4,
+      nextWeight: roundWeight(cleanCurrentWeight + cleanIncrement),
       cleanSessions: 0,
       missSessions: 0,
       note: `${requiredCleanSessions} clean session${requiredCleanSessions === 1 ? "" : "s"}. Ready to progress.`,
@@ -547,11 +612,55 @@ export function evaluateProgression({
 
   return {
     action: "maintain",
-    nextWeight: currentWeight,
+    nextWeight: cleanCurrentWeight,
     cleanSessions,
     missSessions,
     note: allHit ? "Clean session logged. Repeat before increasing." : "Keep the same load.",
   };
+}
+
+export function roundWeight(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+export function explainExerciseDecision({
+  exercise,
+  history = [],
+  exConfig = {},
+  targetReps,
+  science,
+  progressionRec,
+  settings = {},
+  checkIns = [],
+}) {
+  const name = exercise?.configName || exercise?.originalName || exercise?.name;
+  const cfg = exConfig[name] || {};
+  const latest = [...history]
+    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+    .map(session => session.exercises?.find(ex => (ex.originalName || ex.substitutedFor || ex.name) === name))
+    .find(Boolean);
+  const logs = latest?.setLog || [];
+  const lastTotal = logs.reduce((sum, log) => sum + (log.reps || 0), 0);
+  const lastBest = logs.reduce((best, log) => Math.max(best, log.reps || 0), 0);
+  const misses = logs.filter(log => (log.reps || 0) < Math.round((targetReps || 0) * 0.75)).length;
+  const restEvents = checkIns.filter(ci => ci.kind === "rest" && (ci.originalName === name || ci.exercise === exercise?.name || ci.exercise === name));
+  const skippedRests = restEvents.filter(ci => ci.action === "skip").length;
+  const lines = [];
+  if (targetReps) lines.push(`Target is ${targetReps} reps from your benchmark, readiness, and recent feedback.`);
+  if (logs.length) lines.push(`Last time: ${logs.length} sets, ${lastTotal} total reps, best set ${lastBest} reps.`);
+  else lines.push("No logged set history yet, so the coach is using your current plan as the baseline.");
+  if (misses) lines.push(`${misses} recent set${misses === 1 ? "" : "s"} missed badly, so progression is held back.`);
+  if (cfg.cleanSessions) lines.push(`${cfg.cleanSessions} clean session${cfg.cleanSessions === 1 ? "" : "s"} banked toward the next increase.`);
+  if (cfg.missSessions) lines.push(`${cfg.missSessions} miss session${cfg.missSessions === 1 ? "" : "s"} recorded for auto-deload logic.`);
+  if (skippedRests) lines.push(`${skippedRests} rest skip${skippedRests === 1 ? "" : "s"} logged around this movement.`);
+  if (science?.note) lines.push(science.note);
+  if (progressionRec?.note || cfg.lastRecNote) lines.push(progressionRec?.note || cfg.lastRecNote);
+  if ((settings.equipmentProfile || "fixed_dumbbells") === "fixed_dumbbells") {
+    lines.push("Fixed dumbbell mode prefers reps, tempo, cleaner form, and variations before big load jumps.");
+  }
+  return lines.slice(0, 6);
 }
 
 export function coachTargetReps(baseTarget, readiness = DEFAULT_READINESS) {
@@ -605,7 +714,14 @@ export function summarizeWorkout({ exercises, duration = 0, readiness, prs = [],
       ? `Next time, ${totals.hardest.name} should stay controlled before adding difficulty.`
       : "Next time, repeat this quality and let the coach build volume gradually.";
 
-  return { ...totals, duration, prs, coachNote, nextWorkout, nextChange };
+  const reasoning = [
+    `Readiness: ${readinessLabel(readiness)}.`,
+    totals.hardest ? `Limiter: ${totals.hardest.name} finished at ${Math.round(totals.hardest.completion * 100)}% of target volume.` : "Limiter: none yet.",
+    prs.length ? `Progression signal: ${prs.length} new PR${prs.length === 1 ? "" : "s"} logged.` : "Progression signal: no new PR, so the coach favors repeatable quality.",
+    totals.volume > 0 ? `Logged load: ${Math.round(totals.volume).toLocaleString()} lbs of volume.` : "Logged load: bodyweight or unloaded work counted by reps.",
+  ];
+
+  return { ...totals, duration, prs, coachNote, nextWorkout, nextChange, reasoning };
 }
 
 export function buildCoachMemory({ history = [], checkIns = [], exercises = [], exConfig = {} }) {
@@ -704,4 +820,119 @@ export function buildWeeklyReview({ history = [], checkIns = [] }) {
     consistency,
     focus,
   };
+}
+
+export function weeklyMuscleCoverage({ completed = {}, schedule, workouts, completionKeyFn }) {
+  const coverage = {};
+  Object.entries(schedule).forEach(([day, key]) => {
+    const workout = workouts[key];
+    const done = completionKeyFn ? !!completed[completionKeyFn(day)] : false;
+    workout.exercises.forEach(ex => {
+      [...(ex.primary || []), ...(ex.secondary || [])].forEach(muscle => {
+        if (!coverage[muscle]) coverage[muscle] = { planned: 0, done: 0, days: new Set() };
+        coverage[muscle].planned += ex.primary?.includes(muscle) ? 1 : 0.5;
+        coverage[muscle].days.add(day);
+        if (done) coverage[muscle].done += ex.primary?.includes(muscle) ? 1 : 0.5;
+      });
+    });
+  });
+  return Object.fromEntries(Object.entries(coverage).map(([muscle, item]) => [
+    muscle,
+    { planned: item.planned, done: item.done, days: [...item.days] },
+  ]));
+}
+
+export function detectWeakPoints({ history = [], exercises = [], exConfig = {} }) {
+  const now = Date.now();
+  const recent = history.filter(h => now - (h.timestamp || 0) <= 28 * 86400000);
+  const byMuscle = {};
+  exercises.forEach(ex => {
+    [...(ex.primary || []), ...(ex.secondary || [])].forEach(muscle => {
+      if (!byMuscle[muscle]) byMuscle[muscle] = { sessions: 0, reps: 0, hard: 0, exercises: new Set() };
+      byMuscle[muscle].exercises.add(ex.name);
+    });
+  });
+  recent.forEach(session => {
+    (session.exercises || []).forEach(logged => {
+      const base = exercises.find(ex => ex.name === (logged.originalName || logged.substitutedFor || logged.name)) || exercises.find(ex => ex.name === logged.name);
+      if (!base) return;
+      const reps = (logged.setLog || []).reduce((s,l)=>s+(l.reps||0),0);
+      [...(base.primary || []), ...(base.secondary || [])].forEach(muscle => {
+        if (!byMuscle[muscle]) byMuscle[muscle] = { sessions: 0, reps: 0, hard: 0, exercises: new Set() };
+        byMuscle[muscle].sessions += 1;
+        byMuscle[muscle].reps += reps;
+      });
+    });
+  });
+  const exerciseFlags = exercises.map(ex => {
+    const target = exConfig[ex.name]?.targetReps ?? ex.baseReps;
+    const trend = exerciseTrend(history, ex, target);
+    return { name: ex.name, trend: trend.status };
+  }).filter(ex => ex.trend === "stalling" || ex.trend === "building");
+  const lowCoverage = Object.entries(byMuscle)
+    .map(([muscle, item]) => ({ muscle, ...item, exercises:[...item.exercises] }))
+    .filter(item => item.sessions <= 1)
+    .sort((a,b)=>a.sessions-b.sessions || a.reps-b.reps)
+    .slice(0, 3);
+  const messages = [
+    ...lowCoverage.map(item => ({
+      type: "coverage",
+      muscle: item.muscle,
+      title: `${item.muscle} needs more touches`,
+      detail: item.sessions ? `Only ${item.sessions} recent touch in the last 4 weeks.` : "No recent logged work in the last 4 weeks.",
+    })),
+    ...exerciseFlags.slice(0, 3).map(item => ({
+      type: "performance",
+      exercise: item.name,
+      title: `${item.name} is ${item.trend}`,
+      detail: item.trend === "stalling" ? "Keep load steady and prioritize cleaner reps." : "Build toward hitting all planned reps.",
+    })),
+  ];
+  return messages.slice(0, 5);
+}
+
+export function computePersonalRecords({ history = [] }) {
+  const sessions = [...history].filter(h => h.exercises?.length);
+  const exerciseRecords = {};
+  let bestSessionVolume = null;
+  let fastestSession = null;
+  let longestSession = null;
+
+  sessions.forEach(session => {
+    const sessionVolume = (session.exercises || []).reduce((sum, ex) => {
+      const dumbbells = ex.name === "Goblet Squat" ? 1 : 2;
+      return sum + (ex.setLog || []).reduce((s, log) => s + ((log.weight || 0) * (log.reps || 0) * dumbbells), 0);
+    }, 0);
+    if (!bestSessionVolume || sessionVolume > bestSessionVolume.value) {
+      bestSessionVolume = { value: sessionVolume, date: session.date, workout: session.workout };
+    }
+    if (session.duration && (!fastestSession || session.duration < fastestSession.value)) {
+      fastestSession = { value: session.duration, date: session.date, workout: session.workout };
+    }
+    if (session.duration && (!longestSession || session.duration > longestSession.value)) {
+      longestSession = { value: session.duration, date: session.date, workout: session.workout };
+    }
+
+    (session.exercises || []).forEach(ex => {
+      const key = ex.originalName || ex.substitutedFor || ex.name;
+      if (!exerciseRecords[key]) exerciseRecords[key] = { maxWeight: null, maxReps: null, maxVolume: null };
+      const logs = ex.setLog || [];
+      const totalReps = logs.reduce((s,l)=>s+(l.reps||0),0);
+      const dumbbells = ex.name === "Goblet Squat" ? 1 : 2;
+      const volume = logs.reduce((s,l)=>s+((l.weight||0)*(l.reps||0)*dumbbells),0);
+      const bestWeight = [...logs].sort((a,b)=>(b.weight||0)-(a.weight||0))[0];
+      const bestReps = [...logs].sort((a,b)=>(b.reps||0)-(a.reps||0))[0];
+      if (bestWeight && (!exerciseRecords[key].maxWeight || (bestWeight.weight || 0) > exerciseRecords[key].maxWeight.value)) {
+        exerciseRecords[key].maxWeight = { value: bestWeight.weight || 0, reps: bestWeight.reps || 0, date: session.date };
+      }
+      if (bestReps && (!exerciseRecords[key].maxReps || (bestReps.reps || 0) > exerciseRecords[key].maxReps.value)) {
+        exerciseRecords[key].maxReps = { value: bestReps.reps || 0, weight: bestReps.weight || 0, date: session.date };
+      }
+      if (!exerciseRecords[key].maxVolume || volume > exerciseRecords[key].maxVolume.value) {
+        exerciseRecords[key].maxVolume = { value: volume, reps: totalReps, date: session.date };
+      }
+    });
+  });
+
+  return { exerciseRecords, bestSessionVolume, fastestSession, longestSession };
 }

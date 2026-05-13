@@ -14,14 +14,40 @@ export default function PostWorkoutFeedback({ exercises, sessionLogs, getLogKey,
   const [feedback, setFeedback] = useState({});
 
   const submitFeedback = (key) => {
+    if (step >= exercises.length) {
+      onComplete({ exercises: feedback, workoutFeeling: key });
+      return;
+    }
     const newFb = { ...feedback, [exercises[step].name]: key };
     setFeedback(newFb);
-    if (step >= exercises.length - 1) {
-      onComplete(newFb);
-    } else {
-      setStep(s=>s+1);
-    }
+    setStep(s=>s+1);
   };
+
+  if (step >= exercises.length) {
+    return (
+      <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,.92)",display:"flex",alignItems:"flex-end"}}>
+        <div className="mobile-shell" style={{background:"#0a0a0a",borderTop:`2px solid ${accent}`,borderRadius:"18px 18px 0 0",padding:"24px 20px 36px",animation:"slideUp .3s ease-out"}}>
+          <div style={{fontSize:12,color:"#888",letterSpacing:".14em",textTransform:"uppercase",marginBottom:5}}>Overall Workout</div>
+          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:"#fafafa",letterSpacing:".06em",marginBottom:8}}>HOW WAS TODAY?</div>
+          <div style={{fontSize:14,color:"#aaa",lineHeight:1.5,marginBottom:18}}>This tunes the next session's overall volume, not just one exercise.</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            {FEEDBACK_OPTIONS.map(opt=>(
+              <button key={opt.key} onClick={()=>submitFeedback(opt.key)}
+                style={{padding:"16px 12px",background:"#141414",border:"1.5px solid #2a2a2a",borderRadius:13,cursor:"pointer",textAlign:"center"}}>
+                <div style={{fontSize:30,marginBottom:6}}>{opt.emoji}</div>
+                <div style={{fontSize:14,color:"#f0f0f0",fontWeight:500,marginBottom:3}}>{opt.label}</div>
+                <div style={{fontSize:11,color:"#888"}}>{opt.key==="easy"?"small push next time":opt.key==="hard"?"slightly less volume":opt.key==="pain"?"protect and swap sooner":"steady plan"}</div>
+              </button>
+            ))}
+          </div>
+          <button onClick={()=>submitFeedback("good")}
+            style={{width:"100%",marginTop:14,padding:"12px",background:"transparent",border:"none",color:"#555",fontSize:13,letterSpacing:".06em"}}>
+            skip overall rating
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const ex = exercises[step];
   const logs = Array.from({length:ex.sets},(_,j)=>sessionLogs[getLogKey(step,j)]).filter(Boolean);

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, evaluateProgression, exerciseFeedbackSignal, exerciseTrend, readinessScore, sciencePrescription, SUBSTITUTIONS, suggestSubstitutions, summarizeWorkout, tempoPrescription, variationPrescription } from "../src/coach.js";
+import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, computePersonalRecords, detectWeakPoints, evaluateProgression, exerciseFeedbackSignal, exerciseTrend, explainExerciseDecision, plateauFixes, readinessScore, recommendDeload, sciencePrescription, SUBSTITUTIONS, suggestSubstitutions, summarizeWorkout, tempoPrescription, variationPrescription, weeklyMuscleCoverage } from "../src/coach.js";
 
 const exercise = { name: "Floor Press", sets: 3, baseReps: 10 };
 
@@ -144,6 +144,7 @@ test("summarizeWorkout totals logged work and creates a coach note", () => {
   assert.equal(summary.bestSet.name, "Floor Press");
   assert.equal(summary.nextChange.length > 0, true);
   assert.ok(summary.coachNote.length > 0);
+  assert.ok(summary.reasoning.some(item => item.includes("Readiness")));
 });
 
 test("buildCoachMemory exposes learned readiness and exercise trends", () => {
@@ -205,6 +206,39 @@ test("evaluateProgression respects coach style and deload settings", () => {
   assert.equal(noDeload.missSessions, 2);
 });
 
+test("evaluateProgression supports fully custom weight increments", () => {
+  const increase = evaluateProgression({
+    setLog: [{ reps: 10 }, { reps: 10 }],
+    targetReps: 10,
+    currentWeight: 5,
+    increment: 1,
+    style: "aggressive",
+  });
+  const deload = evaluateProgression({
+    setLog: [{ reps: 4 }, { reps: 5 }],
+    targetReps: 10,
+    currentWeight: 5,
+    previous: { missSessions: 1 },
+    increment: 1,
+  });
+
+  assert.equal(increase.nextWeight, 6);
+  assert.equal(deload.nextWeight, 4);
+});
+
+test("explainExerciseDecision surfaces the coach reasoning", () => {
+  const lines = explainExerciseDecision({
+    exercise,
+    targetReps: 10,
+    settings: { equipmentProfile: "fixed_dumbbells" },
+    exConfig: { "Floor Press": { cleanSessions: 1, lastRecNote: "Clean session logged." } },
+    history: [{ timestamp: 1, exercises: [{ name: "Floor Press", setLog: [{ reps: 10, weight: 5 }, { reps: 8, weight: 5 }] }] }],
+  });
+
+  assert.ok(lines.some(line => line.includes("Last time")));
+  assert.ok(lines.some(line => line.includes("Fixed dumbbell")));
+});
+
 test("buildWeeklyReview summarizes recent work", () => {
   const now = Date.now();
   const review = buildWeeklyReview({
@@ -218,6 +252,75 @@ test("buildWeeklyReview summarizes recent work", () => {
   assert.equal(review.sessions, 1);
   assert.equal(review.volume, 300);
   assert.equal(review.best.name, "Floor Press");
+});
+
+test("weeklyMuscleCoverage reports planned and completed muscle work", () => {
+  const workouts = {
+    A: { exercises: [{ name: "Floor Press", primary: ["chest"], secondary: ["triceps"] }] },
+  };
+  const coverage = weeklyMuscleCoverage({
+    workouts,
+    schedule: { Monday: "A" },
+    completed: { "monday": true },
+    completionKeyFn: day => day.toLowerCase(),
+  });
+
+  assert.equal(coverage.chest.planned, 1);
+  assert.equal(coverage.chest.done, 1);
+  assert.equal(coverage.triceps.planned, 0.5);
+  assert.equal(coverage.triceps.done, 0.5);
+});
+
+test("detectWeakPoints reports low coverage", () => {
+  const weak = detectWeakPoints({
+    history: [],
+    exercises: [{ name: "Crunch", baseReps: 12, primary: ["core"], secondary: [] }],
+    exConfig: {},
+  });
+
+  assert.equal(weak[0].type, "coverage");
+  assert.equal(weak[0].muscle, "core");
+});
+
+test("plateauFixes gives actionable fixes for stalling lifts", () => {
+  const fixes = plateauFixes({
+    exercise,
+    targetReps: 10,
+    history: [
+      { timestamp: 2, exercises: [{ name: "Floor Press", sets: 3, setLog: [{ reps: 10 }, { reps: 6 }, { reps: 5 }] }] },
+      { timestamp: 1, exercises: [{ name: "Floor Press", sets: 3, setLog: [{ reps: 9 }, { reps: 7 }, { reps: 6 }] }] },
+    ],
+  });
+
+  assert.ok(fixes.length >= 2);
+  assert.ok(fixes.some(fix => fix.includes("rest") || fix.includes("load")));
+});
+
+test("recommendDeload reacts to repeated hard or painful workouts", () => {
+  const deload = recommendDeload({
+    checkIns: [
+      { kind: "workout_feedback", feeling: "hard", timestamp: 2 },
+      { kind: "workout_feedback", feeling: "pain", timestamp: 1 },
+    ],
+  });
+
+  assert.equal(deload.recommended, true);
+});
+
+test("computePersonalRecords finds exercise and session records", () => {
+  const records = computePersonalRecords({
+    history: [{
+      date: "May 12",
+      workout: "A",
+      duration: 600,
+      exercises: [{ name: "Floor Press", setLog: [{ weight: 15, reps: 10 }, { weight: 20, reps: 8 }] }],
+    }],
+  });
+
+  assert.equal(records.exerciseRecords["Floor Press"].maxWeight.value, 20);
+  assert.equal(records.exerciseRecords["Floor Press"].maxReps.value, 10);
+  assert.equal(records.bestSessionVolume.value, 620);
+  assert.equal(records.fastestSession.value, 600);
 });
 
 test("substitution coverage includes every programmed movement", async () => {

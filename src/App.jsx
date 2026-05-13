@@ -25,13 +25,16 @@ export default function App() {
   // New: XP and check-ins
   const [xp,          setXp]          = useLocalStorage("wt_xp",          0);
   const [checkIns,    setCheckIns]    = useLocalStorage("wt_checkins",    []);
+  const [bodyMetrics, setBodyMetrics] = useLocalStorage("wt_body_metrics", []);
 
   const [achievementToast, setAchievementToast] = useState(null);
   const [assessmentDone, setAssessmentDone] = useLocalStorage("wt_assessment_done", false);
   const [updateReady, setUpdateReady] = useState(null);
   const [benchmarkEditorOpen, setBenchmarkEditorOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [installDismissed, setInstallDismissed] = useLocalStorage("wt_install_dismissed", false);
 
-  const normalized = normalizeLiftLogData({ sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, assessmentDone });
+  const normalized = normalizeLiftLogData({ sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, bodyMetrics, assessmentDone });
   const safeSettings = { ...DEFAULT_SETTINGS, ...normalized.settings };
 
   const playSound = makePlay(safeSettings);
@@ -58,6 +61,7 @@ export default function App() {
     if (data.exConfig !== exConfig) setExConfig(data.exConfig);
     if (data.xp !== xp) setXp(data.xp);
     if (data.checkIns !== checkIns) setCheckIns(data.checkIns);
+    if (data.bodyMetrics !== bodyMetrics) setBodyMetrics(data.bodyMetrics);
     if (data.assessmentDone !== assessmentDone) setAssessmentDone(data.assessmentDone);
   }, []); // eslint-disable-line
 
@@ -92,6 +96,23 @@ export default function App() {
     return () => window.removeEventListener("lift-log-update", onUpdate);
   }, []);
 
+  useEffect(() => {
+    const onBeforeInstall = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    const onInstalled = () => {
+      setInstallPrompt(null);
+      setInstallDismissed(true);
+    };
+    window.addEventListener("beforeinstallprompt", onBeforeInstall);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstall);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []); // eslint-disable-line
+
   const addXp = (amount) => setXp(p => Math.max(0, p + amount));
 
   const currentData = () => ({
@@ -104,6 +125,7 @@ export default function App() {
     exConfig: normalized.exConfig,
     xp: normalized.xp,
     checkIns: normalized.checkIns,
+    bodyMetrics: normalized.bodyMetrics,
     assessmentDone: normalized.assessmentDone,
   });
 
@@ -125,11 +147,11 @@ export default function App() {
   const resetAllData = () => {
     createBackupSnapshot("before_reset");
     setSets({}); setHistory([]); setCompleted({}); setProgression({});
-    setAchievements([]); setXp(0); setCheckIns([]); setExConfig({}); setAssessmentDone(false);
+    setAchievements([]); setXp(0); setCheckIns([]); setBodyMetrics([]); setExConfig({}); setAssessmentDone(false);
   };
 
   const repairSavedData = () => {
-    const data = normalizeLiftLogData({ sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, assessmentDone });
+    const data = normalizeLiftLogData({ sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, bodyMetrics, assessmentDone });
     setSets(data.sets);
     setHistory(data.history);
     setCompleted(data.completed);
@@ -139,6 +161,7 @@ export default function App() {
     setExConfig(data.exConfig);
     setXp(data.xp);
     setCheckIns(data.checkIns);
+    setBodyMetrics(data.bodyMetrics);
     setAssessmentDone(data.assessmentDone);
     return true;
   };
@@ -197,6 +220,7 @@ export default function App() {
       setExConfig(data.exConfig);
       setXp(data.xp);
       setCheckIns(data.checkIns);
+      setBodyMetrics(data.bodyMetrics);
       setAssessmentDone(data.assessmentDone);
       return true;
     } catch (err) {
@@ -228,6 +252,14 @@ export default function App() {
     const waiting = updateReady?.waiting;
     if (waiting) waiting.postMessage({ type:"SKIP_WAITING" });
     else window.location.reload();
+  };
+
+  const installApp = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    try { await installPrompt.userChoice; } catch {}
+    setInstallPrompt(null);
+    setInstallDismissed(true);
   };
 
   const day  = todayName();
@@ -268,10 +300,11 @@ export default function App() {
         {activeView === "stats" && (
           <StatsView history={normalized.history} progression={normalized.progression} settings={safeSettings}
             achievements={normalized.achievements} accent={accent} xp={normalized.xp} level={level}
-            exConfig={normalized.exConfig} checkIns={normalized.checkIns} />
+            exConfig={normalized.exConfig} checkIns={normalized.checkIns}
+            bodyMetrics={normalized.bodyMetrics} setBodyMetrics={setBodyMetrics} />
         )}
         {activeView === "calendar" && (
-          <CalendarView history={normalized.history} progression={normalized.progression} settings={safeSettings} accent={accent} />
+          <CalendarView history={normalized.history} progression={normalized.progression} settings={safeSettings} accent={accent} theme={visualTheme} />
         )}
         {activeView === "settings" && (
           <SettingsView settings={safeSettings} setSettings={setSettings}
@@ -289,6 +322,19 @@ export default function App() {
         <Toast icon={achievementToast.icon} title={achievementToast.title}
           msg={achievementToast.msg} accent={achievementToast.accent}
           onClose={() => setAchievementToast(null)} duration={5000} />
+      )}
+
+      {installPrompt && !installDismissed && (
+        <div style={{position:"fixed",left:16,right:16,bottom:"calc(92px + env(safe-area-inset-bottom))",zIndex:255,pointerEvents:"none"}}>
+          <div className="mobile-shell" style={{background:lightMode?"#ffffff":"#101010",border:`1.5px solid ${accent}55`,borderRadius:13,padding:"14px 15px",boxShadow:`0 16px 38px ${accent}24`,pointerEvents:"auto",display:"flex",alignItems:"center",gap:12}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:700}}>Install Lift Log</div>
+              <div style={{fontSize:13,color:lightMode?"#435166":"#ddd",marginTop:3,lineHeight:1.35}}>Add it to your phone for fullscreen, app-like workouts.</div>
+            </div>
+            <button onClick={installApp} style={{background:accent,border:"none",borderRadius:9,color:"#050505",padding:"10px 12px",fontSize:12,letterSpacing:".08em",fontWeight:700}}>INSTALL</button>
+            <button onClick={()=>setInstallDismissed(true)} style={{background:"transparent",border:"none",color:lightMode?"#8a97a8":"#666",fontSize:18,padding:"4px"}}>×</button>
+          </div>
+        </div>
       )}
 
       {updateReady && (

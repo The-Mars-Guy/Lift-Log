@@ -1,16 +1,16 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   WORKOUTS, SCHEDULE, DAYS, MUSCLE_LABELS, DEFAULT_WEIGHTS,
-  todayName, dateStr, calcDynamicTarget, assessmentTarget,
+  EXERCISE_GUIDES, todayName, dateStr, calcDynamicTarget, assessmentTarget,
   getExerciseHistory, XP_VALUES, getLevel
 } from "../data.js";
 import { useSessionTimer, fmtDuration } from "../hooks.js";
 import { ExerciseAnimation, RestTimer, Toast, MiniGraph } from "../components/shared.jsx";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
 import { completionKey, defaultWorkoutDay, scheduledDate, logKey as makeLogKey } from "../session.js";
-import { buildCoachMemory, buildCoachPlan, coachSetCount, coachTargetReps, DEFAULT_READINESS, evaluateProgression, readinessLabel, sciencePrescription, summarizeWorkout } from "../coach.js";
+import { buildCoachMemory, buildCoachPlan, coachSetCount, coachTargetReps, DEFAULT_READINESS, evaluateProgression, explainExerciseDecision, plateauFixes, readinessLabel, sciencePrescription, summarizeWorkout, weeklyMuscleCoverage, SUBSTITUTIONS } from "../coach.js";
 import { Confetti, XpFloat } from "./workout/Effects.jsx";
-import { FirstRunSetup, AssessmentFlow } from "./workout/Assessment.jsx";
+import { FirstRunSetup, AssessmentFlow, ASSESSMENT_EXERCISES } from "./workout/Assessment.jsx";
 import PostWorkoutFeedback from "./workout/PostWorkoutFeedback.jsx";
 import { buildSuggestions, CoachDrawer, CoachFab, CoachCard } from "./workout/Coach.jsx";
 
@@ -133,6 +133,8 @@ function TodayPlan({ plan, readiness, accent, substitutions, onApplySubstitution
 function FocusWorkoutMode({
   workout, accent, activeTab, doneSets, totalSets, setDone, sessionLogs, logKey,
   getTargetReps, getSetCount, getWeight, getScience, toggleSet, onExit, onFinish, allDone, isCompleted,
+  substitutions = [], onApplySubstitution, onRemoveSubstitution,
+  getPreviousPerformance, beginnerFormMode=false, estimatedRemaining=0,
 }) {
   const next = (() => {
     for (let i=0;i<workout.exercises.length;i++) {
@@ -150,6 +152,10 @@ function FocusWorkoutMode({
   const weightText = weight > 0 ? `${weight}lbs` : "bodyweight";
   const plannedSets = getSetCount(next.ex);
   const currentDone = Array.from({length:plannedSets},(_,j)=>setDone(next.exIdx,j)).filter(Boolean).length;
+  const originalName = next.ex.configName || next.ex.originalName || next.ex.name;
+  const focusSwap = substitutions.find(sub => sub.exercise === originalName);
+  const guide = EXERCISE_GUIDES[originalName] || EXERCISE_GUIDES[next.ex.name];
+  const previous = getPreviousPerformance?.(next.ex);
 
   return (
     <div style={{position:"fixed",inset:0,zIndex:150,background:"#050505",overflowY:"auto",padding:"calc(10px + env(safe-area-inset-top)) 16px 18px"}}>
@@ -159,14 +165,22 @@ function FocusWorkoutMode({
           <div style={{textAlign:"right"}}>
             <div style={{fontSize:11,color:"#777",letterSpacing:".14em",textTransform:"uppercase"}}>{activeTab}</div>
             <div style={{fontSize:13,color:accent}}>{doneSets}/{totalSets} sets</div>
+            <div style={{fontSize:11,color:"#777",marginTop:2}}>{fmtDuration(estimatedRemaining)} left</div>
           </div>
         </div>
 
         <div style={{fontSize:11,color:accent,letterSpacing:".16em",textTransform:"uppercase",marginBottom:6}}>Focus Mode</div>
-        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:38,color:"#f5f5f5",letterSpacing:".06em",lineHeight:.92,marginBottom:5}}>{next.ex.name}</div>
-        <div style={{fontSize:13,color:"#aaa",lineHeight:1.35,marginBottom:8}}>
+        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:beginnerFormMode?46:38,color:"#f5f5f5",letterSpacing:".06em",lineHeight:.92,marginBottom:5}}>{next.ex.name}</div>
+        <div style={{fontSize:beginnerFormMode?15:13,color:"#aaa",lineHeight:1.35,marginBottom:8}}>
           Set {Math.min(currentDone+1,plannedSets)} of {plannedSets} · {weightText} · target {repText}{next.ex.repSuffix||""}
         </div>
+
+        {previous&&(
+          <div style={{marginBottom:8,padding:"9px 11px",background:"#0d0d0d",border:`1px solid ${accent}33`,borderRadius:10}}>
+            <div style={{fontSize:10,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:3}}>Last Time</div>
+            <div style={{fontSize:13,color:"#ddd",lineHeight:1.4}}>{previous.sets} sets · {previous.totalReps} reps · best {previous.bestReps} reps{previous.bestWeight > 0 ? ` @ ${previous.bestWeight}lbs` : " bodyweight"}</div>
+          </div>
+        )}
 
         <ExerciseAnimation folder={next.ex.folder} video={next.ex.video} accent={accent} compact bare/>
 
@@ -185,13 +199,34 @@ function FocusWorkoutMode({
 
         <div style={{marginTop:10,padding:"10px 12px",background:"#0d0d0d",border:"1px solid #202020",borderRadius:11}}>
           <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:4}}>Cue</div>
-          <div style={{fontSize:13,color:"#ddd",lineHeight:1.38}}>{next.ex.tip}</div>
+          <div style={{fontSize:beginnerFormMode?17:13,color:"#ddd",lineHeight:1.38}}>{beginnerFormMode && guide ? guide.movement[0] : next.ex.tip}</div>
           {science.enabled&&science.tempo&&(
             <div style={{fontSize:12,color:accent,lineHeight:1.4,marginTop:7}}>
               Tempo {science.tempo.code}: {science.tempo.label}
             </div>
           )}
         </div>
+
+        {focusSwap&&(
+          <div style={{marginTop:10,padding:"10px 12px",background:"#0d0d0d",border:`1px solid ${accent}44`,borderRadius:11}}>
+            <div style={{fontSize:10,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:4}}>Safer Option</div>
+            <div style={{fontSize:13,color:"#ddd",lineHeight:1.4}}>If this feels rough today, swap to {focusSwap.substitute}. {focusSwap.reason}</div>
+            <div style={{display:"flex",gap:7,flexWrap:"wrap",marginTop:8}}>
+              <button onClick={()=>onApplySubstitution?.(focusSwap)}
+                style={{background:accent,border:"none",borderRadius:8,color:"#050505",padding:"8px 10px",fontSize:11,letterSpacing:".08em",fontWeight:700}}>USE SWAP</button>
+              {next.ex.substitutedFor&&<button onClick={()=>onRemoveSubstitution?.(next.ex.substitutedFor)}
+                style={{background:"transparent",border:`1px solid ${accent}66`,borderRadius:8,color:accent,padding:"8px 10px",fontSize:11,letterSpacing:".08em"}}>ORIGINAL</button>}
+            </div>
+          </div>
+        )}
+
+        {guide&&!beginnerFormMode&&(
+          <div style={{marginTop:10,padding:"10px 12px",background:"#0d0d0d",border:"1px solid #202020",borderRadius:11}}>
+            <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:5}}>Quick Form</div>
+            <div style={{fontSize:13,color:"#ddd",lineHeight:1.45}}>{guide.movement[0]}</div>
+            <div style={{fontSize:12,color:"#888",lineHeight:1.45,marginTop:4}}>Avoid: {guide.mistakes.slice(0,2).join(", ")}.</div>
+          </div>
+        )}
 
         <div style={{height:6,background:"#181818",borderRadius:5,overflow:"hidden",marginTop:12}}>
           <div style={{height:"100%",width:`${(doneSets/totalSets)*100}%`,background:accent,boxShadow:`0 0 12px ${accent}`,transition:"width .25s"}}/>
@@ -261,12 +296,43 @@ function WorkoutSummary({ summary, accent, onClose }) {
           <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:8}}>Coach Note</div>
           <div style={{fontSize:15,color:"#ddd",lineHeight:1.55}}>{summary.coachNote}</div>
           {summary.nextChange&&<div style={{fontSize:13,color:accent,marginTop:10,lineHeight:1.45}}>{summary.nextChange}</div>}
+          {summary.reasoning?.length>0&&(
+            <div style={{display:"grid",gap:7,marginTop:12}}>
+              {summary.reasoning.map((reason,i)=>(
+                <div key={i} style={{fontSize:12,color:"#aaa",lineHeight:1.45,padding:"8px 9px",background:"#080808",border:"1px solid #1d1d1d",borderRadius:8}}>{reason}</div>
+              ))}
+            </div>
+          )}
           {summary.nextWorkout&&<div style={{fontSize:13,color:"#888",marginTop:10}}>Next up: Workout {summary.nextWorkout}</div>}
         </div>
         <button onClick={onClose}
           style={{width:"100%",padding:19,background:accent,border:"none",borderRadius:14,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:26,letterSpacing:".12em",boxShadow:`0 0 42px ${accent}66`}}>
           DONE
         </button>
+      </div>
+    </div>
+  );
+}
+
+function ExerciseGuide({ guide, accent }) {
+  if (!guide) return null;
+  return (
+    <div style={{marginTop:14,padding:"13px 16px",background:"#080808",borderRadius:10,border:`1.5px solid ${accent}33`}}>
+      <SLabel small>How To Do It</SLabel>
+      <GuideLine title="Setup" items={guide.setup} color={accent}/>
+      <GuideLine title="Move" items={guide.movement} color={accent}/>
+      <GuideLine title="Avoid" items={guide.mistakes} color="#fb923c"/>
+      <div style={{fontSize:12,color:"#fb7185",lineHeight:1.45,marginTop:9,padding:"8px 9px",background:"#2a101422",border:"1px solid #fb718533",borderRadius:8}}>{guide.pain}</div>
+    </div>
+  );
+}
+
+function GuideLine({ title, items, color }) {
+  return (
+    <div style={{marginTop:9}}>
+      <div style={{fontSize:10,color,letterSpacing:".14em",textTransform:"uppercase",marginBottom:5}}>{title}</div>
+      <div style={{display:"grid",gap:5}}>
+        {items.map(item=><div key={item} style={{fontSize:13,color:"#ddd",lineHeight:1.4}}>• {item}</div>)}
       </div>
     </div>
   );
@@ -296,7 +362,7 @@ function SummaryStat({ label, value, sub, accent }) {
 }
 
 // ── SET LOGGER ────────────────────────────────────────────────────────────────
-function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, onSave, onSkip, editing }) {
+function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, onSave, onSkip, editing, increment = 1 }) {
   const [weight, setWeight] = useState(defaultWeight);
   const [reps,   setReps]   = useState(defaultReps);
   useEffect(() => {
@@ -305,6 +371,7 @@ function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, o
   }, [defaultWeight, defaultReps, exerciseName, setNum]);
   const cleanWeight = Number.isFinite(Number(weight)) ? Math.max(Number(weight), 0) : 0;
   const cleanReps = Number.isFinite(Number(reps)) ? Math.max(Math.round(Number(reps)), 0) : 0;
+  const step = Number.isFinite(Number(increment)) && Number(increment) > 0 ? Number(increment) : 1;
   return (
     <div style={{position:"fixed",bottom:82,left:0,right:0,zIndex:220,background:"#0a0a0a",borderTop:`1.5px solid ${accent}99`,padding:"14px 18px 12px",boxShadow:`0 -8px 32px ${accent}44`,animation:"slideUp .22s ease-out"}}>
       <div className="mobile-shell">
@@ -313,10 +380,10 @@ function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, o
           <div style={{flex:1}}>
             <div style={{fontSize:11,color:"#888",letterSpacing:".1em",marginBottom:5}}>WEIGHT (lbs)</div>
             <div style={{display:"flex",alignItems:"center",background:"#141414",borderRadius:10,border:`1px solid ${accent}33`,overflow:"hidden"}}>
-              <button onClick={()=>setWeight(w=>Math.max((Number(w)||0)-2.5,0))} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>−</button>
-              <input value={weight} onChange={e=>setWeight(e.target.value)} inputMode="decimal" type="number" min="0" step="2.5" aria-label="Weight used in pounds"
+              <button onClick={()=>setWeight(w=>Math.max((Number(w)||0)-step,0))} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>−</button>
+              <input value={weight} onChange={e=>setWeight(e.target.value)} inputMode="decimal" type="number" min="0" step="any" aria-label="Weight used in pounds"
                 style={{flex:1,minWidth:0,textAlign:"center",fontSize:18,fontWeight:500,color:"#fff",background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono, monospace"}}/>
-              <button onClick={()=>setWeight(w=>(Number(w)||0)+2.5)} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>+</button>
+              <button onClick={()=>setWeight(w=>(Number(w)||0)+step)} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>+</button>
             </div>
           </div>
           <div style={{flex:1}}>
@@ -334,6 +401,20 @@ function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, o
         <button onClick={onSkip} style={{background:"none",border:"none",color:"#555",fontSize:12,letterSpacing:".08em",marginTop:10,width:"100%",textAlign:"center",padding:4}}>{editing ? "keep current log" : "use planned numbers"}</button>
       </div>
     </div>
+  );
+}
+
+function CoachWhyPanel({ lines, accent }) {
+  if (!lines?.length) return null;
+  return (
+    <details style={{marginTop:14,padding:"13px 16px",background:"#080808",borderRadius:10,border:`1.5px solid ${accent}33`}}>
+      <summary style={{fontSize:10,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,cursor:"pointer"}}>Why This Plan</summary>
+      <div style={{display:"grid",gap:7,marginTop:10}}>
+        {lines.map(line=>(
+          <div key={line} style={{fontSize:13,color:"#ddd",lineHeight:1.45}}>• {line}</div>
+        ))}
+      </div>
+    </details>
   );
 }
 
@@ -356,6 +437,98 @@ function ThisWeek({ completed, setActiveTab }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function WeeklyMusclePlan({ completed, accent }) {
+  const coverage = weeklyMuscleCoverage({ completed, schedule:SCHEDULE, workouts:WORKOUTS, completionKeyFn:completionKey });
+  const rows = Object.entries(coverage)
+    .map(([muscle, item]) => ({ muscle, label:MUSCLE_LABELS[muscle] || muscle, ...item }))
+    .sort((a,b)=>b.planned-a.planned);
+  const undertrained = rows.filter(row => row.planned < 1).map(row => row.label);
+  return (
+    <div style={{padding:"0 16px 20px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div>
+          <div style={{fontSize:13,color:"#999",letterSpacing:".14em",textTransform:"uppercase",fontWeight:500}}>Muscle Coverage</div>
+          <div style={{fontSize:12,color:"#777",marginTop:3}}>planned for this week</div>
+        </div>
+        <div style={{fontSize:12,color:accent}}>{rows.filter(r=>r.done>0).length}/{rows.length} active</div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
+        {rows.slice(0,12).map(row=>{
+          const pct = Math.min(100, Math.round((row.done / Math.max(row.planned, 1)) * 100));
+          return (
+            <div key={row.muscle} style={{padding:"10px 11px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",gap:8,marginBottom:7}}>
+                <span style={{fontSize:12,color:"#ddd",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{row.label}</span>
+                <span style={{fontSize:11,color:pct>0?accent:"#666"}}>{pct}%</span>
+              </div>
+              <div style={{height:5,background:"#1a1a1a",borderRadius:4,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${pct}%`,background:accent,boxShadow:pct?`0 0 8px ${accent}88`:"none"}}/>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{fontSize:12,color:"#888",lineHeight:1.45,marginTop:10}}>
+        {undertrained.length ? `Watch next: ${undertrained.slice(0,3).join(", ")}.` : "Every listed muscle has at least one planned touch this week."}
+      </div>
+    </div>
+  );
+}
+
+function ProgressionPreview({ items, accent }) {
+  if (!items.length) return null;
+  return (
+    <div style={{marginTop:12,padding:"12px 13px",background:"#0d0d0d",border:`1px solid ${accent}33`,borderRadius:12}}>
+      <div style={{fontSize:10,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,marginBottom:8}}>Today's Plan</div>
+      <div style={{display:"grid",gap:7}}>
+        {items.slice(0,4).map((item,i)=>(
+          <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start",fontSize:12,color:"#ddd",lineHeight:1.4}}>
+            <span style={{color:accent,flexShrink:0}}>{item.icon}</span>
+            <span>{item.text}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SwapLibrary({ exerciseName, activeName, accent, onApply, onRemove }) {
+  const options = SUBSTITUTIONS[exerciseName] || [];
+  if (!options.length) return null;
+  return (
+    <div style={{marginTop:14,padding:"13px 16px",background:"#080808",borderRadius:10,border:`1.5px solid ${accent}33`}}>
+      <SLabel small>Swap Library</SLabel>
+      <div style={{display:"grid",gap:8,marginTop:8}}>
+        {options.map(option=>{
+          const active = activeName === option.name;
+          return (
+            <button key={option.name} onClick={()=>active ? onRemove(exerciseName) : onApply({ exercise:exerciseName, substitute:option.name, reason:option.reason, alternatives:options }, option)}
+              style={{padding:"10px 11px",background:active?`${accent}22`:"#101010",border:`1px solid ${active?accent:"#242424"}`,borderRadius:9,textAlign:"left",color:active?accent:"#ddd"}}>
+              <div style={{fontSize:13,fontWeight:700}}>{option.name}{active ? " · active" : ""}</div>
+              <div style={{fontSize:11,color:active?accent:"#888",lineHeight:1.4,marginTop:3}}>{option.reason}</div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function PlateauFixPanel({ fixes, accent }) {
+  if (!fixes?.length) return null;
+  return (
+    <div style={{marginTop:14,padding:"13px 16px",background:"#100d08",borderRadius:10,border:"1.5px solid #fbbf2444"}}>
+      <SLabel small>Plateau Fix</SLabel>
+      <div style={{display:"grid",gap:7,marginTop:8}}>
+        {fixes.map((fix,i)=>(
+          <div key={fix} style={{fontSize:13,color:"#f5d48a",lineHeight:1.45}}>{i+1}. {fix}</div>
+        ))}
+      </div>
+      <div style={{fontSize:12,color:"#9a7b34",lineHeight:1.45,marginTop:8}}>The coach only shows this when recent reps are fading or targets are being missed.</div>
     </div>
   );
 }
@@ -388,6 +561,7 @@ export default function WorkoutView({
   const [undoSet,      setUndoSet]      = useState(null);
   const [substitutions, setSubstitutions] = useState({});
   const [coachOpen,    setCoachOpen]    = useState(false);
+  const [workoutNote,  setWorkoutNote]  = useState("");
 
   const wKey    = SCHEDULE[activeTab];
   const workout = WORKOUTS[wKey];
@@ -477,6 +651,36 @@ export default function WorkoutView({
   const allDone   = doneSets===totalSets;
   const sessionRunning = doneSets>0&&!isCompleted;
   const sessionElapsed = useSessionTimer(sessionRunning);
+  const remainingSets = Math.max(0, totalSets - doneSets);
+  const estimatedRemaining = remainingSets
+    ? (remainingSets * 35) + (Math.max(0, remainingSets - 1) * (settings.restSeconds || 60))
+    : 0;
+
+  const getPreviousPerformance = (ex) => {
+    const key = exerciseKey(ex);
+    const session = [...history].sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))
+      .find(h => h.exercises?.some(item => (item.originalName || item.substitutedFor || item.name) === key || item.name === key));
+    const logged = session?.exercises?.find(item => (item.originalName || item.substitutedFor || item.name) === key || item.name === key);
+    if (!logged?.setLog?.length) return null;
+    const totalReps = logged.setLog.reduce((s,l)=>s+(l.reps||0),0);
+    const best = [...logged.setLog].sort((a,b)=>(b.reps||0)-(a.reps||0))[0];
+    return { sets: logged.setLog.length, totalReps, bestReps: best?.reps || 0, bestWeight: best?.weight || 0, date: session.date };
+  };
+
+  const progressionPreview = useMemo(() => {
+    return workoutPlan.exercises.flatMap(ex => {
+      const science = getScience(ex);
+      const prev = getPreviousPerformance(ex);
+      const items = [];
+      const curW = getWeight(ex);
+      const nextW = getNextW(ex);
+      if (nextW && nextW > curW) items.push({ icon:"↑", text:`${ex.name}: try ${nextW}lbs if warm-ups feel clean.` });
+      if (science.variation?.level > 1) items.push({ icon:"↗", text:`${ex.name}: use ${science.variation.name} to make fixed weight harder.` });
+      if (science.tempo) items.push({ icon:"T", text:`${ex.name}: tempo ${science.tempo.code} today.` });
+      if (prev) items.push({ icon:"=", text:`${ex.name}: last time ${prev.totalReps} reps total; match or beat cleanly.` });
+      return items.slice(0,1);
+    });
+  }, [workoutPlan, history, exConfig, progression, settings, checkIns, effectiveReadiness]); // eslint-disable-line
 
   const streak = useMemo(() => {
     if(!history.length) return 0;
@@ -691,7 +895,7 @@ export default function WorkoutView({
       prs,
       nextWorkout:wKey==="A"?"B":"A",
     }));
-    setHistory(p=>[{day:activeTab,workout:wKey,date:dateStr(scheduledDate(activeTab)),timestamp:scheduledDate(activeTab).getTime(),duration:sessionElapsed,exercises:exSnap,readiness:effectiveReadiness},...p].slice(0,120));
+    setHistory(p=>[{day:activeTab,workout:wKey,date:dateStr(scheduledDate(activeTab)),timestamp:scheduledDate(activeTab).getTime(),duration:sessionElapsed,exercises:exSnap,readiness:effectiveReadiness,note:workoutNote.trim()||undefined},...p].slice(0,120));
     setCompleted(p=>({...p,[sessionKey]:dateStr(scheduledDate(activeTab))}));
     playSound("workoutDone"); vibrate([100,60,100]);
     setConfetti(true);
@@ -700,17 +904,24 @@ export default function WorkoutView({
     if(prs.length) setTimeout(()=>{playSound("achievement");setToast({icon:"🏆",title:"PERSONAL RECORD",msg:prs.map(p=>`${p.name}: ${p.val}lbs`).join(", "),accent:"#fbbf24"});},600);
   };
 
-  const handleFeedback = (feedbackMap) => {
+  const handleFeedback = (feedbackPayload) => {
     setShowFeedback(false);
+    const feedbackMap = feedbackPayload?.exercises || feedbackPayload || {};
+    const workoutFeeling = feedbackPayload?.workoutFeeling;
+    if (workoutFeeling) {
+      logCoachEvent({kind:"workout_feedback",feeling:workoutFeeling});
+    }
+    const workoutAdj = { easy: 1, good: 0, hard: -1, pain: -2 }[workoutFeeling] || 0;
     // Apply feedback as pending adjustments
     const newConfig={...exConfig};
     workoutPlan.exercises.forEach(ex=>{
       const fb=feedbackMap[ex.name];
-      if(!fb) return;
+      if(!fb&&!workoutAdj) return;
       const key=exerciseKey(ex);
       const cur=newConfig[key]||{};
       const maxTest=cur.maxRepsTest;
-      const newTarget=calcDynamicTarget(getTargetReps(ex),fb,maxTest);
+      const baseFeedbackTarget = fb ? calcDynamicTarget(getTargetReps(ex),fb,maxTest) : getTargetReps(ex);
+      const newTarget=Math.max(3, baseFeedbackTarget + workoutAdj);
       const adj=newTarget-getTargetReps(ex);
       newConfig[key]={...cur,targetReps:newTarget,pendingAdj:adj};
     });
@@ -722,9 +933,10 @@ export default function WorkoutView({
     setUndoSet(null);
     setRestState(null);
     setLoggerState(null);
+    setWorkoutNote("");
   };
 
-  const getAssessmentResults = () => Object.fromEntries(ALL_EXERCISES.map(ex => {
+  const getAssessmentResults = () => Object.fromEntries(ASSESSMENT_EXERCISES.map(ex => {
     const config = exConfig[ex.name] || {};
     const fromTarget = config.targetReps ? Math.max(1, Math.round(config.targetReps / 0.65)) : ex.baseReps;
     return [ex.name, config.maxRepsTest || fromTarget];
@@ -732,7 +944,7 @@ export default function WorkoutView({
 
   const completeAssessment = (results) => {
     const newConfig={...exConfig};
-    ALL_EXERCISES.forEach(ex=>{
+    ASSESSMENT_EXERCISES.forEach(ex=>{
       const maxReps=results?.[ex.name];
       const target=maxReps ? assessmentTarget(maxReps) : ex.baseReps;
       newConfig[ex.name]={
@@ -785,6 +997,7 @@ export default function WorkoutView({
             {sessionRunning?(<>
               <div style={{fontSize:11,color:"#888",letterSpacing:".12em"}}>SESSION</div>
               <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:accent,marginTop:2,filter:`drop-shadow(0 0 8px ${accent}99)`}}>{fmtDuration(sessionElapsed)}</div>
+              <div style={{fontSize:11,color:"#888",marginTop:2}}>~{fmtDuration(estimatedRemaining)} left</div>
             </>):streak>0?(<>
               <div style={{fontSize:11,color:"#888",letterSpacing:".1em"}}>STREAK</div>
               <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#fb923c",marginTop:2,filter:"drop-shadow(0 0 8px #fb923c88)"}}>{streak} 🔥</div>
@@ -837,11 +1050,19 @@ export default function WorkoutView({
         <div style={{marginTop:14}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:7}}>
             <span style={{fontSize:13,color:"#aaa",letterSpacing:".1em"}}>PROGRESS</span>
-            <span style={{fontSize:13,color:doneSets>0?accent:"#aaa"}}>{doneSets}/{totalSets} sets</span>
+            <span style={{fontSize:13,color:doneSets>0?accent:"#aaa"}}>{doneSets}/{totalSets} sets · ~{fmtDuration(estimatedRemaining)} left</span>
           </div>
           <div style={{height:7,background:"#1a1a1a",borderRadius:4,overflow:"hidden"}}>
             <div style={{height:"100%",width:`${(doneSets/totalSets)*100}%`,background:`linear-gradient(90deg,${accent}bb,${accent})`,transition:"width .4s ease",boxShadow:doneSets>0?`0 0 14px ${accent}bb`:"none"}}/>
           </div>
+          {doneSets===0&&!isCompleted&&<ProgressionPreview items={progressionPreview} accent={accent}/>}
+          {!isCompleted&&(
+            <div style={{marginTop:12}}>
+              <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:6}}>Session Note</div>
+              <textarea value={workoutNote} onChange={e=>setWorkoutNote(e.target.value)} placeholder="Sleep, joints, mood, anything worth remembering..."
+                style={{width:"100%",minHeight:54,resize:"vertical",boxSizing:"border-box",padding:"11px 12px",background:"#0d0d0d",border:"1px solid #242424",borderRadius:10,color:"#ddd",fontFamily:"DM Mono, monospace",fontSize:13,lineHeight:1.45,outline:"none"}}/>
+            </div>
+          )}
           {!isCompleted&&(
             <button onClick={()=>setFocusMode(true)}
               style={{width:"100%",marginTop:14,padding:"18px",background:accent,border:"none",borderRadius:13,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:25,letterSpacing:".12em",boxShadow:`0 0 36px ${accent}55`}}>
@@ -864,6 +1085,18 @@ export default function WorkoutView({
           const science=getScience(ex);
           const exColor=WORKOUTS.A.exercises.some(e=>e.name===ex.name)?WORKOUTS.A.color:WORKOUTS.B.color;
           const histData=getExerciseHistory(exKey,history);
+          const guide=EXERCISE_GUIDES[exKey] || EXERCISE_GUIDES[ex.name];
+          const fixes=plateauFixes({history,exercise:{...ex,name:exKey},targetReps:reps});
+          const why=explainExerciseDecision({
+            exercise:ex,
+            history,
+            exConfig,
+            targetReps:reps,
+            science,
+            progressionRec:exConfig[exKey],
+            settings,
+            checkIns,
+          });
 
           return(
             <div key={i} style={{padding:"18px 16px",borderBottom:"1px solid #1a1a1a",background:done?`${accent}08`:"transparent",transition:"background .3s"}}>
@@ -919,6 +1152,17 @@ export default function WorkoutView({
                     {ex.substitutedFor&&<div style={{fontSize:12,color:"#888",marginTop:8}}>Original: {ex.substitutedFor}</div>}
                   </div>
 
+                  <ExerciseGuide guide={guide} accent={accent}/>
+                  <CoachWhyPanel lines={why} accent={accent}/>
+                  <PlateauFixPanel fixes={fixes} accent={accent}/>
+                  <SwapLibrary
+                    exerciseName={exKey}
+                    activeName={substitutions[exKey]?.name}
+                    accent={accent}
+                    onApply={useSubstitution}
+                    onRemove={removeSubstitution}
+                  />
+
                   <CoachCard suggestions={suggestions.filter(s => s.cat === "Form" || s.cat === "Science" || s.cat === "Watch" || s.cat === "Habits").slice(0, 4)} accent={accent} onOpen={()=>setCoachOpen(true)}/>
 
                   {science.enabled&&(
@@ -952,10 +1196,12 @@ export default function WorkoutView({
                       {hasNxtW&&<span style={{fontSize:12,color:accent,background:`${accent}18`,padding:"3px 9px",borderRadius:6}}>→ Try {nextW}lbs</span>}
                     </div>
                     <div style={{display:"flex",alignItems:"center",background:"#101010",borderRadius:10,border:`1px solid ${accent}33`,overflow:"hidden"}}>
-                      <button onClick={()=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:Math.max((p[exKey]?.weight||curW)-2.5,0)}}))} style={{width:52,height:52,background:"transparent",border:"none",color:"#ccc",fontSize:24}}>−</button>
-                      <div style={{flex:1,textAlign:"center",fontSize:20,fontWeight:500,color:"#fff"}}>{curW > 0 ? `${curW} lbs` : "bodyweight"}</div>
-                      <button onClick={()=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:(p[exKey]?.weight||curW)+2.5}}))} style={{width:52,height:52,background:"transparent",border:"none",color:"#ccc",fontSize:24}}>+</button>
+                      <button onClick={()=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:Math.max((p[exKey]?.weight||curW)-(settings.weightIncrement||1),0)}}))} style={{width:52,height:52,background:"transparent",border:"none",color:"#ccc",fontSize:24}}>−</button>
+                      <input value={curW} onChange={e=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:Math.max(Number(e.target.value)||0,0)}}))} type="number" inputMode="decimal" min="0" step="any" aria-label={`${ex.name} working weight`}
+                        style={{flex:1,minWidth:0,textAlign:"center",fontSize:20,fontWeight:500,color:"#fff",background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono, monospace"}}/>
+                      <button onClick={()=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:(p[exKey]?.weight||curW)+(settings.weightIncrement||1)}}))} style={{width:52,height:52,background:"transparent",border:"none",color:"#ccc",fontSize:24}}>+</button>
                     </div>
+                    <div style={{fontSize:11,color:"#777",lineHeight:1.45,marginTop:8}}>Type any number, including 5, 7.5, 12, or 15. The +/- buttons use your progression increment.</div>
                   </div>
 
                   {/* Logged sets today */}
@@ -993,18 +1239,22 @@ export default function WorkoutView({
       </div>
 
       <ThisWeek completed={completed} setActiveTab={setActiveTab}/>
+      <WeeklyMusclePlan completed={completed} accent={accent}/>
 
       {history.length>0&&(
         <div style={{padding:"0 16px"}}>
           <div style={{fontSize:13,color:"#999",letterSpacing:".14em",marginBottom:12,textTransform:"uppercase",fontWeight:500}}>Recent</div>
           {history.slice(0,4).map((h,i)=>(
-            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",borderBottom:"1px solid #161616"}}>
-              <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                <span style={{fontSize:12,padding:"4px 10px",borderRadius:6,background:WORKOUTS[h.workout]?.color+"22",color:WORKOUTS[h.workout]?.color,letterSpacing:".06em",fontWeight:500}}>{h.workout}</span>
-                <span style={{fontSize:15,color:"#e0e0e0"}}>{h.day}</span>
-                {h.duration&&<span style={{fontSize:12,color:"#888"}}>{fmtDuration(h.duration)}</span>}
+            <div key={i} style={{padding:"13px 0",borderBottom:"1px solid #161616"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                  <span style={{fontSize:12,padding:"4px 10px",borderRadius:6,background:WORKOUTS[h.workout]?.color+"22",color:WORKOUTS[h.workout]?.color,letterSpacing:".06em",fontWeight:500}}>{h.workout}</span>
+                  <span style={{fontSize:15,color:"#e0e0e0"}}>{h.day}</span>
+                  {h.duration&&<span style={{fontSize:12,color:"#888"}}>{fmtDuration(h.duration)}</span>}
+                </div>
+                <span style={{fontSize:13,color:"#aaa"}}>{h.date}</span>
               </div>
-              <span style={{fontSize:13,color:"#aaa"}}>{h.date}</span>
+              {h.note&&<div style={{fontSize:12,color:"#777",lineHeight:1.4,marginTop:6}}>Note: {h.note}</div>}
             </div>
           ))}
           {history.length>4&&<button onClick={()=>setActiveView("calendar")} style={{background:"none",border:"1px solid #2c2c2c",borderRadius:9,color:"#bbb",padding:"12px 18px",fontSize:13,letterSpacing:".1em",marginTop:14,fontFamily:"DM Mono,monospace"}}>VIEW ALL → CALENDAR</button>}
@@ -1013,7 +1263,7 @@ export default function WorkoutView({
       <div style={{height:32}}/>
 
       {/* OVERLAYS */}
-      {loggerState&&<SetLogger exerciseName={workoutPlan.exercises[loggerState.exIdx].name} setNum={loggerState.setIdx+1} defaultWeight={loggerState.weight} defaultReps={loggerState.reps} accent={accent} editing={loggerState.editing} onSave={saveLog} onSkip={skipLog}/>}
+      {loggerState&&<SetLogger exerciseName={workoutPlan.exercises[loggerState.exIdx].name} setNum={loggerState.setIdx+1} defaultWeight={loggerState.weight} defaultReps={loggerState.reps} accent={accent} editing={loggerState.editing} increment={settings.weightIncrement || 1} onSave={saveLog} onSkip={skipLog}/>}
       {undoSet&&(
         <div style={{position:"fixed",left:16,right:16,bottom:"calc(82px + env(safe-area-inset-bottom))",zIndex:260,pointerEvents:"none"}}>
           <div className="mobile-shell" style={{background:"#111",border:`1.5px solid ${accent}66`,borderRadius:12,padding:"13px 14px",boxShadow:`0 0 28px ${accent}33`,pointerEvents:"auto"}}>
@@ -1038,6 +1288,12 @@ export default function WorkoutView({
           getScience={getScience}
           toggleSet={toggleSet} onExit={()=>setFocusMode(false)}
           onFinish={finishWorkout} allDone={allDone} isCompleted={isCompleted}
+          substitutions={coachPlan.substitutions || []}
+          onApplySubstitution={useSubstitution}
+          onRemoveSubstitution={removeSubstitution}
+          getPreviousPerformance={getPreviousPerformance}
+          beginnerFormMode={settings.beginnerFormMode === true}
+          estimatedRemaining={estimatedRemaining}
         />
       )}
       {workoutSummary&&<WorkoutSummary summary={workoutSummary} accent={accent} onClose={()=>{setWorkoutSummary(null);setShowFeedback(true);}}/>}

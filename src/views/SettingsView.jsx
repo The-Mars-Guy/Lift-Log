@@ -65,12 +65,19 @@ export default function SettingsView({
             ui={ui}
           />
         </Row>
-        <Row label="Dumbbell Weight" desc="Used for volume calculations" ui={ui}>
-          <SegControl
-            options={[{ v: 10, l: "10" }, { v: 15, l: "15" }, { v: 20, l: "20" }, { v: 25, l: "25" }]}
+        <Row label="Dumbbell Weight" desc="Default weight for new exercises" ui={ui}>
+          <NumberInput
             value={settings.dumbbellWeight}
             onChange={v => update("dumbbellWeight", v)}
-            accent={accent}
+            suffix="lb"
+            ui={ui}
+          />
+        </Row>
+        <Row label="Progression Increment" desc="How much +/- buttons and coach load jumps change weight" help="Use 1 for full freedom, 2.5 for adjustable dumbbells, or 5 for bigger jumps. You can still type any exact weight while logging sets." ui={ui}>
+          <NumberInput
+            value={settings.weightIncrement || 1}
+            onChange={v => update("weightIncrement", Math.max(v, 0.1))}
+            suffix="lb"
             ui={ui}
           />
         </Row>
@@ -135,6 +142,7 @@ export default function SettingsView({
         <Toggle label="Auto Deload" desc="Reduce load after repeated big misses" help="If the same exercise misses badly twice, the coach lowers the next load and rebuilds clean reps." value={settings.autoDeload !== false} onChange={v => update("autoDeload", v)} accent={accent} ui={ui} />
         <Toggle label="Readiness Check-In" desc="Ask energy, soreness, and time before workouts" help="The coach uses this to trim sets on rough days, push when you are fresh, and suggest swaps when soreness is high." value={settings.showReadiness !== false} onChange={v => update("showReadiness", v)} accent={accent} ui={ui} />
         <Toggle label="Fullscreen Rest Timer" desc="Use the focused rest screen between sets" value={settings.fullscreenRest !== false} onChange={v => update("fullscreenRest", v)} accent={accent} ui={ui} />
+        <Toggle label="Beginner Form Mode" desc="Larger cues and less noise during focus mode" help="Best when you want one clear instruction at a time instead of more advanced coaching detail." value={settings.beginnerFormMode === true} onChange={v => update("beginnerFormMode", v)} accent={accent} ui={ui} />
         <Action label="Edit Benchmark Test" desc="Update the initial max-rep numbers the coach uses for targets" onClick={editBenchmarkTest} ui={ui} />
         <Row label="Joint Caution" desc="Coach biases swaps around selected joints" help="Use this for recurring caution areas. During workouts, pain feedback still matters most." ui={ui}>
           <MultiSelect
@@ -326,6 +334,27 @@ function MultiSelect({ options, value, onChange, accent, ui }) {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function NumberInput({ value, onChange, suffix, ui }) {
+  return (
+    <div style={{display:"flex",alignItems:"center",background:ui.control,border:`1px solid ${ui.border}`,borderRadius:9,overflow:"hidden"}}>
+      <input
+        value={value}
+        onChange={e => onChange(Number(e.target.value) || 0)}
+        type="number"
+        inputMode="decimal"
+        min="0"
+        step="any"
+        style={{
+          flex:1,minWidth:0,padding:"12px 12px",
+          background:"transparent",border:"none",outline:"none",
+          color:ui.text,fontFamily:"DM Mono, monospace",fontSize:16,
+        }}
+      />
+      <span style={{fontSize:12,color:ui.muted,paddingRight:12}}>{suffix}</span>
     </div>
   );
 }

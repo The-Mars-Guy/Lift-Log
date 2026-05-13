@@ -3,13 +3,15 @@ import { WORKOUTS, ACHIEVEMENTS, computeStats, isoWeek, getLevel, epley1RM, getE
 import { BarChart, MiniGraph } from "../components/shared.jsx";
 import { fmtDuration } from "../hooks.js";
 import { exerciseVolume } from "../session.js";
-import { buildCoachMemory, buildWeeklyReview } from "../coach.js";
+import { buildCoachMemory, buildWeeklyReview, computePersonalRecords, detectWeakPoints } from "../coach.js";
 
-export default function StatsView({ history, progression, settings, achievements, accent, xp, level, exConfig, checkIns }) {
+export default function StatsView({ history, progression, settings, achievements, accent, xp, level, exConfig, checkIns, bodyMetrics = [], setBodyMetrics }) {
   const stats = computeStats({ history, progression, settings });
   const allExercises = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
   const coachMemory = buildCoachMemory({ history, checkIns, exercises: allExercises, exConfig });
   const weeklyReview = buildWeeklyReview({ history, checkIns });
+  const weakPoints = detectWeakPoints({ history, exercises: allExercises, exConfig });
+  const records = computePersonalRecords({ history });
 
   // Sessions per week chart (last 8 weeks)
   const weekData = (() => {
@@ -132,6 +134,23 @@ export default function StatsView({ history, progression, settings, achievements
           <div style={{fontSize:14,color:"#ddd",lineHeight:1.55}}>{weeklyReview.focus}</div>
         </div>
       </Section>
+
+      <Section title="Weak Points" sub="coverage and performance signals">
+        <div style={{display:"grid",gap:8}}>
+          {weakPoints.length ? weakPoints.map((item,i)=>(
+            <div key={i} style={{padding:"13px 14px",background:"#0d0d0d",borderRadius:10,border:`1px solid ${item.type==="coverage"?"#fbbf2444":"#60a5fa44"}`}}>
+              <div style={{fontSize:14,color:item.type==="coverage"?"#fbbf24":"#60a5fa",fontWeight:700,marginBottom:4}}>{item.title}</div>
+              <div style={{fontSize:13,color:"#aaa",lineHeight:1.45}}>{item.detail}</div>
+            </div>
+          )) : (
+            <div style={{padding:"14px 16px",background:"#0d0d0d",borderRadius:10,border:"1px solid #1c1c1c",fontSize:14,color:"#aaa"}}>No clear weak points yet. A few more sessions will make this sharper.</div>
+          )}
+        </div>
+      </Section>
+
+      <RecordsSection records={records} accent={accent}/>
+
+      <BodyMetricsSection metrics={bodyMetrics} setMetrics={setBodyMetrics} accent={accent}/>
 
       {/* SESSIONS / WEEK CHART */}
       <Section title="Sessions Per Week" sub="last 8 weeks · target 3/wk">
@@ -275,6 +294,128 @@ function ExGraphCard({ name, data, color, latestTotal, trend }) {
         <div style={{padding:"0 16px 16px",fontSize:13,color:"#666"}}>Complete more sessions to see your progress graph here.</div>
       )}
     </div>
+  );
+}
+
+function BodyMetricsSection({ metrics = [], setMetrics, accent }) {
+  const [weight, setWeight] = useState("");
+  const [waist, setWaist] = useState("");
+  const [photo, setPhoto] = useState(null);
+  const latest = metrics[0];
+  const first = metrics[metrics.length - 1];
+  const weightDelta = latest?.weight && first?.weight && metrics.length > 1 ? Math.round((latest.weight - first.weight) * 10) / 10 : null;
+
+  const addMetric = () => {
+    if (!weight && !waist && !photo) return;
+    setMetrics?.(p => [{
+      date: new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"}),
+      timestamp: Date.now(),
+      weight: weight ? Number(weight) : null,
+      waist: waist ? Number(waist) : null,
+      photo,
+    }, ...(p || [])].slice(0, 24));
+    setWeight("");
+    setWaist("");
+    setPhoto(null);
+  };
+
+  const loadPhoto = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setPhoto(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <Section title="Body Check-Ins" sub="optional and stored only on this device">
+      <div style={{padding:"15px",background:"#0d0d0d",borderRadius:12,border:`1px solid ${accent}33`,marginBottom:10}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          <MetricInput label="Body Weight" value={weight} onChange={setWeight} suffix="lb"/>
+          <MetricInput label="Waist" value={waist} onChange={setWaist} suffix="in"/>
+        </div>
+        <label style={{display:"block",marginTop:10,padding:"12px",background:"#101010",border:"1px solid #242424",borderRadius:9,color:photo?accent:"#aaa",fontSize:13,textAlign:"center"}}>
+          {photo ? "Photo attached" : "Add optional progress photo"}
+          <input type="file" accept="image/*" onChange={e=>loadPhoto(e.target.files?.[0])} style={{display:"none"}}/>
+        </label>
+        <button onClick={addMetric}
+          style={{width:"100%",marginTop:10,padding:"13px",background:accent,border:"none",borderRadius:10,color:"#050505",fontSize:13,fontWeight:800,letterSpacing:".1em"}}>
+          SAVE CHECK-IN
+        </button>
+      </div>
+      {latest&&(
+        <div style={{padding:"14px",background:"#0d0d0d",borderRadius:12,border:"1px solid #1c1c1c",marginBottom:10}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <MemoryPill label="Latest Weight" value={latest.weight ? `${latest.weight}lb` : "—"} color="#4ade80"/>
+            <MemoryPill label="Change" value={weightDelta == null ? "—" : `${weightDelta>0?"+":""}${weightDelta}lb`} color="#60a5fa"/>
+          </div>
+        </div>
+      )}
+      <div style={{display:"grid",gap:8}}>
+        {metrics.slice(0,4).map(item=>(
+          <div key={item.timestamp} style={{display:"flex",gap:10,alignItems:"center",padding:"10px 12px",background:"#0d0d0d",borderRadius:10,border:"1px solid #1c1c1c"}}>
+            {item.photo&&<img src={item.photo} alt="" style={{width:48,height:48,objectFit:"cover",borderRadius:8,border:"1px solid #333"}}/>}
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,color:"#ddd"}}>{item.date}</div>
+              <div style={{fontSize:12,color:"#888",marginTop:2}}>{item.weight ? `${item.weight}lb` : "no weight"} · {item.waist ? `${item.waist}in waist` : "no waist"}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+function RecordsSection({ records, accent }) {
+  const exerciseRecords = Object.entries(records.exerciseRecords || {});
+  return (
+    <Section title="Personal Records" sub="best logged performances">
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+        <MemoryPill label="Best Volume" value={records.bestSessionVolume ? `${Math.round(records.bestSessionVolume.value).toLocaleString()}lb` : "—"} color="#4ade80"/>
+        <MemoryPill label="Fastest" value={records.fastestSession ? fmtDuration(records.fastestSession.value) : "—"} color="#60a5fa"/>
+        <MemoryPill label="Longest" value={records.longestSession ? fmtDuration(records.longestSession.value) : "—"} color="#a78bfa"/>
+        <MemoryPill label="Tracked Lifts" value={exerciseRecords.length} color="#fbbf24"/>
+      </div>
+      <div style={{display:"grid",gap:8}}>
+        {exerciseRecords.length ? exerciseRecords.map(([name, rec])=>(
+          <div key={name} style={{padding:"13px 14px",background:"#0d0d0d",borderRadius:10,border:"1px solid #1c1c1c"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:8}}>
+              <div style={{fontSize:15,color:"#f0f0f0",fontWeight:700}}>{name}</div>
+              <div style={{fontSize:12,color:accent}}>{rec.maxVolume?.date || rec.maxWeight?.date || rec.maxReps?.date || ""}</div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
+              <RecordMini label="Weight" value={rec.maxWeight ? `${rec.maxWeight.value}lb` : "—"} sub={rec.maxWeight ? `${rec.maxWeight.reps} reps` : ""}/>
+              <RecordMini label="Reps" value={rec.maxReps ? rec.maxReps.value : "—"} sub={rec.maxReps ? `${rec.maxReps.weight}lb` : ""}/>
+              <RecordMini label="Volume" value={rec.maxVolume ? Math.round(rec.maxVolume.value) : "—"} sub={rec.maxVolume ? `${rec.maxVolume.reps} reps` : ""}/>
+            </div>
+          </div>
+        )) : (
+          <div style={{padding:"14px 16px",background:"#0d0d0d",borderRadius:10,border:"1px solid #1c1c1c",fontSize:14,color:"#aaa"}}>Finish a workout with logged sets and records will appear here.</div>
+        )}
+      </div>
+    </Section>
+  );
+}
+
+function RecordMini({ label, value, sub }) {
+  return (
+    <div style={{padding:"9px 8px",background:"#101010",border:"1px solid #222",borderRadius:8,textAlign:"center"}}>
+      <div style={{fontSize:10,color:"#777",letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>{label}</div>
+      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:23,color:"#fff",letterSpacing:".04em",lineHeight:1}}>{value}</div>
+      {sub&&<div style={{fontSize:10,color:"#777",marginTop:2}}>{sub}</div>}
+    </div>
+  );
+}
+
+function MetricInput({ label, value, onChange, suffix }) {
+  return (
+    <label style={{display:"block"}}>
+      <div style={{fontSize:10,color:"#777",letterSpacing:".12em",textTransform:"uppercase",marginBottom:5}}>{label}</div>
+      <div style={{display:"flex",alignItems:"center",background:"#101010",border:"1px solid #242424",borderRadius:9,overflow:"hidden"}}>
+        <input value={value} onChange={e=>onChange(e.target.value)} type="number" inputMode="decimal"
+          style={{flex:1,minWidth:0,padding:"11px 10px",background:"transparent",border:"none",outline:"none",color:"#fff",fontFamily:"DM Mono, monospace",fontSize:15}}/>
+        <span style={{fontSize:12,color:"#777",paddingRight:10}}>{suffix}</span>
+      </div>
+    </label>
   );
 }
 
