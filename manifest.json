@@ -1,12 +1,30 @@
 {
   "name": "Lift Log",
   "short_name": "Lift Log",
+  "id": "/Lift-Log/",
   "description": "Minimal dumbbell workout tracker with auto-progression",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
   "background_color": "#f8fffb",
   "theme_color": "#f8fffb",
   "orientation": "portrait",
+  "categories": ["health", "fitness", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "Start Workout",
+      "short_name": "Workout",
+      "description": "Open today's Lift Log workout",
+      "url": "./"
+    },
+    {
+      "name": "Stats",
+      "short_name": "Stats",
+      "description": "Review workout progress",
+      "url": "./"
+    }
+  ],
   "icons": [
     {
       "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%23050505' rx='35'/%3E%3Ctext x='96' y='128' font-size='100' text-anchor='middle' fill='%234ade80' font-family='Arial Black' font-weight='900'%3EL%3C/text%3E%3C/svg%3E",
