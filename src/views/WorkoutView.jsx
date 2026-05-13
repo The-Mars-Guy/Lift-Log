@@ -135,7 +135,10 @@ function FocusWorkoutMode({
   getTargetReps, getSetCount, getWeight, getScience, toggleSet, onExit, onFinish, allDone, isCompleted,
   substitutions = [], onApplySubstitution, onRemoveSubstitution,
   getPreviousPerformance, beginnerFormMode=false, estimatedRemaining=0,
+  playSound,
 }) {
+  const [tempoOn, setTempoOn] = useState(false);
+  const [beat, setBeat] = useState(0);
   const next = (() => {
     for (let i=0;i<workout.exercises.length;i++) {
       const ex = workout.exercises[i];
@@ -156,12 +159,54 @@ function FocusWorkoutMode({
   const focusSwap = substitutions.find(sub => sub.exercise === originalName);
   const guide = EXERCISE_GUIDES[originalName] || EXERCISE_GUIDES[next.ex.name];
   const previous = getPreviousPerformance?.(next.ex);
+  const tempoParts = parseTempoCode(science.tempo?.code);
+  const tempoPattern = tempoParts ? [
+    { label:"Lower", seconds:tempoParts[0] },
+    { label:"Hold", seconds:tempoParts[1] },
+    { label:"Lift", seconds:tempoParts[2] },
+  ].filter(part => part.seconds > 0) : [];
+  const tempoCycle = tempoPattern.reduce((sum, part) => sum + part.seconds, 0);
+  const tempoPosition = tempoCycle ? beat % tempoCycle : 0;
+  let elapsed = 0;
+  const tempoPhase = tempoPattern.find(part => {
+    const active = tempoPosition >= elapsed && tempoPosition < elapsed + part.seconds;
+    elapsed += part.seconds;
+    return active;
+  }) || tempoPattern[0];
+
+  useEffect(() => {
+    setTempoOn(false);
+    setBeat(0);
+  }, [next.ex.name, science.tempo?.code]);
+
+  useEffect(() => {
+    if (!tempoOn || !tempoCycle) return undefined;
+    playSound?.("tempoAccent");
+    const id = setInterval(() => {
+      setBeat(current => {
+        const nextBeat = (current + 1) % tempoCycle;
+        playSound?.(nextBeat === 0 ? "tempoAccent" : "tempoBeat");
+        return nextBeat;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [tempoOn, tempoCycle, playSound]);
 
   return (
     <div style={{position:"fixed",inset:0,zIndex:150,background:"#050505",overflowY:"auto",padding:"calc(10px + env(safe-area-inset-top)) 16px 18px"}}>
       <div className="mobile-shell">
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12}}>
           <button onClick={onExit} style={{background:"transparent",border:"1px solid #2c2c2c",borderRadius:9,color:"#aaa",padding:"8px 12px",fontSize:12,letterSpacing:".08em"}}>PAUSE</button>
+          {tempoPattern.length > 0&&(
+            <button
+              aria-label={tempoOn ? "Stop tempo metronome" : "Start tempo metronome"}
+              title={tempoOn ? "Stop tempo metronome" : "Start tempo metronome"}
+              onClick={()=>setTempoOn(on=>!on)}
+              style={{width:42,height:42,borderRadius:12,border:`1px solid ${tempoOn?accent:"#2c2c2c"}`,background:tempoOn?`${accent}22`:"#0d0d0d",color:tempoOn?accent:"#aaa",fontSize:18,fontWeight:900,boxShadow:tempoOn?`0 0 18px ${accent}33`:"none",flexShrink:0}}
+            >
+              {tempoOn ? "●" : "♪"}
+            </button>
+          )}
           <div style={{textAlign:"right"}}>
             <div style={{fontSize:11,color:"#777",letterSpacing:".14em",textTransform:"uppercase"}}>{activeTab}</div>
             <div style={{fontSize:13,color:accent}}>{doneSets}/{totalSets} sets</div>
@@ -206,6 +251,20 @@ function FocusWorkoutMode({
             </div>
           )}
         </div>
+
+        {tempoPattern.length > 0&&tempoOn&&(
+          <div style={{marginTop:10,padding:"10px 12px",background:"#0d0d0d",border:`1px solid ${accent}`,borderRadius:11,boxShadow:`0 0 22px ${accent}22`}}>
+            <div style={{fontSize:10,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:7}}>Tempo Beat · {tempoPhase?.label || "Beat"} {tempoPosition + 1}/{tempoCycle}</div>
+            <div style={{display:"grid",gridTemplateColumns:`repeat(${tempoPattern.length},1fr)`,gap:7}}>
+              {tempoPattern.map((part, idx)=>(
+                <div key={part.label} style={{padding:"8px 6px",borderRadius:8,border:`1px solid ${tempoPhase?.label===part.label?accent:"#242424"}`,background:tempoPhase?.label===part.label?`${accent}24`:"#090909",textAlign:"center"}}>
+                  <div style={{fontSize:10,color:tempoPhase?.label===part.label?accent:"#777",letterSpacing:".1em",textTransform:"uppercase"}}>{part.label}</div>
+                  <div style={{fontSize:15,color:"#eee",fontFamily:"DM Mono,monospace",marginTop:2}}>{part.seconds}s</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {focusSwap&&(
           <div style={{marginTop:10,padding:"10px 12px",background:"#0d0d0d",border:`1px solid ${accent}44`,borderRadius:11}}>
@@ -531,6 +590,13 @@ function PlateauFixPanel({ fixes, accent }) {
       <div style={{fontSize:12,color:"#9a7b34",lineHeight:1.45,marginTop:8}}>The coach only shows this when recent reps are fading or targets are being missed.</div>
     </div>
   );
+}
+
+function parseTempoCode(code) {
+  if (!code || typeof code !== "string") return null;
+  const parts = code.split("-").map(part => Number(part.trim()));
+  if (parts.length < 3 || parts.some(part => !Number.isFinite(part) || part < 0)) return null;
+  return parts.slice(0, 3);
 }
 
 // ── MAIN VIEW ─────────────────────────────────────────────────────────────────
@@ -1294,6 +1360,7 @@ export default function WorkoutView({
           getPreviousPerformance={getPreviousPerformance}
           beginnerFormMode={settings.beginnerFormMode === true}
           estimatedRemaining={estimatedRemaining}
+          playSound={playSound}
         />
       )}
       {workoutSummary&&<WorkoutSummary summary={workoutSummary} accent={accent} onClose={()=>{setWorkoutSummary(null);setShowFeedback(true);}}/>}

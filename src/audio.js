@@ -33,6 +33,8 @@ function sequence(notes, gap = 0.08) {
 }
 
 export const sounds = {
+  tempoBeat: () => tone({ freq: 520, duration: 0.045, type: "square", gain: 0.045, attack: 0.001, release: 0.035 }),
+  tempoAccent: () => tone({ freq: 780, duration: 0.06, type: "square", gain: 0.065, attack: 0.001, release: 0.045 }),
   setComplete: () => tone({ freq: 880, duration: 0.08, type: "sine", gain: 0.1, attack: 0.002, release: 0.05 }),
   restEnd: () => sequence([
     { freq: 660, duration: 0.12, type: "sine", gain: 0.15 },
