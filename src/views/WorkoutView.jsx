@@ -435,8 +435,8 @@ function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, o
     <div style={{position:"fixed",bottom:82,left:0,right:0,zIndex:220,background:"#0a0a0a",borderTop:`1.5px solid ${accent}99`,padding:"14px 18px 12px",boxShadow:`0 -8px 32px ${accent}44`,animation:"slideUp .22s ease-out"}}>
       <div className="mobile-shell">
         <div style={{fontSize:12,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:12,fontWeight:500}}>Log Set {setNum} · {exerciseName}</div>
-        <div style={{display:"flex",gap:10,alignItems:"center"}}>
-          <div style={{flex:1}}>
+        <div style={{display:"grid",gap:10}}>
+          <div>
             <div style={{fontSize:11,color:"#888",letterSpacing:".1em",marginBottom:5}}>WEIGHT (lbs)</div>
             <div style={{display:"flex",alignItems:"center",background:"#141414",borderRadius:10,border:`1px solid ${accent}33`,overflow:"hidden"}}>
               <button onClick={()=>setWeight(w=>Math.max((Number(w)||0)-step,0))} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>−</button>
@@ -445,7 +445,7 @@ function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, o
               <button onClick={()=>setWeight(w=>(Number(w)||0)+step)} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>+</button>
             </div>
           </div>
-          <div style={{flex:1}}>
+          <div>
             <div style={{fontSize:11,color:"#888",letterSpacing:".1em",marginBottom:5}}>REPS DONE</div>
             <div style={{display:"flex",alignItems:"center",background:"#141414",borderRadius:10,border:`1px solid ${accent}33`,overflow:"hidden"}}>
               <button onClick={()=>setReps(r=>Math.max((Number(r)||0)-1,0))} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>−</button>
@@ -455,7 +455,7 @@ function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, o
             </div>
           </div>
           <button onClick={()=>onSave({weight:cleanWeight,reps:cleanReps})}
-            style={{width:54,height:46,background:accent,border:"none",borderRadius:10,color:"#0a0a0a",fontSize:13,fontWeight:700,flexShrink:0,alignSelf:"flex-end",boxShadow:`0 0 16px ${accent}66`}}>LOG</button>
+            style={{width:"100%",height:48,background:accent,border:"none",borderRadius:10,color:"#0a0a0a",fontSize:13,fontWeight:700,boxShadow:`0 0 16px ${accent}66`,letterSpacing:".08em"}}>LOG SET</button>
         </div>
         <button onClick={onSkip} style={{background:"none",border:"none",color:"#555",fontSize:12,letterSpacing:".08em",marginTop:10,width:"100%",textAlign:"center",padding:4}}>{editing ? "keep current log" : "use planned numbers"}</button>
       </div>
@@ -795,9 +795,12 @@ export default function WorkoutView({
 
   useEffect(() => {
     if (!undoSet) return;
-    const id = setTimeout(() => setUndoSet(null), 4500);
+    const duration = restState && !restState.done
+      ? Math.max((restState.plannedSeconds || settings.restSeconds || 0) * 1000 + 1200, 4500)
+      : 4500;
+    const id = setTimeout(() => setUndoSet(null), duration);
     return () => clearTimeout(id);
-  }, [undoSet]);
+  }, [undoSet, restState?.restId, restState?.done, restState?.plannedSeconds, settings.restSeconds]);
 
   const spawnXp = (amount) => {
     addXp(amount);
@@ -873,7 +876,7 @@ export default function WorkoutView({
       title:"COACH NOTE SAVED",
       msg:feeling==="pain" ? `${ex.name} flagged for discomfort.` : `${ex.name} set ${undoSet.setIdx+1}: ${feeling}.`,
       accent:feeling==="pain"?"#fb7185":accent,
-      duration:3500,
+      duration:2000,
     });
     setUndoSet(null);
   };
@@ -1331,7 +1334,7 @@ export default function WorkoutView({
       {/* OVERLAYS */}
       {loggerState&&<SetLogger exerciseName={workoutPlan.exercises[loggerState.exIdx].name} setNum={loggerState.setIdx+1} defaultWeight={loggerState.weight} defaultReps={loggerState.reps} accent={accent} editing={loggerState.editing} increment={settings.weightIncrement || 1} onSave={saveLog} onSkip={skipLog}/>}
       {undoSet&&(
-        <div style={{position:"fixed",left:16,right:16,bottom:"calc(82px + env(safe-area-inset-bottom))",zIndex:260,pointerEvents:"none"}}>
+        <div style={{position:"fixed",left:16,right:16,bottom:restState&&!restState.done&&!loggerState&&!focusMode?"calc(166px + env(safe-area-inset-bottom))":"calc(82px + env(safe-area-inset-bottom))",zIndex:260,pointerEvents:"none"}}>
           <div className="mobile-shell" style={{background:"#111",border:`1.5px solid ${accent}66`,borderRadius:12,padding:"13px 14px",boxShadow:`0 0 28px ${accent}33`,pointerEvents:"auto"}}>
             <div style={{display:"flex",alignItems:"center",gap:12}}>
               <div style={{flex:1,minWidth:0}}>

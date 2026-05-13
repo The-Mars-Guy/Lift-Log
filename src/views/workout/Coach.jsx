@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { WORKOUTS, DAYS, todayName } from "../../data.js";
 
 export function buildSuggestions({ history, progression, settings, exConfig, workoutKey }) {
@@ -96,8 +96,71 @@ function MiniStat({ label, value }) {
 }
 
 export function CoachFab({ onClick, accent, count }) {
+  const [pos, setPos] = useState(null);
+  const drag = useRef(null);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("wt_coach_fab_pos") || "null");
+      if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) setPos(saved);
+    } catch {
+      setPos(null);
+    }
+  }, []);
+
+  const clampPos = (x, y) => {
+    const pad = 10;
+    const size = 62;
+    const maxX = Math.max(pad, window.innerWidth - size - pad);
+    const maxY = Math.max(pad, window.innerHeight - size - pad);
+    return {
+      x: Math.min(Math.max(x, pad), maxX),
+      y: Math.min(Math.max(y, pad), maxY),
+    };
+  };
+
+  const beginDrag = (event) => {
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    const point = event.touches?.[0] || event;
+    const current = pos || { x: window.innerWidth - 78, y: window.innerHeight - 160 };
+    drag.current = { startX:point.clientX, startY:point.clientY, x:current.x, y:current.y, moved:false, last:current };
+  };
+
+  const moveDrag = (event) => {
+    if (!drag.current) return;
+    const point = event.touches?.[0] || event;
+    const dx = point.clientX - drag.current.startX;
+    const dy = point.clientY - drag.current.startY;
+    if (Math.abs(dx) + Math.abs(dy) > 5) drag.current.moved = true;
+    const next = clampPos(drag.current.x + dx, drag.current.y + dy);
+    drag.current.last = next;
+    setPos(next);
+  };
+
+  const endDrag = () => {
+    if (!drag.current) return;
+    const wasMoved = drag.current.moved;
+    const last = drag.current.last;
+    drag.current = null;
+    if (last) {
+      try { localStorage.setItem("wt_coach_fab_pos", JSON.stringify(last)); }
+      catch {}
+    }
+    if (!wasMoved) onClick();
+  };
+
+  const position = pos
+    ? { left:pos.x, top:pos.y }
+    : { right:16, bottom:"calc(98px + env(safe-area-inset-bottom))" };
+
   return (
-    <button onClick={onClick} style={{position:"fixed",right:16,bottom:"calc(98px + env(safe-area-inset-bottom))",zIndex:130,width:62,height:62,borderRadius:19,border:`1.5px solid ${accent}88`,background:accent,color:"#050505",boxShadow:`0 16px 42px ${accent}66`,fontWeight:900,letterSpacing:".04em"}}>
+    <button
+      onPointerDown={beginDrag}
+      onPointerMove={moveDrag}
+      onPointerUp={endDrag}
+      onPointerCancel={()=>{drag.current=null;}}
+      style={{position:"fixed",...position,zIndex:130,width:62,height:62,borderRadius:19,border:`1.5px solid ${accent}88`,background:accent,color:"#050505",boxShadow:`0 16px 42px ${accent}66`,fontWeight:900,letterSpacing:".04em",touchAction:"none",cursor:"grab"}}
+    >
       AI
       {count>0&&<span style={{position:"absolute",right:-4,top:-5,minWidth:20,height:20,borderRadius:10,background:"#123047",color:"#fff",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid #fff"}}>{Math.min(count,9)}</span>}
     </button>
