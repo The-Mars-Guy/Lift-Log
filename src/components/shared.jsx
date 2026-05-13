@@ -211,6 +211,20 @@ function IconCalendar({ color, size=22 }) {
     </svg>
   );
 }
+function IconMuscles({ color, size=22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3c2.2 0 3.7 1.6 3.7 3.8 0 1.1-.4 2.1-1.1 2.8"/>
+      <path d="M9.4 9.6C8.7 8.9 8.3 7.9 8.3 6.8 8.3 4.6 9.8 3 12 3"/>
+      <path d="M8.4 10.4c-2.2.5-3.8 2.1-4.5 4.4"/>
+      <path d="M15.6 10.4c2.2.5 3.8 2.1 4.5 4.4"/>
+      <path d="M9.2 10.2 7.8 20"/>
+      <path d="M14.8 10.2 16.2 20"/>
+      <path d="M10 12.5h4"/>
+      <path d="M10.4 16h3.2"/>
+    </svg>
+  );
+}
 function IconGear({ color, size=22 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round">
@@ -223,6 +237,7 @@ function IconGear({ color, size=22 }) {
 const NAV_ITEMS = [
   { id:"workout",  label:"Workout",  Icon:IconDumbbell },
   { id:"stats",    label:"Stats",    Icon:IconStats    },
+  { id:"muscles",  label:"Muscles",  Icon:IconMuscles  },
   { id:"calendar", label:"Calendar", Icon:IconCalendar },
   { id:"settings", label:"Settings", Icon:IconGear     },
 ];
@@ -248,7 +263,7 @@ export function BottomNav({ active, onSelect, accent, level, theme="dark" }) {
               style={{
                 flex:1, background:"transparent", border:"none",
                 padding:"8px 4px", borderRadius:10,
-                display:"flex", flexDirection:"column", alignItems:"center", gap:6,
+                display:"flex", flexDirection:"column", alignItems:"center", gap:5,
                 position:"relative",
               }}>
               {/* Level badge on stats tab */}
@@ -266,7 +281,7 @@ export function BottomNav({ active, onSelect, accent, level, theme="dark" }) {
               <div style={{ filter: isActive ? `drop-shadow(0 0 7px ${accent}bb)` : "none", transition:"filter .2s" }}>
                 <Icon color={color} size={26} />
               </div>
-              <div style={{ fontSize:11, letterSpacing:"0.1em", textTransform:"uppercase", fontWeight:isActive?700:400, color, lineHeight:1 }}>
+              <div style={{ fontSize:10, letterSpacing:"0.08em", textTransform:"uppercase", fontWeight:isActive?700:400, color, lineHeight:1 }}>
                 {label}
               </div>
             </button>

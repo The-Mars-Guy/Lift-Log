@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { WORKOUTS, ACHIEVEMENTS, MUSCLE_LABELS, computeStats, isoWeek, getLevel, epley1RM, getExerciseHistory } from "../data.js";
+import { WORKOUTS, ACHIEVEMENTS, computeStats, isoWeek, getLevel, epley1RM, getExerciseHistory } from "../data.js";
 import { BarChart, MiniGraph } from "../components/shared.jsx";
-import MuscleDiagram from "../components/MuscleDiagram.jsx";
 import { fmtDuration } from "../hooks.js";
 import { exerciseVolume } from "../session.js";
 import { buildCoachMemory, buildWeeklyReview, computePersonalRecords, detectWeakPoints } from "../coach.js";
@@ -13,7 +12,6 @@ export default function StatsView({ history, progression, settings, achievements
   const weeklyReview = buildWeeklyReview({ history, checkIns });
   const weakPoints = detectWeakPoints({ history, exercises: allExercises, exConfig });
   const records = computePersonalRecords({ history });
-  const muscleStatus = buildMuscleStatus({ history, exercises:allExercises });
 
   // Sessions per week chart (last 8 weeks)
   const weekData = (() => {
@@ -136,8 +134,6 @@ export default function StatsView({ history, progression, settings, achievements
           <div style={{fontSize:14,color:"#ddd",lineHeight:1.55}}>{weeklyReview.focus}</div>
         </div>
       </Section>
-
-      <MuscleStatusSection status={muscleStatus} accent={accent}/>
 
       <Section title="Weak Points" sub="coverage and performance signals">
         <div style={{display:"grid",gap:8}}>
@@ -270,131 +266,6 @@ export default function StatsView({ history, progression, settings, achievements
           </div>
         </Section>
       )}
-    </div>
-  );
-}
-
-const MUSCLE_LEVELS = [
-  { key:"beginner", label:"Beginner", min:0, color:"#64748b" },
-  { key:"novice", label:"Novice", min:80, color:"#60a5fa" },
-  { key:"intermediate", label:"Intermediate", min:180, color:"#4ade80" },
-  { key:"advanced", label:"Advanced", min:360, color:"#fbbf24" },
-  { key:"elite", label:"Elite", min:650, color:"#f472b6" },
-];
-
-function buildMuscleStatus({ history, exercises }) {
-  const now = Date.now();
-  const lookback = now - 28 * 86400000;
-  const byMuscle = {};
-  Object.keys(MUSCLE_LABELS).forEach(muscle => {
-    byMuscle[muscle] = { muscle, points:0, recentPoints:0, planned:0, lastHit:null, exercises:new Set() };
-  });
-
-  exercises.forEach(ex => {
-    [...(ex.primary || []), ...(ex.secondary || [])].forEach(muscle => {
-      const weight = ex.primary?.includes(muscle) ? 1 : 0.5;
-      byMuscle[muscle].planned += weight;
-      byMuscle[muscle].exercises.add(ex.name);
-    });
-  });
-
-  history.forEach(session => {
-    (session.exercises || []).forEach(logged => {
-      const base = exercises.find(ex => ex.name === (logged.originalName || logged.name)) || exercises.find(ex => ex.name === logged.name);
-      if (!base) return;
-      const sets = logged.setLog?.length || logged.sets || base.sets || 1;
-      const reps = logged.setLog?.reduce((sum, set) => sum + (set.reps || 0), 0) || ((logged.reps || base.baseReps || 0) * sets);
-      [...(base.primary || []), ...(base.secondary || [])].forEach(muscle => {
-        const role = base.primary?.includes(muscle) ? 1 : 0.5;
-        const points = Math.round((sets * 8 + reps) * role);
-        byMuscle[muscle].points += points;
-        if ((session.timestamp || 0) >= lookback) byMuscle[muscle].recentPoints += points;
-        byMuscle[muscle].lastHit = Math.max(byMuscle[muscle].lastHit || 0, session.timestamp || 0);
-        byMuscle[muscle].exercises.add(base.name);
-      });
-    });
-  });
-
-  const rows = Object.values(byMuscle).map(item => {
-    const level = [...MUSCLE_LEVELS].reverse().find(l => item.points >= l.min) || MUSCLE_LEVELS[0];
-    const hoursSince = item.lastHit ? Math.max(0, (now - item.lastHit) / 3600000) : null;
-    const recoveryHours = item.recentPoints >= 180 ? 72 : item.recentPoints >= 95 ? 48 : item.recentPoints > 0 ? 24 : 0;
-    const recoveredPct = recoveryHours ? Math.min(100, Math.round((hoursSince / recoveryHours) * 100)) : 100;
-    return {
-      ...item,
-      label:MUSCLE_LABELS[item.muscle] || item.muscle,
-      level,
-      hoursSince,
-      recoveryHours,
-      recoveredPct,
-      exercises:[...item.exercises],
-    };
-  });
-  const activeRows = rows.filter(row => row.planned > 0 || row.points > 0);
-  const avg = activeRows.length ? activeRows.reduce((sum, row) => sum + row.recentPoints, 0) / activeRows.length : 0;
-  const max = Math.max(...activeRows.map(row => row.recentPoints), 1);
-  const activation = Object.fromEntries(rows.map(row => [row.muscle, row.recentPoints / max]));
-  return {
-    rows: activeRows.sort((a,b)=>b.recentPoints-a.recentPoints),
-    activation,
-    avg,
-  };
-}
-
-function MuscleStatusSection({ status, accent }) {
-  const ahead = status.rows.filter(row => status.avg && row.recentPoints > status.avg * 1.25);
-  const behind = status.rows.filter(row => status.avg && row.recentPoints < status.avg * 0.65 && row.planned > 0);
-  return (
-    <Section title="Muscle Map" sub="usage, rough recovery, and balance">
-      <div style={{padding:"16px",background:"#0d0d0d",border:`1.5px solid ${accent}33`,borderRadius:12,boxShadow:`0 0 24px ${accent}12`}}>
-        <MuscleDiagram activation={status.activation} accent={accent}/>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",marginTop:12}}>
-          {MUSCLE_LEVELS.map(level=>(
-            <div key={level.key} style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#aaa"}}>
-              <span style={{width:9,height:9,borderRadius:3,background:level.color,display:"inline-block"}}/>
-              {level.label}
-            </div>
-          ))}
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:14}}>
-          <MemoryPill label="Ahead" value={ahead[0]?.label || "balanced"} color="#4ade80"/>
-          <MemoryPill label="Needs Touch" value={behind[0]?.label || "none"} color="#fbbf24"/>
-        </div>
-      </div>
-      <div style={{display:"grid",gap:8,marginTop:10}}>
-        {status.rows.map(row=>(
-          <MuscleStatusRow key={row.muscle} row={row} avg={status.avg}/>
-        ))}
-      </div>
-    </Section>
-  );
-}
-
-function MuscleStatusRow({ row, avg }) {
-  const ahead = avg && row.recentPoints > avg * 1.25;
-  const behind = avg && row.recentPoints < avg * 0.65 && row.planned > 0;
-  const recovery = row.recoveryHours
-    ? row.recoveredPct >= 100 ? "Recovered" : `~${Math.max(1, Math.ceil(row.recoveryHours - (row.hoursSince || 0)))}h left`
-    : "No recent work";
-  return (
-    <div style={{padding:"12px 13px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10}}>
-      <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center",marginBottom:7}}>
-        <div>
-          <div style={{fontSize:14,color:"#f0f0f0",fontWeight:700}}>{row.label}</div>
-          <div style={{fontSize:11,color:"#777",marginTop:2}}>{row.exercises.slice(0,3).join(", ")}</div>
-        </div>
-        <div style={{textAlign:"right",flexShrink:0}}>
-          <div style={{fontSize:12,color:row.level.color,fontWeight:800}}>{row.level.label}</div>
-          <div style={{fontSize:11,color:ahead?"#4ade80":behind?"#fbbf24":"#888",marginTop:2}}>{ahead ? "ahead" : behind ? "behind" : "even"}</div>
-        </div>
-      </div>
-      <div style={{height:6,background:"#171717",borderRadius:5,overflow:"hidden",marginBottom:7}}>
-        <div style={{height:"100%",width:`${Math.min(100, row.recoveredPct)}%`,background:row.recoveredPct>=100?"#4ade80":"#60a5fa",transition:"width .3s"}}/>
-      </div>
-      <div style={{display:"flex",justifyContent:"space-between",gap:10,fontSize:11,color:"#888"}}>
-        <span>{row.recentPoints} recent work points</span>
-        <span>{recovery}</span>
-      </div>
     </div>
   );
 }

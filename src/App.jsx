@@ -5,6 +5,7 @@ import { makePlay, vibrate as vib } from "./audio.js";
 import { BottomNav, Toast } from "./components/shared.jsx";
 import WorkoutView  from "./views/WorkoutView.jsx";
 import StatsView    from "./views/StatsView.jsx";
+import MuscleMapView from "./views/MuscleMapView.jsx";
 import CalendarView from "./views/CalendarView.jsx";
 import SettingsView from "./views/SettingsView.jsx";
 import { normalizeLiftLogData } from "./session.js";
@@ -302,6 +303,9 @@ export default function App() {
             achievements={normalized.achievements} accent={accent} xp={normalized.xp} level={level}
             exConfig={normalized.exConfig} checkIns={normalized.checkIns}
             bodyMetrics={normalized.bodyMetrics} setBodyMetrics={setBodyMetrics} />
+        )}
+        {activeView === "muscles" && (
+          <MuscleMapView history={normalized.history} accent={accent} />
         )}
         {activeView === "calendar" && (
           <CalendarView history={normalized.history} progression={normalized.progression} settings={safeSettings} accent={accent} theme={visualTheme} />
