@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { WORKOUTS, SCHEDULE, DEFAULT_SETTINGS, DEFAULT_WEIGHTS, ACHIEVEMENTS, computeStats, todayName, DAYS, getLevel, XP_VALUES } from "./data.js";
+import { WORKOUTS, SCHEDULE, DEFAULT_SETTINGS, DEFAULT_WEIGHTS, ACHIEVEMENTS, computeStats, todayName, DAYS, getLevel, XP_VALUES, DEFAULT_CUSTOM_ROUTINE, normalizeCustomRoutine, customRoutineWorkout, DEFAULT_USER_PROFILE, normalizeUserProfile } from "./data.js";
 import { useLocalStorage } from "./hooks.js";
 import { makePlay, vibrate as vib } from "./audio.js";
 import { BottomNav, Toast } from "./components/shared.jsx";
@@ -8,6 +8,7 @@ import StatsView    from "./views/StatsView.jsx";
 import MuscleMapView from "./views/MuscleMapView.jsx";
 import CalendarView from "./views/CalendarView.jsx";
 import SettingsView from "./views/SettingsView.jsx";
+import RoutineView from "./views/RoutineView.jsx";
 import { normalizeLiftLogData } from "./session.js";
 
 export default function App() {
@@ -27,6 +28,8 @@ export default function App() {
   const [xp,          setXp]          = useLocalStorage("wt_xp",          0);
   const [checkIns,    setCheckIns]    = useLocalStorage("wt_checkins",    []);
   const [bodyMetrics, setBodyMetrics] = useLocalStorage("wt_body_metrics", []);
+  const [customRoutine, setCustomRoutine] = useLocalStorage("wt_custom_routine", DEFAULT_CUSTOM_ROUTINE);
+  const [userProfile, setUserProfile] = useLocalStorage("wt_user_profile", DEFAULT_USER_PROFILE);
 
   const [achievementToast, setAchievementToast] = useState(null);
   const [assessmentDone, setAssessmentDone] = useLocalStorage("wt_assessment_done", false);
@@ -35,8 +38,10 @@ export default function App() {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installDismissed, setInstallDismissed] = useLocalStorage("wt_install_dismissed", false);
 
-  const normalized = normalizeLiftLogData({ sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, bodyMetrics, assessmentDone });
+  const normalized = normalizeLiftLogData({ sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, bodyMetrics, assessmentDone, customRoutine, userProfile });
   const safeSettings = { ...DEFAULT_SETTINGS, ...normalized.settings };
+  const safeCustomRoutine = normalizeCustomRoutine(normalized.customRoutine || customRoutine);
+  const safeUserProfile = normalizeUserProfile(normalized.userProfile || userProfile);
 
   const playSound = makePlay(safeSettings);
   const vibrate   = (p) => vib(safeSettings, p);
@@ -64,13 +69,15 @@ export default function App() {
     if (data.checkIns !== checkIns) setCheckIns(data.checkIns);
     if (data.bodyMetrics !== bodyMetrics) setBodyMetrics(data.bodyMetrics);
     if (data.assessmentDone !== assessmentDone) setAssessmentDone(data.assessmentDone);
+    if (data.customRoutine && data.customRoutine !== customRoutine) setCustomRoutine(normalizeCustomRoutine(data.customRoutine));
+    if (data.userProfile && data.userProfile !== userProfile) setUserProfile(normalizeUserProfile(data.userProfile));
   }, []); // eslint-disable-line
 
   // Seed exercise weights if not set
   useEffect(() => {
     const seed = {};
     let changed = false;
-    const allEx = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
+    const allEx = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises, ...customRoutineWorkout(safeCustomRoutine).exercises];
     allEx.forEach(ex => {
       if (!normalized.exConfig[ex.name]) { seed[ex.name] = { weight: DEFAULT_WEIGHTS[ex.name] ?? safeSettings.dumbbellWeight }; changed = true; }
     });
@@ -128,6 +135,8 @@ export default function App() {
     checkIns: normalized.checkIns,
     bodyMetrics: normalized.bodyMetrics,
     assessmentDone: normalized.assessmentDone,
+    customRoutine: safeCustomRoutine,
+    userProfile: safeUserProfile,
   });
 
   const createBackupSnapshot = (reason = "manual") => {
@@ -152,7 +161,7 @@ export default function App() {
   };
 
   const repairSavedData = () => {
-    const data = normalizeLiftLogData({ sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, bodyMetrics, assessmentDone });
+    const data = normalizeLiftLogData({ sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, bodyMetrics, assessmentDone, customRoutine:safeCustomRoutine, userProfile:safeUserProfile });
     setSets(data.sets);
     setHistory(data.history);
     setCompleted(data.completed);
@@ -164,6 +173,8 @@ export default function App() {
     setCheckIns(data.checkIns);
     setBodyMetrics(data.bodyMetrics);
     setAssessmentDone(data.assessmentDone);
+    if (data.customRoutine) setCustomRoutine(normalizeCustomRoutine(data.customRoutine));
+    if (data.userProfile) setUserProfile(normalizeUserProfile(data.userProfile));
     return true;
   };
 
@@ -223,6 +234,8 @@ export default function App() {
       setCheckIns(data.checkIns);
       setBodyMetrics(data.bodyMetrics);
       setAssessmentDone(data.assessmentDone);
+      if (data.customRoutine) setCustomRoutine(normalizeCustomRoutine(data.customRoutine));
+      if (data.userProfile) setUserProfile(normalizeUserProfile(data.userProfile));
       return true;
     } catch (err) {
       console.warn("importData failed", err);
@@ -293,19 +306,24 @@ export default function App() {
             checkIns={normalized.checkIns} setCheckIns={setCheckIns}
             assessmentDone={normalized.assessmentDone} setAssessmentDone={setAssessmentDone}
             benchmarkEditorOpen={benchmarkEditorOpen} setBenchmarkEditorOpen={setBenchmarkEditorOpen}
+            customRoutine={safeCustomRoutine}
+            userProfile={safeUserProfile}
             playSound={playSound} vibrate={vibrate}
             setActiveView={setActiveView}
             theme={visualTheme}
           />
         )}
+        {activeView === "routine" && (
+          <RoutineView customRoutine={safeCustomRoutine} setCustomRoutine={setCustomRoutine} userProfile={safeUserProfile} setUserProfile={setUserProfile} history={normalized.history} accent={accent} setActiveView={setActiveView} />
+        )}
         {activeView === "stats" && (
           <StatsView history={normalized.history} progression={normalized.progression} settings={safeSettings}
             achievements={normalized.achievements} accent={accent} xp={normalized.xp} level={level}
             exConfig={normalized.exConfig} checkIns={normalized.checkIns}
-            bodyMetrics={normalized.bodyMetrics} setBodyMetrics={setBodyMetrics} />
+            bodyMetrics={normalized.bodyMetrics} setBodyMetrics={setBodyMetrics} customRoutine={safeCustomRoutine} />
         )}
         {activeView === "muscles" && (
-          <MuscleMapView history={normalized.history} accent={accent} checkIns={normalized.checkIns} setCheckIns={setCheckIns} />
+          <MuscleMapView history={normalized.history} accent={accent} checkIns={normalized.checkIns} setCheckIns={setCheckIns} customRoutine={safeCustomRoutine} />
         )}
         {activeView === "calendar" && (
           <CalendarView history={normalized.history} progression={normalized.progression} settings={safeSettings} accent={accent} theme={visualTheme} />

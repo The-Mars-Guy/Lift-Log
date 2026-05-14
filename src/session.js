@@ -58,5 +58,7 @@ export function normalizeLiftLogData(data = {}) {
   if (!normalized.exConfig || typeof normalized.exConfig !== "object" || Array.isArray(normalized.exConfig)) normalized.exConfig = {};
   if (typeof normalized.xp !== "number" || Number.isNaN(normalized.xp)) normalized.xp = 0;
   if (typeof normalized.assessmentDone !== "boolean") normalized.assessmentDone = normalized.history.length > 0;
+  if (!normalized.customRoutine || typeof normalized.customRoutine !== "object" || Array.isArray(normalized.customRoutine)) normalized.customRoutine = null;
+  if (!normalized.userProfile || typeof normalized.userProfile !== "object" || Array.isArray(normalized.userProfile)) normalized.userProfile = null;
   return normalized;
 }

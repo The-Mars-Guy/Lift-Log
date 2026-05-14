@@ -25,6 +25,7 @@ export const WORKOUTS = {
 
 export const SCHEDULE = { Monday:"A", Wednesday:"B", Friday:"A" };
 export const DAYS = ["Monday","Wednesday","Friday"];
+export const CUSTOM_WORKOUT_KEY = "CUSTOM";
 
 export const MUSCLE_LABELS = {
   chest:"Chest", triceps:"Triceps", biceps:"Biceps", forearms:"Forearms",
@@ -32,6 +33,204 @@ export const MUSCLE_LABELS = {
   upperBack:"Upper Back", lats:"Lats", lowerBack:"Lower Back",
   core:"Core", glutes:"Glutes", quads:"Quads", hamstrings:"Hamstrings", calves:"Calves",
 };
+
+const BASE_EXERCISES = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
+
+export const EXERCISE_LIBRARY = [
+  ...BASE_EXERCISES.map(ex => ({
+    ...ex,
+    id: exerciseId(ex.name),
+    category: ex.primary[0] || "general",
+    difficulty: ["Crunch", "Calf Raise", "Hammer Curl"].includes(ex.name) ? "beginner" : "novice",
+    equipment: ex.name === "Crunch" ? "bodyweight" : "dumbbells",
+    ageFriendly: !["Reverse Lunge", "Romanian Deadlift", "Arnold Press"].includes(ex.name),
+  })),
+  { id:"box_squat", name:"Box Squat", sets:2, baseReps:8, repLabel:"×", tip:"Sit to a sturdy chair or box, stand tall, keep knees comfortable", folder:"Goblet_Squat", primary:["quads","glutes"], secondary:["core"], category:"quads", difficulty:"beginner", equipment:"bodyweight", ageFriendly:true },
+  { id:"glute_bridge", name:"Glute Bridge", sets:2, baseReps:10, repLabel:"×", tip:"Drive through heels, squeeze glutes, keep ribs down", folder:"Glute_Bridge", primary:["glutes","hamstrings"], secondary:["core"], category:"glutes", difficulty:"beginner", equipment:"bodyweight", ageFriendly:true },
+  { id:"wall_pushup", name:"Wall Push-Up", sets:2, baseReps:8, repLabel:"×", tip:"Hands on wall, body straight, lower under control", folder:"Pushups", primary:["chest","triceps"], secondary:["frontDelts"], category:"chest", difficulty:"beginner", equipment:"bodyweight", ageFriendly:true },
+  { id:"supported_row", name:"Supported One-Arm Row", sets:2, baseReps:8, repLabel:"×", tip:"Brace one hand on chair, pull elbow toward pocket", folder:"Bent_Over_Two-Dumbbell_Row", primary:["lats","upperBack"], secondary:["biceps"], category:"lats", difficulty:"beginner", equipment:"dumbbells", ageFriendly:true },
+  { id:"seated_press", name:"Seated Shoulder Press", sets:2, baseReps:8, repLabel:"×", tip:"Sit tall, press only through pain-free range", folder:"Arnold_Dumbbell_Press", primary:["frontDelts","sideDelts"], secondary:["triceps"], category:"frontDelts", difficulty:"beginner", equipment:"dumbbells", ageFriendly:true },
+  { id:"dead_bug", name:"Dead Bug", sets:2, baseReps:8, repLabel:"×", repSuffix:"/side", tip:"Low back steady, move opposite arm and leg slowly", folder:"Crunches", primary:["core"], secondary:[], category:"core", difficulty:"beginner", equipment:"bodyweight", ageFriendly:true },
+  { id:"sit_to_stand", name:"Sit-to-Stand", sets:2, baseReps:8, repLabel:"×", tip:"Stand from a chair without rushing, sit back down under control", folder:"Goblet_Squat", primary:["quads","glutes"], secondary:["core"], category:"quads", difficulty:"beginner", equipment:"bodyweight", ageFriendly:true },
+  { id:"incline_pushup", name:"Incline Push-Up", sets:2, baseReps:8, repLabel:"×", tip:"Hands on counter or bench, body straight, lower slowly", folder:"Pushups", primary:["chest","triceps"], secondary:["frontDelts"], category:"chest", difficulty:"beginner", equipment:"bodyweight", ageFriendly:true },
+  { id:"band_row", name:"Band Row", sets:2, baseReps:10, repLabel:"×", tip:"Pull band to ribs, pause, keep shoulders away from ears", folder:"Bent_Over_Two-Dumbbell_Row", primary:["lats","upperBack"], secondary:["biceps","rearDelts"], category:"lats", difficulty:"beginner", equipment:"bands", ageFriendly:true },
+  { id:"bird_dog", name:"Bird Dog", sets:2, baseReps:8, repLabel:"×", repSuffix:"/side", tip:"Reach opposite arm and leg, keep hips level", folder:"Crunches", primary:["core","lowerBack"], secondary:["glutes"], category:"core", difficulty:"beginner", equipment:"bodyweight", ageFriendly:true },
+  { id:"step_up", name:"Low Step-Up", sets:2, baseReps:8, repLabel:"×", repSuffix:"/leg", tip:"Use a low step, drive through whole foot, hold support if needed", folder:"Dumbbell_Rear_Lunge", primary:["quads","glutes"], secondary:["hamstrings","calves"], category:"quads", difficulty:"novice", equipment:"bodyweight", ageFriendly:true },
+  { id:"band_chest_press", name:"Band Chest Press", sets:2, baseReps:10, repLabel:"×", tip:"Press band forward at chest height, keep ribs down", folder:"Dumbbell_Floor_Press", primary:["chest","triceps"], secondary:["frontDelts"], category:"chest", difficulty:"beginner", equipment:"bands", ageFriendly:true },
+  { id:"lateral_raise", name:"Lateral Raise", sets:2, baseReps:10, repLabel:"×", tip:"Raise to shoulder height with soft elbows, no shrugging", folder:"Arnold_Dumbbell_Press", primary:["sideDelts"], secondary:["frontDelts"], category:"sideDelts", difficulty:"novice", equipment:"dumbbells", ageFriendly:true },
+  { id:"plank", name:"Plank", sets:2, baseReps:20, repLabel:"sec", tip:"Brace gently, breathe, stop before back sags", folder:"Crunches", primary:["core"], secondary:["frontDelts"], category:"core", difficulty:"novice", equipment:"bodyweight", ageFriendly:true },
+];
+
+export const MUSCLE_COVERAGE_GROUPS = [
+  ["push", "Push", ["chest", "triceps", "frontDelts", "sideDelts"]],
+  ["pull", "Pull", ["lats", "upperBack", "rearDelts", "biceps"]],
+  ["legs", "Legs", ["quads", "glutes", "hamstrings", "calves"]],
+  ["core", "Core", ["core", "lowerBack"]],
+];
+
+export const DEFAULT_CUSTOM_ROUTINE = {
+  enabled:false,
+  name:"My Routine",
+  difficulty:"beginner",
+  exerciseIds:["box_squat", "wall_pushup", "supported_row", "glute_bridge", "dead_bug"],
+  activeRoutineId:"starter",
+  routines:[
+    { id:"starter", name:"Starter Full Body", exerciseIds:["box_squat", "wall_pushup", "supported_row", "glute_bridge", "dead_bug"] },
+  ],
+  favoriteExerciseIds:[],
+  avoidedExerciseIds:[],
+  schedule:{ Monday:"starter", Wednesday:"starter", Friday:"starter" },
+};
+
+export const ROUTINE_TEMPLATES = [
+  { id:"older_adult", name:"Older Adult Starter", difficulty:"beginner", exerciseIds:["sit_to_stand", "wall_pushup", "band_row", "glute_bridge", "bird_dog"] },
+  { id:"beginner_full", name:"Beginner Full Body", difficulty:"beginner", exerciseIds:["box_squat", "incline_pushup", "supported_row", "glute_bridge", "dead_bug"] },
+  { id:"dumbbell_balanced", name:"Dumbbell Balanced", difficulty:"novice", exerciseIds:["Goblet Squat", "Floor Press", "Bent Over Row", "Romanian Deadlift", "Crunch"].map(exerciseId) },
+  { id:"low_impact", name:"Low Impact Strength", difficulty:"beginner", exerciseIds:["sit_to_stand", "band_chest_press", "band_row", "seated_press", "dead_bug"] },
+];
+
+export const DEFAULT_USER_PROFILE = {
+  age:"",
+  heightIn:"",
+  weightLb:"",
+  sex:"",
+  goal:"general",
+  mobility:"normal",
+  trainingExperience:"new",
+  limitations:[],
+};
+
+export function exerciseId(name) {
+  return String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+}
+
+export function getExerciseById(id) {
+  return EXERCISE_LIBRARY.find(ex => ex.id === id) || EXERCISE_LIBRARY.find(ex => exerciseId(ex.name) === id);
+}
+
+export function normalizeCustomRoutine(routine = DEFAULT_CUSTOM_ROUTINE) {
+  const source = routine && typeof routine === "object" && !Array.isArray(routine) ? routine : {};
+  const ids = Array.isArray(source.exerciseIds) ? source.exerciseIds.filter(id => getExerciseById(id)) : DEFAULT_CUSTOM_ROUTINE.exerciseIds;
+  const rawRoutines = Array.isArray(source.routines)
+    ? source.routines
+    : (Array.isArray(source.exerciseIds) ? [{ id:source.activeRoutineId || "custom", name:source.name || "Custom Routine", exerciseIds:source.exerciseIds }] : DEFAULT_CUSTOM_ROUTINE.routines);
+  const routines = rawRoutines.map((item, index) => ({
+    id:item.id || `routine_${index + 1}`,
+    name:item.name || `Routine ${index + 1}`,
+    exerciseIds:(Array.isArray(item.exerciseIds) ? item.exerciseIds : []).filter(id => getExerciseById(id)),
+  })).filter(item => item.exerciseIds.length);
+  return {
+    ...DEFAULT_CUSTOM_ROUTINE,
+    ...source,
+    exerciseIds: ids.length ? [...new Set(ids)] : DEFAULT_CUSTOM_ROUTINE.exerciseIds,
+    routines: routines.length ? routines : DEFAULT_CUSTOM_ROUTINE.routines,
+    activeRoutineId:source.activeRoutineId || (routines[0]?.id || DEFAULT_CUSTOM_ROUTINE.activeRoutineId),
+    favoriteExerciseIds: Array.isArray(source.favoriteExerciseIds) ? [...new Set(source.favoriteExerciseIds.filter(id => getExerciseById(id)))] : [],
+    avoidedExerciseIds: Array.isArray(source.avoidedExerciseIds) ? [...new Set(source.avoidedExerciseIds.filter(id => getExerciseById(id)))] : [],
+    schedule: normalizeRoutineSchedule(source.schedule, routines.length ? routines : DEFAULT_CUSTOM_ROUTINE.routines),
+  };
+}
+
+function normalizeRoutineSchedule(schedule = DEFAULT_CUSTOM_ROUTINE.schedule, routines = DEFAULT_CUSTOM_ROUTINE.routines) {
+  const ids = new Set((routines || []).map(item => item.id));
+  return DAYS.reduce((acc, day) => {
+    const id = schedule?.[day];
+    acc[day] = ids.has(id) ? id : (routines[0]?.id || "starter");
+    return acc;
+  }, {});
+}
+
+export function customRoutineWorkout(routine = DEFAULT_CUSTOM_ROUTINE, day = null) {
+  const safe = normalizeCustomRoutine(routine);
+  const dayRoutineId = day ? safe.schedule?.[day] : null;
+  const active = safe.routines.find(item => item.id === dayRoutineId) || safe.routines.find(item => item.id === safe.activeRoutineId);
+  const ids = active?.exerciseIds?.length ? active.exerciseIds : safe.exerciseIds;
+  return {
+    label:active?.name || safe.name || "Custom Routine",
+    days:day || "Custom",
+    color:"#fbbf24",
+    custom:true,
+    exercises:ids.map(id => getExerciseById(id)).filter(Boolean).map(ex => ({ ...ex })),
+  };
+}
+
+export function routineCoverage(exercises = []) {
+  return MUSCLE_COVERAGE_GROUPS.map(([key, label, muscles]) => {
+    const hits = exercises.filter(ex => [...(ex.primary || []), ...(ex.secondary || [])].some(m => muscles.includes(m)));
+    return { key, label, muscles, hits, ok:hits.length > 0 };
+  });
+}
+
+export function routineBalanceScore(exercises = []) {
+  const coverage = routineCoverage(exercises);
+  const covered = coverage.filter(item => item.ok).length;
+  const total = coverage.length || 1;
+  const countPenalty = exercises.length < 4 ? 20 : exercises.length > 8 ? 10 : 0;
+  return Math.max(0, Math.min(100, Math.round((covered / total) * 100) - countPenalty));
+}
+
+export function normalizeUserProfile(profile = DEFAULT_USER_PROFILE) {
+  const source = profile && typeof profile === "object" && !Array.isArray(profile) ? profile : {};
+  return { ...DEFAULT_USER_PROFILE, ...source, limitations:Array.isArray(source.limitations) ? source.limitations : [] };
+}
+
+export function profileFitnessEstimate(profile = DEFAULT_USER_PROFILE) {
+  const safe = normalizeUserProfile(profile);
+  const age = Number(safe.age) || 0;
+  const heightIn = Number(safe.heightIn) || 0;
+  const weightLb = Number(safe.weightLb) || 0;
+  const bmi = weightLb > 0 && heightIn > 0 ? Math.round((weightLb / (heightIn * heightIn)) * 703 * 10) / 10 : null;
+  const kg = weightLb / 2.20462;
+  const cm = heightIn * 2.54;
+  const sexAdj = safe.sex === "female" ? -161 : safe.sex === "male" ? 5 : -78;
+  const bmr = kg && cm && age ? Math.round((10 * kg) + (6.25 * cm) - (5 * age) + sexAdj) : null;
+  const leanMassLb = bmi && weightLb ? Math.round(weightLb * (bmi >= 30 ? 0.62 : bmi >= 25 ? 0.68 : 0.74)) : null;
+  const category = !bmi ? "unknown" : bmi < 18.5 ? "under" : bmi >= 30 ? "high" : bmi >= 25 ? "moderate" : "standard";
+  return { bmi, bmr, leanMassLb, category };
+}
+
+export const LIMITATION_OPTIONS = [
+  ["knees", "Knees"],
+  ["shoulders", "Shoulders"],
+  ["back", "Back"],
+  ["balance", "Balance"],
+  ["wrists", "Wrists"],
+];
+
+export const BENCHMARK_TESTS_V2 = [
+  { id:"sit_to_stand_30s", name:"30s Sit-to-Stand", target:"legs", note:"Count smooth chair stands in 30 seconds." },
+  { id:"plank_hold", name:"Timed Plank", target:"core", note:"Stop before sagging or pain." },
+  { id:"mobility_check", name:"Mobility Check", target:"mobility", note:"Rate squat, hinge, press, and balance comfort." },
+];
+
+export function profileRisk(profile = DEFAULT_USER_PROFILE) {
+  const safe = normalizeUserProfile(profile);
+  const age = Number(safe.age) || 0;
+  const weight = Number(safe.weightLb) || 0;
+  const height = Number(safe.heightIn) || 0;
+  const bmi = weight > 0 && height > 0 ? Math.round((weight / (height * height)) * 703 * 10) / 10 : null;
+  let score = 0;
+  if (age >= 65) score += 2;
+  else if (age >= 50) score += 1;
+  if (safe.trainingExperience === "new") score += 1;
+  if (safe.mobility === "limited") score += 1;
+  if (safe.limitations?.length >= 2) score += 1;
+  if (bmi && (bmi >= 35 || bmi < 18.5)) score += 1;
+  const level = score >= 3 ? "protect" : score >= 1 ? "steady" : "standard";
+  return { level, score, bmi };
+}
+
+export function benchmarkModeForProfile(profile = DEFAULT_USER_PROFILE) {
+  const risk = profileRisk(profile);
+  if (risk.level === "protect") return { key:"submax", label:"Submax", effort:0.55, note:"Stop well before strain. Use smooth reps only." };
+  if (risk.level === "steady") return { key:"comfortable", label:"Comfortable", effort:0.6, note:"Stop with 2-3 good reps left." };
+  return { key:"clean_max", label:"Clean Max", effort:0.65, note:"Stop when form breaks or pain appears." };
+}
+
+export function assessmentTargetForProfile(maxReps, profile = DEFAULT_USER_PROFILE) {
+  const mode = benchmarkModeForProfile(profile);
+  return Math.max(3, Math.ceil((Number(maxReps) || 0) * mode.effort));
+}
 
 export const IMG_BASE = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises";
 export const VIDEO_BASE = "/Lift-Log/videos";
@@ -214,9 +413,9 @@ export function assessmentTarget(maxReps) {
 // Returns [{ date, totalReps, avgWeight, timestamp }] sorted oldest→newest
 export function getExerciseHistory(exerciseName, history) {
   return history
-    .filter(h => h.exercises?.some(e => e.name === exerciseName))
+    .filter(h => h.exercises?.some(e => exerciseMatches(e, exerciseName)))
     .map(h => {
-      const ex = h.exercises.find(e => e.name === exerciseName);
+      const ex = h.exercises.find(e => exerciseMatches(e, exerciseName));
       if (!ex) return null;
       const totalReps = ex.setLog?.length
         ? ex.setLog.reduce((s, l) => s + (l.reps || 0), 0)
@@ -229,6 +428,17 @@ export function getExerciseHistory(exerciseName, history) {
     .filter(Boolean)
     .sort((a, b) => a.timestamp - b.timestamp)
     .slice(-16);
+}
+
+export function exerciseMatches(exercise, exerciseName) {
+  return exercise?.name === exerciseName
+    || exercise?.originalName === exerciseName
+    || exercise?.substitutedFor === exerciseName
+    || exercise?.configName === exerciseName
+    || exercise?.id === exerciseName
+    || exercise?.plannedId === exerciseName
+    || exercise?.id === exerciseId(exerciseName)
+    || exercise?.plannedId === exerciseId(exerciseName);
 }
 
 export function computeStats({ history, progression, settings }) {

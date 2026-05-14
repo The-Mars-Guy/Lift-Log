@@ -1,3 +1,5 @@
+import { exerciseId, routineBalanceScore, routineCoverage } from "./data.js";
+
 export const READINESS = {
   energy: {
     low: { label: "Low", score: -1 },
@@ -261,6 +263,12 @@ export function repRangeFor({ goal = "general", fixedLoad = false, baseTarget = 
   return score >= 1 ? { min:8, max:15 } : { min:10, max:15 };
 }
 
+export function exactRepTarget(targetReps, repRange) {
+  const exact = Math.round(Number(targetReps) || 0);
+  if (!repRange) return Math.max(3, exact);
+  return Math.max(repRange.min, Math.min(repRange.max, exact));
+}
+
 export function tempoPrescription({ goal = "general", fixedLoad = false, feedbackStatus = "neutral", trendStatus = "new" }) {
   if (feedbackStatus === "pain") return { code:"2-0-2", label:"smooth pain-free reps", note:"Move evenly and stop if discomfort returns." };
   if (goal === "hypertrophy" && fixedLoad) {
@@ -393,15 +401,16 @@ export function sciencePrescription({ exercise, history = [], checkIns = [], set
     targetReps = Math.max(3, targetReps - 1);
     note += " Rest skips are frequent, so intensity is kept slightly conservative.";
   }
+  targetReps = exactRepTarget(targetReps, repRange);
   tempo = tempoPrescription({ goal, fixedLoad, feedbackStatus:feedback.status, trendStatus:trend.status });
   variation = variationPrescription({ exerciseName, fixedLoad, targetReps, feedbackStatus:feedback.status, trendStatus:trend.status });
   if (fixedLoad && goal === "hypertrophy") {
-    const top = repRange.max;
-    note += ` Work in the ${repRange.min}-${top} rep range; when all sets reach the top cleanly, progress tempo or variation.`;
+    note += ` Exact target today is ${targetReps} reps per set. The coach keeps this inside the ${repRange.min}-${repRange.max} learning range and moves it as your logs improve.`;
   }
 
   const suggestedWeight = pct && est1RM ? Math.max(2.5, Math.round((est1RM * pct) * 2) / 2) : null;
-  return { enabled:true, targetReps, repRange, tempo, variation, sets, est1RM, suggestedWeight, label, note, percent:pct, trend, feedback, load, behavior };
+  const targetRepReason = `Exact ${targetReps}: ${readinessLabel(readiness)}, ${trend.status} trend, ${feedback.status} feedback.`;
+  return { enabled:true, targetReps, repRange, targetRepReason, tempo, variation, sets, est1RM, suggestedWeight, label, note, percent:pct, trend, feedback, load, behavior };
 }
 
 function lastExerciseSessions(history, exerciseName, count = 3) {
@@ -454,10 +463,13 @@ export function buildCoachPlan({ workout, history, checkIns = [], exConfig, sett
   }
   const latestWorkoutFeedback = [...checkIns].filter(ci => ci.kind === "workout_feedback").sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))[0];
   const deload = recommendDeload({ history, checkIns });
+  const painBlocked = painBlockedExercises(checkIns);
   if (latestWorkoutFeedback?.feeling === "hard") adjustments.push("Last workout was hard: trim one set if form fades.");
   if (latestWorkoutFeedback?.feeling === "pain") adjustments.push("Last workout had pain: use swaps early and keep reps smooth.");
   if (latestWorkoutFeedback?.feeling === "easy") adjustments.push("Last workout was easy: chase cleaner top-end reps before adding load.");
   if (deload.recommended) adjustments.unshift(`Deload signal: ${deload.reason}`);
+  const blockedToday = workout.exercises.filter(ex => painBlocked.includes(ex.name) || painBlocked.includes(ex.originalName || ex.name)).map(ex => ex.name);
+  if (blockedToday.length) adjustments.unshift(`Safety block: ${blockedToday.slice(0,2).join(" / ")} has repeated pain flags. Swap or skip today.`);
 
   const currentSoreness = latestMuscleSoreness(checkIns);
   const soreMuscles = Object.entries(currentSoreness).filter(([, level]) => level === "sore").map(([m]) => m);
@@ -508,6 +520,7 @@ export function buildCoachPlan({ workout, history, checkIns = [], exConfig, sett
   behavior.notes.slice(0, 2).forEach(msg => cards.push({ icon:"⏱️", cat:"Habits", msg }));
   if (deload.recommended) cards.push({ icon:"↓", cat:"Deload", msg:`${deload.reason} Keep reps smooth and leave extra reps in reserve.` });
   substitutions.forEach(sub => cards.push({ icon: "🔁", cat: "Swap", msg: `${sub.exercise}: use ${sub.substitute} if ${sub.reason}.` }));
+  blockedToday.slice(0, 2).forEach(name => cards.push({ icon:"🛡️", cat:"Safety", msg:`${name}: repeated pain flags. Avoid loading this until pain-free.` }));
   watch.forEach(msg => cards.push({ icon: "👁️", cat: "Watch", msg }));
 
   return {
@@ -520,6 +533,19 @@ export function buildCoachPlan({ workout, history, checkIns = [], exConfig, sett
     substitutions,
     cards,
   };
+}
+
+export function painBlockedExercises(checkIns = []) {
+  const recent = [...checkIns]
+    .filter(ci => ci.kind === "set_feedback" && ci.feeling === "pain" && ci.exercise)
+    .sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))
+    .slice(0, 40);
+  const counts = recent.reduce((acc, ci) => {
+    const key = ci.originalName || ci.exercise;
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  return Object.entries(counts).filter(([, count]) => count >= 2).map(([name]) => name);
 }
 
 export function plateauFixes({ history = [], exercise, targetReps }) {
@@ -962,6 +988,26 @@ export function detectWeakPoints({ history = [], exercises = [], exConfig = {} }
     })),
   ];
   return messages.slice(0, 5);
+}
+
+export function routineEditSuggestions({ routine, exercises = [], history = [], checkIns = [] }) {
+  const suggestions = [];
+  const coverage = routineCoverage(exercises);
+  const balance = routineBalanceScore(exercises);
+  coverage.filter(item => !item.ok).forEach(item => {
+    suggestions.push({ type:"add", priority:3, title:`Add ${item.label}`, detail:`Routine needs at least one ${item.label.toLowerCase()} movement.` });
+  });
+  const blocked = painBlockedExercises(checkIns);
+  exercises.filter(ex => blocked.includes(ex.name) || blocked.includes(ex.id)).forEach(ex => {
+    suggestions.push({ type:"swap", priority:3, title:`Swap ${ex.name}`, detail:"Recent pain feedback hit this movement. Pick a friendlier option for now." });
+  });
+  const used = new Set(history.slice(0, 6).flatMap(h => h.exercises || []).map(ex => ex.id || ex.plannedId || exerciseId(ex.name)));
+  exercises.filter(ex => !used.has(ex.id)).slice(0, 2).forEach(ex => {
+    suggestions.push({ type:"practice", priority:1, title:`Practice ${ex.name}`, detail:"In routine but not logged recently." });
+  });
+  if (balance < 80) suggestions.push({ type:"balance", priority:2, title:"Improve balance", detail:`Routine balance is ${balance}/100. Cover push, pull, legs, and core.` });
+  if (routine?.avoidedExerciseIds?.length) suggestions.push({ type:"avoid", priority:2, title:"Avoid list active", detail:`${routine.avoidedExerciseIds.length} movement${routine.avoidedExerciseIds.length === 1 ? "" : "s"} hidden from picker.` });
+  return suggestions.sort((a,b)=>b.priority-a.priority).slice(0, 5);
 }
 
 export function computePersonalRecords({ history = [] }) {

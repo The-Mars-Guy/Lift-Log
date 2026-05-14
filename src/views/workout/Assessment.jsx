@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { WORKOUTS, assessmentTarget } from "../../data.js";
+import { BENCHMARK_TESTS_V2, WORKOUTS, assessmentTargetForProfile, benchmarkModeForProfile, profileRisk } from "../../data.js";
 import { ExerciseAnimation } from "../../components/shared.jsx";
 
 export const ASSESSMENT_EXERCISES = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
@@ -50,12 +50,15 @@ function SetupBlock({ title, children }) {
   );
 }
 
-export function AssessmentFlow({ onComplete, accent, theme="dark", initialResults=null, editing=false, onCancel }) {
+export function AssessmentFlow({ onComplete, accent, theme="dark", initialResults=null, editing=false, onCancel, exercises=ASSESSMENT_EXERCISES, userProfile }) {
   const [step, setStep] = useState(-1);
   const [results, setResults] = useState(initialResults || {});
   const [count, setCount] = useState(10);
 
-  const total = ASSESSMENT_EXERCISES.length;
+  const safeExercises = exercises?.length ? exercises : ASSESSMENT_EXERCISES;
+  const total = safeExercises.length;
+  const risk = profileRisk(userProfile);
+  const benchmarkMode = benchmarkModeForProfile(userProfile);
   const light = theme === "pop_light";
   const ui = {
     page: light ? "linear-gradient(180deg,#f8fffb 0%,#eef7ff 58%,#ffffff 100%)" : "#050505",
@@ -72,7 +75,7 @@ export function AssessmentFlow({ onComplete, accent, theme="dark", initialResult
 
   useEffect(() => {
     if (step < 0 || step >= total) return;
-    const ex = ASSESSMENT_EXERCISES[step];
+    const ex = safeExercises[step];
     setCount(results[ex.name] || 10);
   }, [step, total]); // eslint-disable-line
 
@@ -85,6 +88,18 @@ export function AssessmentFlow({ onComplete, accent, theme="dark", initialResult
         {editing
           ? "Update your clean max reps if the original test was off, skipped, or no longer matches your current ability."
           : "Before your first workout, set a safe starting point. Stop any test if form breaks or something hurts."}
+      </div>
+      <div style={{padding:"12px 14px",background:ui.card,border:`1px solid ${ui.border}`,borderRadius:12,marginBottom:18,boxShadow:ui.shadow}}>
+        <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:800}}>{benchmarkMode.label} Benchmark</div>
+        <div style={{fontSize:13,color:ui.soft,lineHeight:1.5,marginTop:5}}>{benchmarkMode.note}</div>
+      </div>
+      <div style={{display:"grid",gap:8,marginBottom:18}}>
+        {BENCHMARK_TESTS_V2.map(test => (
+          <div key={test.id} style={{padding:"10px 12px",background:ui.card,border:`1px solid ${ui.border}`,borderRadius:11,boxShadow:ui.shadow}}>
+            <div style={{fontSize:12,color:ui.text,fontWeight:800}}>{test.name}</div>
+            <div style={{fontSize:12,color:ui.muted,lineHeight:1.4,marginTop:3}}>{test.note}</div>
+          </div>
+        ))}
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:36}}>
         {[
@@ -114,13 +129,13 @@ export function AssessmentFlow({ onComplete, accent, theme="dark", initialResult
   );
 
   if (step >= total) {
-    const targets = Object.entries(results).map(([name, max]) => ({ name, max, target: assessmentTarget(max) }));
+    const targets = Object.entries(results).map(([name, max]) => ({ name, max, target: assessmentTargetForProfile(max, userProfile) }));
     return (
       <div style={{minHeight:"100vh",overflowY:"auto",padding:"44px 24px 40px",background:ui.page,color:ui.text}}>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:44,color:"#4ade80",letterSpacing:".06em",lineHeight:.9,marginBottom:12}}>
           ASSESSMENT<br/>COMPLETE ✓
         </div>
-        <div style={{fontSize:14,color:ui.soft,marginBottom:24,lineHeight:1.55}}>Your personalized starting targets. They'll adjust each week based on how each session feels.</div>
+        <div style={{fontSize:14,color:ui.soft,marginBottom:24,lineHeight:1.55}}>Your personalized starting targets. {risk.level !== "standard" ? "They start more conservative from your profile and " : "They "}adjust each week based on how each session feels.</div>
         <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:28}}>
           {targets.map(t=>(
             <div key={t.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 18px",background:ui.card,borderRadius:11,border:`1px solid ${ui.border}`,boxShadow:ui.shadow}}>
@@ -143,8 +158,8 @@ export function AssessmentFlow({ onComplete, accent, theme="dark", initialResult
     );
   }
 
-  const ex = ASSESSMENT_EXERCISES[step];
-  const exColor = WORKOUTS.A.exercises.some(e=>e.name===ex.name) ? WORKOUTS.A.color : WORKOUTS.B.color;
+  const ex = safeExercises[step];
+  const exColor = WORKOUTS.A.exercises.some(e=>e.name===ex.name) ? WORKOUTS.A.color : WORKOUTS.B.exercises.some(e=>e.name===ex.name) ? WORKOUTS.B.color : accent;
 
   return (
     <div style={{minHeight:"100vh",overflowY:"auto",padding:"32px 20px 40px",background:ui.page,color:ui.text}}>
@@ -168,6 +183,7 @@ export function AssessmentFlow({ onComplete, accent, theme="dark", initialResult
       <div style={{padding:"14px 18px",background:ui.card,borderRadius:12,border:`1.5px solid ${exColor}44`,marginBottom:24,boxShadow:ui.shadow}}>
         <div style={{fontSize:14,color:ui.soft,lineHeight:1.55}}>
           Do as many clean <strong style={{color:exColor}}>{ex.name}</strong> reps as you can. Stop if form breaks, if pain appears, or if the movement feels unsafe today.
+          <div style={{marginTop:8,color:exColor,fontSize:13}}>{benchmarkMode.label}: {benchmarkMode.note}</div>
         </div>
       </div>
 
@@ -181,7 +197,7 @@ export function AssessmentFlow({ onComplete, accent, theme="dark", initialResult
             style={{width:72,height:76,background:"transparent",border:"none",color:ui.soft,fontSize:34,fontWeight:300}}>+</button>
         </div>
         <div style={{fontSize:13,color:ui.muted,letterSpacing:".06em",textAlign:"center",marginTop:10}}>
-          Starting target → <strong style={{color:exColor}}>×{assessmentTarget(count)}</strong> per set
+          Starting target → <strong style={{color:exColor}}>×{assessmentTargetForProfile(count, userProfile)}</strong> per set
         </div>
       </div>
 

@@ -90,8 +90,8 @@ export default function CalendarView({ history, progression, settings, accent, t
                   <div style={{ display: "flex", gap: 10, alignItems: "center", flex: 1, minWidth: 0 }}>
                     <span style={{
                       fontSize: 14, padding: "3px 9px", borderRadius: 5,
-                      background: WORKOUTS[h.workout]?.color + "22" || "#222",
-                      color: WORKOUTS[h.workout]?.color || "#aaa",
+                      background: `${WORKOUTS[h.workout]?.color || "#fbbf24"}22`,
+                      color: WORKOUTS[h.workout]?.color || "#fbbf24",
                       letterSpacing: "0.06em", fontWeight: 500, flexShrink: 0,
                     }}>{h.workout}</span>
                     <span style={{ fontSize: 15, color: ui.text }}>{h.day}</span>

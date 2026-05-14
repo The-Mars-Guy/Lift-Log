@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, computePersonalRecords, detectWeakPoints, evaluateProgression, exerciseFeedbackSignal, exerciseTrend, explainExerciseDecision, plateauFixes, readinessScore, recommendDeload, sciencePrescription, SUBSTITUTIONS, suggestSubstitutions, summarizeWorkout, tempoPrescription, variationPrescription, weeklyMuscleCoverage } from "../src/coach.js";
+import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildWeeklyReview, coachSetCount, coachTargetReps, computePersonalRecords, detectWeakPoints, evaluateProgression, exactRepTarget, exerciseFeedbackSignal, exerciseTrend, explainExerciseDecision, painBlockedExercises, plateauFixes, readinessScore, recommendDeload, routineEditSuggestions, sciencePrescription, SUBSTITUTIONS, suggestSubstitutions, summarizeWorkout, tempoPrescription, variationPrescription, weeklyMuscleCoverage } from "../src/coach.js";
 
 const exercise = { name: "Floor Press", sets: 3, baseReps: 10 };
 
@@ -75,10 +75,29 @@ test("sciencePrescription uses reps and sets when fixed weights limit loading", 
   assert.equal(prescription.label, "Volume");
   assert.equal(prescription.targetReps, 12);
   assert.deepEqual(prescription.repRange, { min: 12, max: 20 });
+  assert.ok(prescription.targetRepReason.includes("Exact 12"));
   assert.equal(prescription.tempo.code, "3-1-1");
   assert.equal(prescription.variation.name, "Dumbbell Floor Press");
   assert.equal(prescription.sets, 4);
   assert.equal(prescription.suggestedWeight, null);
+});
+
+test("routineEditSuggestions flags missing coverage and avoided movements", () => {
+  const suggestions = routineEditSuggestions({
+    routine:{ avoidedExerciseIds:["plank"] },
+    exercises:[{ id:"wall_pushup", name:"Wall Push-Up", primary:["chest"], secondary:["triceps"] }],
+    history:[],
+    checkIns:[],
+  });
+
+  assert.equal(suggestions.some(item => item.title === "Add Pull"), true);
+  assert.equal(suggestions.some(item => item.type === "avoid"), true);
+});
+
+test("exactRepTarget clamps coach targets to the learned rep range", () => {
+  assert.equal(exactRepTarget(9, { min: 12, max: 20 }), 12);
+  assert.equal(exactRepTarget(22, { min: 12, max: 20 }), 20);
+  assert.equal(exactRepTarget(14.4, { min: 12, max: 20 }), 14);
 });
 
 test("tempo and variation progress fixed dumbbells before chasing load", () => {
@@ -340,4 +359,11 @@ test("joint cautions bias same-area substitutions", () => {
   assert.equal(swaps[0].exercise, "Goblet Squat");
   assert.equal(swaps[0].substitute, "Box Goblet Squat");
   assert.ok(swaps[0].reason.includes("Knee caution"));
+});
+
+test("repeated pain feedback blocks risky exercise loading", () => {
+  assert.deepEqual(painBlockedExercises([
+    { kind:"set_feedback", exercise:"Floor Press", feeling:"pain", timestamp:2 },
+    { kind:"set_feedback", exercise:"Floor Press", feeling:"pain", timestamp:1 },
+  ]), ["Floor Press"]);
 });

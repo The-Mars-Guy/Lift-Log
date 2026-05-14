@@ -1,4 +1,5 @@
-import { WORKOUTS, MUSCLE_LABELS } from "../data.js";
+import { useState } from "react";
+import { WORKOUTS, MUSCLE_LABELS, customRoutineWorkout } from "../data.js";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
 import { muscleRecoveryStats, latestMuscleSoreness } from "../coach.js";
 
@@ -16,15 +17,24 @@ const SORE_LEVELS = [
   { key:"sore", label:"Sore", color:"#fb7185" },
 ];
 
-export default function MuscleMapView({ history, accent, checkIns = [], setCheckIns }) {
-  const exercises = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
-  const status = buildMuscleStatus({ history, exercises });
+export default function MuscleMapView({ history, accent, checkIns = [], setCheckIns, customRoutine }) {
+  const [filter, setFilter] = useState("all");
+  const exercises = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises, ...(customRoutine?.enabled ? customRoutineWorkout(customRoutine).exercises : [])];
+  const currentSoreness = latestMuscleSoreness(checkIns);
+  const status = buildMuscleStatus({ history, exercises, soreness:currentSoreness });
   const ahead = status.rows.filter(row => status.avg && row.recentPoints > status.avg * 1.25);
   const behind = status.rows.filter(row => status.avg && row.recentPoints < status.avg * 0.65 && row.planned > 0);
-  const fatigued = status.rows.filter(row => row.fatigue >= 55);
+  const fatigued = status.rows.filter(row => row.fatigue >= 55 || row.soreness === "sore");
   const levelColors = Object.fromEntries(status.rows.map(row => [row.muscle, row.level.color]));
-  const currentSoreness = latestMuscleSoreness(checkIns);
   const recovery = muscleRecoveryStats(checkIns);
+  const focusItems = buildMuscleFocus({ rows:status.rows, avg:status.avg });
+  const filteredRows = status.rows.filter(row => {
+    if (filter === "ready") return row.readiness === "Ready";
+    if (filter === "recovering") return row.readiness === "Recovering";
+    if (filter === "sore") return row.soreness === "sore" || row.soreness === "mild";
+    if (filter === "needs") return status.avg && row.recentPoints < status.avg * 0.65 && row.planned > 0;
+    return true;
+  });
 
   const logSoreness = (muscle, level) => {
     if (!setCheckIns) return;
@@ -62,6 +72,20 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
         <Mini label="Ahead" value={ahead[0]?.label || "Balanced"} color="#60a5fa"/>
         <Mini label="Needs Touch" value={behind[0]?.label || "None"} color="#fbbf24"/>
       </div>
+
+      <Section title="Coach Focus" sub="what the muscle map thinks you should do next">
+        <div style={{display:"grid",gap:8}}>
+          {focusItems.map(item => (
+            <div key={item.title} style={{padding:"12px 13px",background:"#0d0d0d",border:`1px solid ${item.color}55`,borderRadius:10,boxShadow:`0 0 20px ${item.color}12`}}>
+              <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
+                <div style={{fontSize:14,color:item.color,fontWeight:800}}>{item.title}</div>
+                <div style={{fontSize:10,color:"#777",letterSpacing:".12em",textTransform:"uppercase"}}>{item.tag}</div>
+              </div>
+              <div style={{fontSize:12,color:"#bbb",lineHeight:1.45,marginTop:5}}>{item.detail}</div>
+            </div>
+          ))}
+        </div>
+      </Section>
 
       {(recovery.slowest || recovery.fastest) && (
         <Section title="Recovery Profile" sub="learned from how long each muscle stays sore">
@@ -105,8 +129,25 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
       </Section>
 
       <Section title="Muscle Groups" sub="fatigue is estimated from recent logged work and time since last hit">
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5,marginBottom:10}}>
+          {[
+            ["all","All"],
+            ["ready","Ready"],
+            ["recovering","Recover"],
+            ["sore","Sore"],
+            ["needs","Needs"],
+          ].map(([key,label]) => (
+            <button key={key} onClick={()=>setFilter(key)}
+              style={{padding:"8px 5px",borderRadius:7,border:`1px solid ${filter===key?accent:"#272727"}`,background:filter===key?`${accent}20`:"#0d0d0d",color:filter===key?accent:"#888",fontSize:10,fontWeight:700,letterSpacing:".08em",textTransform:"uppercase"}}>
+              {label}
+            </button>
+          ))}
+        </div>
         <div style={{display:"grid",gap:8}}>
-          {status.rows.map(row=><MuscleRow key={row.muscle} row={row} avg={status.avg}/>)}
+          {filteredRows.map(row=><MuscleRow key={row.muscle} row={row} avg={status.avg}/>)}
+          {!filteredRows.length&&(
+            <div style={{padding:"14px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10,fontSize:13,color:"#888",textAlign:"center"}}>Nothing in this group yet.</div>
+          )}
         </div>
       </Section>
 
@@ -159,7 +200,7 @@ function SoreRow({ muscle, label, current, onSelect }) {
   );
 }
 
-function buildMuscleStatus({ history, exercises }) {
+export function buildMuscleStatus({ history, exercises, soreness = {} }) {
   const now = Date.now();
   const lookback = now - 28 * 86400000;
   const byMuscle = {};
@@ -197,8 +238,10 @@ function buildMuscleStatus({ history, exercises }) {
     const hoursSince = item.lastHit ? Math.max(0, (now - item.lastHit) / 3600000) : null;
     const recoveryHours = item.recentPoints >= 180 ? 72 : item.recentPoints >= 95 ? 48 : item.recentPoints > 0 ? 24 : 0;
     const recoveredPct = recoveryHours ? Math.min(100, Math.round((hoursSince / recoveryHours) * 100)) : 100;
-    const fatigue = recoveryHours ? Math.max(0, 100 - recoveredPct) : 0;
-    const readiness = fatigue >= 55 ? "Fatigued" : fatigue >= 25 ? "Recovering" : "Ready";
+    const sorenessLevel = soreness[item.muscle] || null;
+    const sorenessPenalty = sorenessLevel === "sore" ? 35 : sorenessLevel === "mild" ? 15 : 0;
+    const fatigue = Math.min(100, (recoveryHours ? Math.max(0, 100 - recoveredPct) : 0) + sorenessPenalty);
+    const readiness = sorenessLevel === "sore" || fatigue >= 55 ? "Fatigued" : fatigue >= 25 ? "Recovering" : "Ready";
     return {
       ...item,
       label:MUSCLE_LABELS[item.muscle] || item.muscle,
@@ -208,6 +251,7 @@ function buildMuscleStatus({ history, exercises }) {
       recoveredPct,
       fatigue,
       readiness,
+      soreness:sorenessLevel,
       exercises:[...item.exercises],
     };
   });
@@ -219,6 +263,45 @@ function buildMuscleStatus({ history, exercises }) {
     activation:Object.fromEntries(rows.map(row => [row.muscle, row.recentPoints / max])),
     avg,
   };
+}
+
+function buildMuscleFocus({ rows, avg }) {
+  const sorted = [...rows];
+  const sore = sorted.find(row => row.soreness === "sore");
+  const recovering = sorted.find(row => row.readiness === "Recovering");
+  const needs = sorted.find(row => avg && row.recentPoints < avg * 0.65 && row.planned > 0);
+  const ready = sorted.find(row => row.readiness === "Ready" && row.planned > 0);
+  const items = [];
+  if (sore) items.push({
+    title:`Ease ${sore.label}`,
+    tag:"protect",
+    color:"#fb7185",
+    detail:`Marked sore right now. Bias swaps, lighter tempo, or fewer sets for ${sore.exercises.slice(0,2).join(" / ")}.`,
+  });
+  if (needs) items.push({
+    title:`Bring Up ${needs.label}`,
+    tag:"balance",
+    color:"#fbbf24",
+    detail:`Recent work is below your other trained muscles. Add clean volume when it is not sore.`,
+  });
+  if (ready) items.push({
+    title:`Push ${ready.label}`,
+    tag:"ready",
+    color:"#4ade80",
+    detail:`Recovery looks good. This is a strong candidate for normal or slightly harder work today.`,
+  });
+  if (recovering && items.length < 3) items.push({
+    title:`Watch ${recovering.label}`,
+    tag:"recover",
+    color:"#60a5fa",
+    detail:`Not fully fresh yet. Keep reps clean and avoid chasing failure on related lifts.`,
+  });
+  return items.slice(0, 3).length ? items.slice(0, 3) : [{
+    title:"Keep Logging",
+    tag:"learning",
+    color:"#60a5fa",
+    detail:"More workouts and soreness check-ins will make these recommendations sharper.",
+  }];
 }
 
 function MuscleRow({ row, avg }) {
@@ -245,7 +328,7 @@ function MuscleRow({ row, avg }) {
         <SmallMeter label="Recovery" value={row.recoveredPct} color={row.recoveredPct>=100?"#4ade80":"#60a5fa"}/>
       </div>
       <div style={{display:"flex",justifyContent:"space-between",gap:10,fontSize:11,color:"#888"}}>
-        <span>{ahead ? "ahead" : behind ? "behind" : "even"} · {row.recentPoints} work pts</span>
+        <span>{ahead ? "ahead" : behind ? "behind" : "even"} · {row.recentPoints} work pts{row.soreness ? ` · ${row.soreness}` : ""}</span>
         <span>{recovery}</span>
       </div>
     </div>

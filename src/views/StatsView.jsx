@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { WORKOUTS, ACHIEVEMENTS, computeStats, isoWeek, getLevel, epley1RM, getExerciseHistory } from "../data.js";
+import { WORKOUTS, ACHIEVEMENTS, computeStats, isoWeek, getLevel, epley1RM, getExerciseHistory, customRoutineWorkout, routineBalanceScore, routineCoverage } from "../data.js";
 import { BarChart, MiniGraph } from "../components/shared.jsx";
 import { fmtDuration } from "../hooks.js";
 import { exerciseVolume } from "../session.js";
 import { buildCoachMemory, buildWeeklyReview, computePersonalRecords, detectWeakPoints } from "../coach.js";
 
-export default function StatsView({ history, progression, settings, achievements, accent, xp, level, exConfig, checkIns, bodyMetrics = [], setBodyMetrics }) {
+export default function StatsView({ history, progression, settings, achievements, accent, xp, level, exConfig, checkIns, bodyMetrics = [], setBodyMetrics, customRoutine }) {
   const stats = computeStats({ history, progression, settings });
-  const allExercises = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
+  const allExercises = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises, ...(customRoutine?.enabled ? customRoutineWorkout(customRoutine).exercises : [])];
+  const customWorkout = customRoutine?.enabled ? customRoutineWorkout(customRoutine) : null;
+  const balance = customWorkout ? routineBalanceScore(customWorkout.exercises) : null;
   const coachMemory = buildCoachMemory({ history, checkIns, exercises: allExercises, exConfig });
   const weeklyReview = buildWeeklyReview({ history, checkIns });
   const weakPoints = detectWeakPoints({ history, exercises: allExercises, exConfig });
@@ -147,6 +149,19 @@ export default function StatsView({ history, progression, settings, achievements
           )}
         </div>
       </Section>
+
+      {customWorkout&&(
+        <Section title="Routine Balance" sub="custom routine coverage">
+          <div style={{padding:"16px",background:"#0d0d0d",borderRadius:12,border:"1px solid #1f1f1f"}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:38,color:balance>=90?"#4ade80":balance>=70?"#fbbf24":"#fb7185",letterSpacing:".06em"}}>{balance}%</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginTop:10}}>
+              {routineCoverage(customWorkout.exercises).map(item=>(
+                <div key={item.key} style={{padding:"8px 5px",borderRadius:8,border:`1px solid ${item.ok?"#4ade8066":"#fb718555"}`,background:item.ok?"#4ade8011":"#fb718511",textAlign:"center",fontSize:10,color:item.ok?"#4ade80":"#fb7185",fontWeight:900,textTransform:"uppercase"}}>{item.label}</div>
+              ))}
+            </div>
+          </div>
+        </Section>
+      )}
 
       <RecordsSection records={records} accent={accent}/>
 

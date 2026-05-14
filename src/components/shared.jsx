@@ -225,6 +225,17 @@ function IconMuscles({ color, size=22 }) {
     </svg>
   );
 }
+function IconRoutine({ color, size=22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 4h10"/>
+      <path d="M7 20h10"/>
+      <rect x="5" y="7" width="14" height="10" rx="2"/>
+      <path d="M9 11h6"/>
+      <path d="M9 14h4"/>
+    </svg>
+  );
+}
 function IconGear({ color, size=22 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round">
@@ -236,9 +247,9 @@ function IconGear({ color, size=22 }) {
 
 const NAV_ITEMS = [
   { id:"workout",  label:"Workout",  Icon:IconDumbbell },
+  { id:"routine",  label:"Routine",  Icon:IconRoutine  },
   { id:"stats",    label:"Stats",    Icon:IconStats    },
   { id:"muscles",  label:"Muscles",  Icon:IconMuscles  },
-  { id:"calendar", label:"Calendar", Icon:IconCalendar },
   { id:"settings", label:"Settings", Icon:IconGear     },
 ];
 
@@ -347,13 +358,14 @@ export function Heatmap({ history, theme = "dark" }) {
         {cells.map((week,ci) => (
           <div key={ci} style={{ display:"flex", flexDirection:"column", gap }}>
             {week.map((c,ri) => {
-              const color = c.workout ? WORKOUTS[c.workout].color : c.isFuture ? (light ? "#edf4fb" : "#0a0a0a") : (light ? "#dce7f2" : "#161616");
+              const workoutColor = WORKOUTS[c.workout]?.color || "#fbbf24";
+              const color = c.workout ? workoutColor : c.isFuture ? (light ? "#edf4fb" : "#0a0a0a") : (light ? "#dce7f2" : "#161616");
               const isToday = c.iso === isoDate(today);
               return (
-                <div key={ri} title={`${dateStr(c.date)}${c.workout?" — "+WORKOUTS[c.workout].label:""}`}
+                <div key={ri} title={`${dateStr(c.date)}${c.workout?" — "+(WORKOUTS[c.workout]?.label || "Custom Routine"):""}`}
                   style={{ width:cSz, height:cSz, background:color, borderRadius:3,
                     border:isToday?`1.5px solid ${light ? "#123047" : "#f0f0f0"}`:"1px solid transparent",
-                    boxShadow: c.workout ? `0 0 6px ${WORKOUTS[c.workout].color}66` : "none" }}/>
+                    boxShadow: c.workout ? `0 0 6px ${workoutColor}66` : "none" }}/>
               );
             })}
           </div>

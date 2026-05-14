@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   WORKOUTS, SCHEDULE, DAYS, MUSCLE_LABELS, DEFAULT_WEIGHTS,
-  EXERCISE_GUIDES, todayName, dateStr, calcDynamicTarget, assessmentTarget,
-  getExerciseHistory, XP_VALUES, getLevel
+  EXERCISE_GUIDES, todayName, dateStr, calcDynamicTarget, assessmentTargetForProfile,
+  getExerciseHistory, XP_VALUES, getLevel, customRoutineWorkout
 } from "../data.js";
 import { useSessionTimer, fmtDuration } from "../hooks.js";
 import { ExerciseAnimation, RestTimer, Toast, MiniGraph } from "../components/shared.jsx";
@@ -150,7 +150,7 @@ function FocusWorkoutMode({
   })();
   const target = getTargetReps(next.ex);
   const science = getScience(next.ex);
-  const repText = science.enabled && science.repRange ? `${science.repRange.min}-${science.repRange.max}` : `x${target}`;
+  const repText = `x${target}`;
   const weight = getWeight(next.ex);
   const weightText = weight > 0 ? `${weight}lbs` : "bodyweight";
   const plannedSets = getSetCount(next.ex);
@@ -609,6 +609,8 @@ export default function WorkoutView({
   playSound, vibrate, setActiveView, theme="dark",
   assessmentDone, setAssessmentDone,
   benchmarkEditorOpen=false, setBenchmarkEditorOpen,
+  customRoutine,
+  userProfile,
 }) {
   const [activeTab,    setActiveTab]   = useState(()=>defaultWorkoutDay());
   const [expanded,     setExpanded]    = useState(null);
@@ -628,9 +630,11 @@ export default function WorkoutView({
   const [substitutions, setSubstitutions] = useState({});
   const [coachOpen,    setCoachOpen]    = useState(false);
   const [workoutNote,  setWorkoutNote]  = useState("");
+  const [exerciseOrder, setExerciseOrder] = useState([]);
 
-  const wKey    = SCHEDULE[activeTab];
-  const workout = WORKOUTS[wKey];
+  const customWorkout = customRoutine?.enabled ? customRoutineWorkout(customRoutine, activeTab) : null;
+  const wKey    = customWorkout ? "CUSTOM" : SCHEDULE[activeTab];
+  const workout = customWorkout || WORKOUTS[wKey];
   const accent  = workout.color;
   const workoutPlan = useMemo(() => {
     const applySubstitution = (ex) => {
@@ -645,14 +649,28 @@ export default function WorkoutView({
         tip: `Substitute for ${ex.name}: ${sub.reason}. Keep the reps controlled and pain-free.`,
       };
     };
-    return { ...workout, exercises: workout.exercises.map(applySubstitution) };
-  }, [workout, substitutions]);
+    const base = workout.exercises.map(applySubstitution);
+    const keyOf = (ex) => ex.configName || ex.name;
+    const ordered = exerciseOrder.length
+      ? [...base].sort((a,b)=>(exerciseOrder.indexOf(keyOf(a)) === -1 ? 999 : exerciseOrder.indexOf(keyOf(a))) - (exerciseOrder.indexOf(keyOf(b)) === -1 ? 999 : exerciseOrder.indexOf(keyOf(b))))
+      : base;
+    return { ...workout, exercises: ordered };
+  }, [workout, substitutions, exerciseOrder]);
 
   const sessionKey = completionKey(activeTab);
   const logKey  = (i,j) => makeLogKey(sessionKey,i,j);
   const setKey  = (i,j) => `${sessionKey}_${i}_${j}`;
   const setDone = (i,j) => !!sets[setKey(i,j)];
   const isCompleted = !!completed[sessionKey];
+  const completedSession = useMemo(() => {
+    const scheduled = scheduledDate(activeTab);
+    const scheduledTime = scheduled.getTime();
+    const scheduledLabel = dateStr(scheduled);
+    return history.find(h =>
+      h.day === activeTab
+      && (h.timestamp === scheduledTime || h.date === scheduledLabel)
+    );
+  }, [history, activeTab]);
 
   // Apply any pending adjustments at session start
   useEffect(()=>{
@@ -670,6 +688,7 @@ export default function WorkoutView({
 
   useEffect(() => {
     setSubstitutions({});
+    setExerciseOrder([]);
   }, [sessionKey]);
 
   const readinessEntry = useMemo(
@@ -683,14 +702,15 @@ export default function WorkoutView({
     [workout, history, checkIns, exConfig, settings, effectiveReadiness]
   );
   const suggestions = useMemo(
-    () => [...coachPlan.cards, ...buildSuggestions({history,progression,settings,exConfig,workoutKey:wKey})],
+    () => [...coachPlan.cards, ...(WORKOUTS[wKey] ? buildSuggestions({history,progression,settings,exConfig,workoutKey:wKey}) : [])],
     [coachPlan, history, progression, settings, exConfig, wKey]
   );
   const coachMemory = useMemo(
-    () => buildCoachMemory({ history, checkIns, exercises:[...WORKOUTS.A.exercises,...WORKOUTS.B.exercises], exConfig }),
-    [history, checkIns, exConfig]
+    () => buildCoachMemory({ history, checkIns, exercises:workout.exercises, exConfig }),
+    [history, checkIns, exConfig, workout]
   );
   const exerciseKey = (exOrName) => typeof exOrName === "string" ? exOrName : (exOrName.configName || exOrName.name);
+  const exerciseIdFor = (ex) => ex.id || exerciseKey(ex).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
   const getBaseTargetReps = (ex) => exConfig[exerciseKey(ex)]?.targetReps ?? (ex.baseReps + (progression[exerciseKey(ex)]?.repBonus||0));
   const getScience = (ex) => sciencePrescription({ exercise:ex, history, checkIns, settings, readiness:effectiveReadiness, baseTarget:getBaseTargetReps(ex) });
   const getTargetReps = (ex) => {
@@ -923,7 +943,7 @@ export default function WorkoutView({
     const exSnap = workoutPlan.exercises.map((ex,i)=>{
       const sets=getSetCount(ex);
       const logs=Array.from({length:sets},(_,j)=>sessionLogs[logKey(i,j)]||{weight:getWeight(ex),reps:getTargetReps(ex)});
-      return {name:ex.name,originalName:ex.originalName,substitutedFor:ex.substitutedFor,sets,reps:getTargetReps(ex),setLog:logs};
+      return {id:exerciseIdFor(ex),plannedId:exerciseIdFor({ ...ex, name:ex.configName || ex.originalName || ex.name }),name:ex.name,originalName:ex.originalName,substitutedFor:ex.substitutedFor,sets,reps:getTargetReps(ex),setLog:logs};
     });
 
     // Update weights / next weight suggestions
@@ -962,9 +982,9 @@ export default function WorkoutView({
       duration:sessionElapsed,
       readiness:effectiveReadiness,
       prs,
-      nextWorkout:wKey==="A"?"B":"A",
+      nextWorkout:wKey==="A"?"B":customWorkout?"Custom":"A",
     }));
-    setHistory(p=>[{day:activeTab,workout:wKey,date:dateStr(scheduledDate(activeTab)),timestamp:scheduledDate(activeTab).getTime(),duration:sessionElapsed,exercises:exSnap,readiness:effectiveReadiness,note:workoutNote.trim()||undefined},...p].slice(0,120));
+    setHistory(p=>[{day:activeTab,workout:wKey,date:dateStr(scheduledDate(activeTab)),timestamp:scheduledDate(activeTab).getTime(),duration:sessionElapsed,exercises:exSnap,readiness:effectiveReadiness,note:workoutNote.trim()||undefined,warmup:"Easy movement + light first set",cooldown:"Slow breathing + gentle mobility"} ,...p].slice(0,120));
     setCompleted(p=>({...p,[sessionKey]:dateStr(scheduledDate(activeTab))}));
     playSound("workoutDone"); vibrate([100,60,100]);
     setConfetti(true);
@@ -1005,7 +1025,8 @@ export default function WorkoutView({
     setWorkoutNote("");
   };
 
-  const getAssessmentResults = () => Object.fromEntries(ASSESSMENT_EXERCISES.map(ex => {
+  const assessmentExercises = workout.exercises?.length ? workout.exercises : ASSESSMENT_EXERCISES;
+  const getAssessmentResults = () => Object.fromEntries(assessmentExercises.map(ex => {
     const config = exConfig[ex.name] || {};
     const fromTarget = config.targetReps ? Math.max(1, Math.round(config.targetReps / 0.65)) : ex.baseReps;
     return [ex.name, config.maxRepsTest || fromTarget];
@@ -1013,9 +1034,9 @@ export default function WorkoutView({
 
   const completeAssessment = (results) => {
     const newConfig={...exConfig};
-    ASSESSMENT_EXERCISES.forEach(ex=>{
+    assessmentExercises.forEach(ex=>{
       const maxReps=results?.[ex.name];
-      const target=maxReps ? assessmentTarget(maxReps) : ex.baseReps;
+      const target=maxReps ? assessmentTargetForProfile(maxReps, userProfile) : ex.baseReps;
       newConfig[ex.name]={
         ...newConfig[ex.name],
         maxRepsTest:maxReps||null,
@@ -1041,6 +1062,8 @@ export default function WorkoutView({
         accent={accent}
         theme={theme}
         initialResults={getAssessmentResults()}
+        exercises={assessmentExercises}
+        userProfile={userProfile}
         editing
       />
     );
@@ -1048,7 +1071,7 @@ export default function WorkoutView({
 
   // Show assessment if not done yet and no history
   if (!assessmentDone && history.length===0) {
-    return <AssessmentFlow onComplete={completeAssessment} accent={accent} theme={theme}/>;
+    return <AssessmentFlow onComplete={completeAssessment} accent={accent} theme={theme} exercises={assessmentExercises} userProfile={userProfile}/>;
   }
 
   return (
@@ -1138,6 +1161,18 @@ export default function WorkoutView({
               START WORKOUT
             </button>
           )}
+          {!isCompleted&&doneSets===0&&(
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:10}}>
+              <div style={{padding:"10px 11px",background:"#0d0d0d",border:"1px solid #242424",borderRadius:9}}>
+                <div style={{fontSize:10,color:accent,letterSpacing:".12em",textTransform:"uppercase",fontWeight:800}}>Warmup</div>
+                <div style={{fontSize:12,color:"#aaa",lineHeight:1.4,marginTop:4}}>2 easy minutes, then one light set before working sets.</div>
+              </div>
+              <div style={{padding:"10px 11px",background:"#0d0d0d",border:"1px solid #242424",borderRadius:9}}>
+                <div style={{fontSize:10,color:accent,letterSpacing:".12em",textTransform:"uppercase",fontWeight:800}}>Cooldown</div>
+                <div style={{fontSize:12,color:"#aaa",lineHeight:1.4,marginTop:4}}>Slow breathing and gentle mobility after final set.</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1178,13 +1213,19 @@ export default function WorkoutView({
                     <span style={{fontSize:11,color:open?accent:"#888",transform:open?"rotate(180deg)":"none",transition:"all .2s",display:"inline-block"}}>▼</span>
                   </div>
                   <div style={{fontSize:14,color:"#bbb",marginTop:5,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                    <span>{getSetCount(ex)} × {science.enabled&&science.repRange ? `${science.repRange.min}-${science.repRange.max}` : `×${reps}`}{ex.repSuffix||""}</span>
+                    <span>{getSetCount(ex)} × {reps}{ex.repSuffix||""}</span>
                     <span style={{color:"#666"}}>{curW > 0 ? `@ ${curW}lbs` : "bodyweight"}</span>
                     {science.enabled&&<span style={{color:"#a78bfa",fontSize:12,padding:"2px 7px",borderRadius:5,background:"#a78bfa18",fontWeight:500}}>{science.label}</span>}
                     {science.tempo&&<span style={{color:"#a78bfa",fontSize:12,padding:"2px 7px",borderRadius:5,background:"#a78bfa18",fontWeight:500}}>tempo {science.tempo.code}</span>}
                     {hasNxtW&&<span style={{color:accent,fontSize:12,padding:"2px 7px",borderRadius:5,background:`${accent}18`,fontWeight:500}}>next: {nextW}lbs</span>}
                     {maxTest&&<span style={{color:"#888",fontSize:11}}>max: {maxTest}</span>}
                   </div>
+                  {!isCompleted&&doneSets===0&&(
+                    <div style={{display:"flex",gap:6,marginTop:8}}>
+                      <button onClick={(e)=>{e.stopPropagation();setExerciseOrder(order=>moveExerciseOrder(order, workoutPlan.exercises, i, -1, exerciseKey));}} style={{background:"#101010",border:"1px solid #282828",borderRadius:7,color:"#aaa",padding:"6px 8px",fontSize:11}}>↑</button>
+                      <button onClick={(e)=>{e.stopPropagation();setExerciseOrder(order=>moveExerciseOrder(order, workoutPlan.exercises, i, 1, exerciseKey));}} style={{background:"#101010",border:"1px solid #282828",borderRadius:7,color:"#aaa",padding:"6px 8px",fontSize:11}}>↓</button>
+                    </div>
+                  )}
                 </div>
                 <div style={{display:"flex",gap:7,flexShrink:0}}>
                   {Array.from({length:getSetCount(ex)},(_,j)=>{
@@ -1239,7 +1280,7 @@ export default function WorkoutView({
                       <SLabel small>Science Coach</SLabel>
                       <div style={{fontSize:14,color:"#ddd",marginTop:5,lineHeight:1.55}}>{science.note}</div>
                       <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:9}}>
-                        {science.repRange&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",border:"1px solid #a78bfa44",borderRadius:7,padding:"6px 8px"}}>{science.repRange.min}-{science.repRange.max} reps</span>}
+                        {science.targetRepReason&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",border:"1px solid #a78bfa44",borderRadius:7,padding:"6px 8px"}}>target {science.targetReps} reps</span>}
                         {science.tempo&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",border:"1px solid #a78bfa44",borderRadius:7,padding:"6px 8px"}}>tempo {science.tempo.code}</span>}
                         {science.est1RM&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",border:"1px solid #a78bfa44",borderRadius:7,padding:"6px 8px"}}>est. 1RM {science.est1RM}lbs</span>}
                         {science.percent&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",border:"1px solid #a78bfa44",borderRadius:7,padding:"6px 8px"}}>{Math.round(science.percent*100)}% target</span>}
@@ -1297,7 +1338,7 @@ export default function WorkoutView({
           <div style={{textAlign:"center",padding:"24px 20px",background:`${accent}12`,borderRadius:15,border:`1.5px solid ${accent}55`,boxShadow:`0 0 44px ${accent}22`,animation:"completePulse 1s ease-out","--glow":`${accent}55`}}>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:32,color:accent,letterSpacing:".1em"}}>✓ DONE · {completed[sessionKey]}</div>
             <div style={{fontSize:14,color:"#ccc",marginTop:7,lineHeight:1.5}}>Solid work. Rest, eat, sleep. Come back strong.</div>
-            {history[0]?.duration&&<div style={{fontSize:13,color:"#888",marginTop:4}}>{fmtDuration(history[0].duration)}</div>}
+            {completedSession?.duration&&<div style={{fontSize:13,color:"#888",marginTop:4}}>{fmtDuration(completedSession.duration)}</div>}
           </div>
         ):(
           <button onClick={finishWorkout} disabled={!allDone}
@@ -1388,3 +1429,16 @@ export default function WorkoutView({
 
 function StatCard({label,value,accent}){return(<div style={{flex:1,padding:"14px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:11}}><div style={{fontSize:11,color:"#aaa",letterSpacing:".14em",textTransform:"uppercase"}}>{label}</div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:accent||"#fafafa",marginTop:3,letterSpacing:".04em"}}>{value}</div></div>);}
 function SLabel({children,small}){return(<div style={{fontSize:small?10:11,color:"#aaa",letterSpacing:".16em",textTransform:"uppercase",fontWeight:500,marginBottom:small?0:9}}>{children}</div>);}
+
+function moveExerciseOrder(order, exercises, index, delta, keyFn) {
+  const keys = order.length ? [...order] : exercises.map(keyFn);
+  const target = index + delta;
+  if (target < 0 || target >= exercises.length) return keys;
+  const currentKey = keyFn(exercises[index]);
+  const targetKey = keyFn(exercises[target]);
+  const currentIdx = keys.indexOf(currentKey);
+  const targetIdx = keys.indexOf(targetKey);
+  if (currentIdx < 0 || targetIdx < 0) return exercises.map(keyFn);
+  [keys[currentIdx], keys[targetIdx]] = [keys[targetIdx], keys[currentIdx]];
+  return keys;
+}
