@@ -305,7 +305,7 @@ export default function App() {
             bodyMetrics={normalized.bodyMetrics} setBodyMetrics={setBodyMetrics} />
         )}
         {activeView === "muscles" && (
-          <MuscleMapView history={normalized.history} accent={accent} />
+          <MuscleMapView history={normalized.history} accent={accent} checkIns={normalized.checkIns} setCheckIns={setCheckIns} />
         )}
         {activeView === "calendar" && (
           <CalendarView history={normalized.history} progression={normalized.progression} settings={safeSettings} accent={accent} theme={visualTheme} />

@@ -459,6 +459,14 @@ export function buildCoachPlan({ workout, history, checkIns = [], exConfig, sett
   if (latestWorkoutFeedback?.feeling === "easy") adjustments.push("Last workout was easy: chase cleaner top-end reps before adding load.");
   if (deload.recommended) adjustments.unshift(`Deload signal: ${deload.reason}`);
 
+  const currentSoreness = latestMuscleSoreness(checkIns);
+  const soreMuscles = Object.entries(currentSoreness).filter(([, level]) => level === "sore").map(([m]) => m);
+  if (soreMuscles.length) {
+    const hits = workout.exercises.filter(ex => [...(ex.primary || []), ...(ex.secondary || [])].some(m => soreMuscles.includes(m))).map(ex => ex.name);
+    if (hits.length) adjustments.unshift(`Sore today: ${soreMuscles.join(", ")}. Ease or swap ${hits.slice(0, 2).join(" / ")}.`);
+    else adjustments.push(`Sore today: ${soreMuscles.join(", ")}. None of today's lifts hit them directly.`);
+  }
+
   const exerciseNotes = workout.exercises.map(ex => {
     const target = exConfig[ex.name]?.targetReps ?? ex.baseReps;
     const trend = exerciseTrend(history, ex, target);
@@ -724,6 +732,57 @@ export function summarizeWorkout({ exercises, duration = 0, readiness, prs = [],
   return { ...totals, duration, prs, coachNote, nextWorkout, nextChange, reasoning };
 }
 
+export function latestMuscleSoreness(checkIns = []) {
+  const entries = checkIns.filter(ci => ci.kind === "muscle_soreness" && ci.muscle);
+  const latest = {};
+  entries.forEach(ci => {
+    const prev = latest[ci.muscle];
+    if (!prev || (ci.timestamp || 0) > (prev.timestamp || 0)) latest[ci.muscle] = ci;
+  });
+  const out = {};
+  Object.entries(latest).forEach(([muscle, ci]) => { out[muscle] = ci.level; });
+  return out;
+}
+
+export function muscleRecoveryStats(checkIns = []) {
+  const entries = checkIns
+    .filter(ci => ci.kind === "muscle_soreness" && ci.muscle && ci.level)
+    .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+  const byMuscle = {};
+  entries.forEach(ci => {
+    if (!byMuscle[ci.muscle]) byMuscle[ci.muscle] = [];
+    byMuscle[ci.muscle].push(ci);
+  });
+
+  const results = [];
+  Object.entries(byMuscle).forEach(([muscle, list]) => {
+    const durations = [];
+    let soreStart = null;
+    list.forEach(ci => {
+      if (ci.level === "sore") {
+        if (soreStart === null) soreStart = ci.timestamp;
+      } else if (ci.level === "fresh" && soreStart !== null) {
+        const hours = (ci.timestamp - soreStart) / 3600000;
+        if (hours > 0 && hours < 30 * 24) durations.push(hours);
+        soreStart = null;
+      }
+    });
+    if (durations.length) {
+      const avgHours = durations.reduce((a, b) => a + b, 0) / durations.length;
+      results.push({ muscle, avgHours, samples: durations.length });
+    }
+  });
+
+  const entriesSorted = [...results].sort((a, b) => b.avgHours - a.avgHours);
+  return {
+    entries: entriesSorted,
+    slowest: entriesSorted[0] || null,
+    fastest: entriesSorted[entriesSorted.length - 1] && entriesSorted[entriesSorted.length - 1] !== entriesSorted[0]
+      ? entriesSorted[entriesSorted.length - 1]
+      : null,
+  };
+}
+
 export function buildCoachMemory({ history = [], checkIns = [], exercises = [], exConfig = {} }) {
   const readinessEntries = checkIns.filter(ci => ci.kind === "readiness" && ci.readiness);
   const setFeedback = checkIns.filter(ci => ci.kind === "set_feedback" && ci.exercise);
@@ -769,6 +828,14 @@ export function buildCoachMemory({ history = [], checkIns = [], exercises = [], 
   const inconsistent = stalling[0] || exerciseStats.find(ex => ex.trend === "building");
   const focus = painFlags[0]?.name || stalling[0]?.name || progressing[0]?.name || inconsistent?.name || exercises[0]?.name || "consistency";
 
+  const recovery = muscleRecoveryStats(checkIns);
+  const currentSoreness = latestMuscleSoreness(checkIns);
+  const stillSore = Object.entries(currentSoreness).filter(([, level]) => level === "sore").map(([m]) => m);
+
+  const recoverySummary = recovery.slowest
+    ? `${recovery.slowest.muscle} typically takes ~${Math.round(recovery.slowest.avgHours)}h to recover${recovery.fastest ? `; ${recovery.fastest.muscle} clears in ~${Math.round(recovery.fastest.avgHours)}h` : ""}.`
+    : null;
+
   return {
     commonEnergy,
     readinessCount: readinessEntries.length,
@@ -783,13 +850,19 @@ export function buildCoachMemory({ history = [], checkIns = [], exercises = [], 
     behavior,
     inconsistent,
     focus,
-    summary: painFlags.length
+    recovery,
+    currentSoreness,
+    stillSore,
+    summary: stillSore.length
+      ? `${stillSore.slice(0, 3).join(", ")} ${stillSore.length === 1 ? "is" : "are"} flagged sore right now. The coach should ease or swap work for those muscles.`
+      : painFlags.length
       ? `${painFlags[0].name} has been flagged for discomfort. The coach should bias toward swaps or lighter work there.`
       : stalling.length
       ? `${stalling[0].name} needs steadier reps before increasing load.`
       : progressing.length
         ? `${progressing[0].name} is trending well. It may be ready for progression.`
         : "The coach is still collecting enough sessions to see a clear pattern.",
+    recoverySummary,
   };
 }
 

@@ -77,6 +77,7 @@ export function CoachDrawer({ open, onClose, suggestions, memory, plan, accent }
             <div style={{padding:"13px 14px",background:"#fff",border:"1px solid rgba(112,132,160,.24)",borderRadius:13}}>
               <div style={{fontSize:11,color:"#25536f",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,marginBottom:7}}>What I remember</div>
               <div style={{fontSize:13,lineHeight:1.55,color:"#435166"}}>{memory?.summary || "I am still collecting enough sessions to spot patterns."}</div>
+              {memory?.recoverySummary&&<div style={{fontSize:13,lineHeight:1.55,color:"#435166",marginTop:8}}>{memory.recoverySummary}</div>}
               {behavior.notes?.length>0&&<div style={{fontSize:13,lineHeight:1.55,color:"#435166",marginTop:8}}>{behavior.notes[0]}</div>}
             </div>
           </div>

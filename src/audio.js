@@ -1,6 +1,7 @@
 // Web Audio synthesized sound effects — no asset files needed
 let ctx = null;
-const VOLUME_MULTIPLIER = 3;
+const VOLUME_MULTIPLIER = 8;
+const MAX_OUTPUT_GAIN = 1;
 
 function getCtx() {
   if (!ctx) {
@@ -19,7 +20,7 @@ function tone({ freq, duration = 0.15, type = "sine", gain = 0.15, attack = 0.00
   const c = getCtx(); if (!c) return;
   const osc = c.createOscillator();
   const g = c.createGain();
-  const boostedGain = Math.min(gain * VOLUME_MULTIPLIER, 0.9);
+  const boostedGain = Math.min(gain * VOLUME_MULTIPLIER, MAX_OUTPUT_GAIN);
   osc.type = type;
   osc.frequency.value = freq;
   g.gain.setValueAtTime(0, c.currentTime);

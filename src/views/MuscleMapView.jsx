@@ -1,5 +1,6 @@
 import { WORKOUTS, MUSCLE_LABELS } from "../data.js";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
+import { muscleRecoveryStats, latestMuscleSoreness } from "../coach.js";
 
 const MUSCLE_LEVELS = [
   { key:"beginner", label:"Beginner", min:0, color:"#64748b" },
@@ -9,12 +10,32 @@ const MUSCLE_LEVELS = [
   { key:"elite", label:"Elite", min:650, color:"#f472b6" },
 ];
 
-export default function MuscleMapView({ history, accent }) {
+const SORE_LEVELS = [
+  { key:"fresh", label:"Fresh", color:"#4ade80" },
+  { key:"mild", label:"Mild", color:"#fbbf24" },
+  { key:"sore", label:"Sore", color:"#fb7185" },
+];
+
+export default function MuscleMapView({ history, accent, checkIns = [], setCheckIns }) {
   const exercises = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
   const status = buildMuscleStatus({ history, exercises });
   const ahead = status.rows.filter(row => status.avg && row.recentPoints > status.avg * 1.25);
   const behind = status.rows.filter(row => status.avg && row.recentPoints < status.avg * 0.65 && row.planned > 0);
   const fatigued = status.rows.filter(row => row.fatigue >= 55);
+  const levelColors = Object.fromEntries(status.rows.map(row => [row.muscle, row.level.color]));
+  const currentSoreness = latestMuscleSoreness(checkIns);
+  const recovery = muscleRecoveryStats(checkIns);
+
+  const logSoreness = (muscle, level) => {
+    if (!setCheckIns) return;
+    const entry = {
+      kind:"muscle_soreness",
+      muscle,
+      level,
+      timestamp:Date.now(),
+    };
+    setCheckIns(p => [...(p || []), entry].slice(-2000));
+  };
 
   return (
     <div>
@@ -24,7 +45,7 @@ export default function MuscleMapView({ history, accent }) {
       </div>
 
       <div style={{margin:"0 16px 14px",padding:"16px",background:"#0d0d0d",border:`1.5px solid ${accent}33`,borderRadius:12,boxShadow:`0 0 24px ${accent}12`}}>
-        <MuscleDiagram activation={status.activation} accent={accent}/>
+        <MuscleDiagram activation={status.activation} levelColors={levelColors} accent={accent}/>
         <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",marginTop:12}}>
           {MUSCLE_LEVELS.map(level=>(
             <div key={level.key} style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#aaa"}}>
@@ -42,6 +63,47 @@ export default function MuscleMapView({ history, accent }) {
         <Mini label="Needs Touch" value={behind[0]?.label || "None"} color="#fbbf24"/>
       </div>
 
+      {(recovery.slowest || recovery.fastest) && (
+        <Section title="Recovery Profile" sub="learned from how long each muscle stays sore">
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <Mini
+              label="Slowest to Heal"
+              value={recovery.slowest ? `${MUSCLE_LABELS[recovery.slowest.muscle] || recovery.slowest.muscle} · ${formatHours(recovery.slowest.avgHours)}` : "Learning"}
+              color="#fb7185"
+            />
+            <Mini
+              label="Fastest to Heal"
+              value={recovery.fastest ? `${MUSCLE_LABELS[recovery.fastest.muscle] || recovery.fastest.muscle} · ${formatHours(recovery.fastest.avgHours)}` : "Learning"}
+              color="#4ade80"
+            />
+          </div>
+          {recovery.entries.length > 0 && (
+            <div style={{display:"grid",gap:6,marginTop:10}}>
+              {recovery.entries.slice(0,6).map(item => (
+                <div key={item.muscle} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 12px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:8,fontSize:12,color:"#ccc"}}>
+                  <span>{MUSCLE_LABELS[item.muscle] || item.muscle}</span>
+                  <span style={{color:"#888"}}>{formatHours(item.avgHours)} avg · {item.samples} log{item.samples===1?"":"s"}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
+      )}
+
+      <Section title="Mark Soreness" sub="tap how each muscle feels right now — the coach learns from this">
+        <div style={{display:"grid",gap:6}}>
+          {status.rows.map(row => (
+            <SoreRow
+              key={row.muscle}
+              muscle={row.muscle}
+              label={row.label}
+              current={currentSoreness[row.muscle] || null}
+              onSelect={(level) => logSoreness(row.muscle, level)}
+            />
+          ))}
+        </div>
+      </Section>
+
       <Section title="Muscle Groups" sub="fatigue is estimated from recent logged work and time since last hit">
         <div style={{display:"grid",gap:8}}>
           {status.rows.map(row=><MuscleRow key={row.muscle} row={row} avg={status.avg}/>)}
@@ -53,6 +115,46 @@ export default function MuscleMapView({ history, accent }) {
           The simplified body map is maintained in-app. Anatomy proportions are checked against the Wikimedia/OpenStax reference credited in CREDITS.md.
         </div>
       </Section>
+    </div>
+  );
+}
+
+function formatHours(hours) {
+  if (!hours && hours !== 0) return "—";
+  if (hours < 1) return `${Math.round(hours * 60)}m`;
+  if (hours < 48) return `${Math.round(hours)}h`;
+  return `${Math.round(hours / 24 * 10) / 10}d`;
+}
+
+function SoreRow({ muscle, label, current, onSelect }) {
+  return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"8px 10px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:8}}>
+      <div style={{fontSize:13,color:"#ddd",minWidth:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{label}</div>
+      <div style={{display:"flex",gap:4,flexShrink:0}}>
+        {SORE_LEVELS.map(opt => {
+          const active = current === opt.key;
+          return (
+            <button
+              key={opt.key}
+              onClick={()=>onSelect(opt.key)}
+              style={{
+                padding:"6px 9px",
+                borderRadius:6,
+                fontSize:11,
+                fontWeight:active?700:500,
+                letterSpacing:".05em",
+                textTransform:"uppercase",
+                border:`1px solid ${active?opt.color:"#2a2a2a"}`,
+                background:active?`${opt.color}22`:"#101010",
+                color:active?opt.color:"#888",
+                cursor:"pointer",
+              }}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
