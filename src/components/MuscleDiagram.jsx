@@ -219,7 +219,7 @@ function ClickableBodyPanel({ view, selectedMuscle, onSelect, accent, label }) {
 
   return (
     <div style={{ minWidth: 0, display: "grid", gap: 4, justifyItems: "center" }}>
-      <div ref={containerRef} style={{ width: "100%", height: 180 }} />
+      <div ref={containerRef} style={{ width: "100%", height: 240 }} />
       <span style={{ fontSize: 10, letterSpacing: 0, textTransform: "uppercase", color: "#64748b", fontWeight: 800 }}>{label}</span>
     </div>
   );

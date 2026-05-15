@@ -338,7 +338,7 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
       </Section>
 
       {suggestions.length > 0 && (
-        <CoachEditsSection suggestions={suggestions} save={save} routine={routine} />
+        <CoachEditsSection suggestions={suggestions} save={save} routine={routine} accent={accent} />
       )}
     </div>
   );
@@ -394,10 +394,48 @@ function ProfileInput({ label, value, onChange }) {
   );
 }
 
-function CoachEditsSection({ suggestions, save, routine }) {
+function CoachEditsSection({ suggestions, save, routine, accent }) {
   const [open, setOpen] = useState(false);
+  const [applied, setApplied] = useState(false);
+
+  const actionable = suggestions.filter(s => s.actionId && s.actionType);
+  const highPriority = suggestions.filter(s => s.priority >= 3);
+
+  const applyAll = () => {
+    let ids = [...routine.exerciseIds];
+    for (const s of actionable) {
+      if (s.actionType === "add") {
+        if (!ids.includes(s.actionId)) ids.push(s.actionId);
+      } else if (s.actionType === "swap" && s.swapFromId) {
+        ids = ids.map(id => id === s.swapFromId ? s.actionId : id);
+      }
+    }
+    save({ exerciseIds: [...new Set(ids)] });
+    setApplied(true);
+    setTimeout(() => setApplied(false), 2500);
+  };
+
   return (
     <div style={{padding:"20px 16px 6px"}}>
+      {/* Bulk fix banner — shows when there are high-priority actionable suggestions */}
+      {actionable.length > 0 && (
+        <div style={{marginBottom:10,padding:"13px 14px",background:"#fb923c12",border:"1px solid #fb923c55",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:12,color:"#fb923c",fontWeight:900,letterSpacing:".1em",textTransform:"uppercase"}}>
+              {applied ? "✓ Applied!" : `Coach found ${actionable.length} fix${actionable.length===1?"":"es"}`}
+            </div>
+            <div style={{fontSize:11,color:"#888",marginTop:3}}>
+              {applied ? "Routine updated." : highPriority.length > 0 ? `${highPriority.length} high-priority · gaps, swaps, risks` : "Balance and coverage improvements available"}
+            </div>
+          </div>
+          <button onClick={applyAll} disabled={applied}
+            style={{flexShrink:0,padding:"9px 14px",background:applied?"#4ade8022":"#fb923c",border:"none",borderRadius:8,color:applied?"#4ade80":"#1a0a00",fontSize:12,fontWeight:900,letterSpacing:".06em",cursor:applied?"default":"pointer"}}>
+            {applied ? "DONE ✓" : "LET COACH FIX THIS"}
+          </button>
+        </div>
+      )}
+
+      {/* Collapsible detail list */}
       <button onClick={() => setOpen(v => !v)}
         style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10,cursor:"pointer",textAlign:"left",marginBottom:open?8:0}}>
         <span style={{fontSize:13,color:"#ddd",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700}}>Coach Edits ({suggestions.length})</span>
