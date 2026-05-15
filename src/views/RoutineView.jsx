@@ -18,6 +18,7 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
   const [showRisky, setShowRisky] = useState(false);
   const [renamingId, setRenamingId] = useState(null);
   const [benchmarkOpen, setBenchmarkOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(true);
   const selected = useMemo(() => customRoutineWorkout(routine).exercises, [routine]);
   const coverage = routineCoverage(selected);
   const balance = routineBalanceScore(selected);
@@ -109,50 +110,30 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
         <div style={{fontSize:13,color:"#999",marginTop:7,letterSpacing:".1em",textTransform:"uppercase"}}>build balanced workouts</div>
       </div>
 
-      {suggestions.length > 0 && (
-        <Section title="Coach Edits">
-          <div style={{display:"grid",gap:8}}>
-            {suggestions.map((item, index) => {
-              const isHigh = item.priority >= 3;
-              const borderCol = isHigh ? "#fb718566" : item.type === "risk" ? "#fbbf2455" : "#1f1f1f";
-              const titleCol  = isHigh ? "#fb7185"   : item.type === "risk" ? "#fbbf24"   : "#eee";
-              return (
-                <div key={`${item.type}_${index}`} style={{padding:"11px 12px",background:"#0d0d0d",border:`1px solid ${borderCol}`,borderRadius:9}}>
-                  <div style={{fontSize:13,color:titleCol,fontWeight:900}}>{item.title}</div>
-                  <div style={{fontSize:12,color:"#888",lineHeight:1.4,marginTop:4}}>{item.detail}</div>
-                  {item.actionId && item.actionLabel && (
-                    <button onClick={()=>{
-                      if (item.actionType === "add") {
-                        save({ exerciseIds:[...new Set([...routine.exerciseIds, item.actionId])] });
-                      } else if (item.actionType === "swap" && item.swapFromId) {
-                        const next = routine.exerciseIds.map(id => id === item.swapFromId ? item.actionId : id);
-                        save({ exerciseIds:[...new Set(next)] });
-                      }
-                    }} style={{marginTop:8,padding:"7px 12px",border:`1px solid ${titleCol}66`,borderRadius:7,background:"transparent",color:titleCol,fontSize:11,fontWeight:900,letterSpacing:".06em"}}>
-                      {item.actionLabel}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+      <div style={{padding:"20px 16px 6px"}}>
+        <button onClick={() => setTemplatesOpen(v => !v)}
+          style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10,cursor:"pointer",textAlign:"left",marginBottom:templatesOpen?8:0}}>
+          <div>
+            <span style={{fontSize:13,color:"#ddd",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700}}>Templates</span>
+            {!templatesOpen && routine.activeRoutineId && (() => { const t = ROUTINE_TEMPLATES.find(t => t.id === routine.activeRoutineId); return t ? <span style={{fontSize:11,color:"#888",marginLeft:10}}>{t.name}</span> : null; })()}
           </div>
-        </Section>
-      )}
-
-      <Section title="Templates">
-        <div style={{display:"grid",gap:8}}>
-          {ROUTINE_TEMPLATES.map(template => (
-            <button key={template.id} onClick={()=>applyTemplate(template)}
-              style={{textAlign:"left",padding:"12px 13px",background:routine.activeRoutineId===template.id?`${accent}18`:"#0d0d0d",border:`1px solid ${routine.activeRoutineId===template.id?accent:"#1f1f1f"}`,borderRadius:10,color:"#eee"}}>
-              <div style={{display:"flex",justifyContent:"space-between",gap:10}}>
-                <span style={{fontSize:14,fontWeight:900,color:routine.activeRoutineId===template.id?accent:"#eee"}}>{template.name}</span>
-                <span style={{fontSize:11,color:"#888",textTransform:"uppercase"}}>{template.difficulty}</span>
-              </div>
-              <div style={{fontSize:12,color:"#888",marginTop:5}}>{template.exerciseIds.length} movements · balanced full body</div>
-            </button>
-          ))}
-        </div>
-      </Section>
+          <span style={{fontSize:12,color:"#888"}}>{templatesOpen ? "▲" : "▼"}</span>
+        </button>
+        {templatesOpen && (
+          <div style={{display:"grid",gap:8}}>
+            {ROUTINE_TEMPLATES.map(template => (
+              <button key={template.id} onClick={()=>{ applyTemplate(template); setTemplatesOpen(false); }}
+                style={{textAlign:"left",padding:"12px 13px",background:routine.activeRoutineId===template.id?`${accent}18`:"#0d0d0d",border:`1px solid ${routine.activeRoutineId===template.id?accent:"#1f1f1f"}`,borderRadius:10,color:"#eee",cursor:"pointer"}}>
+                <div style={{display:"flex",justifyContent:"space-between",gap:10}}>
+                  <span style={{fontSize:14,fontWeight:900,color:routine.activeRoutineId===template.id?accent:"#eee"}}>{template.name}</span>
+                  <span style={{fontSize:11,color:"#888",textTransform:"uppercase"}}>{template.difficulty}</span>
+                </div>
+                <div style={{fontSize:12,color:"#888",marginTop:5}}>{template.exerciseIds.length} movements · balanced full body</div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {routine.routines?.length > 0 && (
         <Section title="Saved Routines">
@@ -333,6 +314,10 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
           </div>
         )}
       </Section>
+
+      {suggestions.length > 0 && (
+        <CoachEditsSection suggestions={suggestions} save={save} routine={routine} />
+      )}
     </div>
   );
 }
@@ -384,6 +369,46 @@ function ProfileInput({ label, value, onChange }) {
       <input value={value} onChange={e=>onChange(e.target.value)} inputMode="numeric" type="number" min="0"
         style={{minWidth:0,background:"#101010",border:"1px solid #292929",borderRadius:8,color:"#f0f0f0",padding:"10px 8px",fontSize:14,fontWeight:800,outline:"none"}} />
     </label>
+  );
+}
+
+function CoachEditsSection({ suggestions, save, routine }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{padding:"20px 16px 6px"}}>
+      <button onClick={() => setOpen(v => !v)}
+        style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10,cursor:"pointer",textAlign:"left",marginBottom:open?8:0}}>
+        <span style={{fontSize:13,color:"#ddd",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700}}>Coach Edits ({suggestions.length})</span>
+        <span style={{fontSize:12,color:"#888"}}>{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div style={{display:"grid",gap:8}}>
+          {suggestions.map((item, index) => {
+            const isHigh = item.priority >= 3;
+            const borderCol = isHigh ? "#fb718566" : item.type === "risk" ? "#fbbf2455" : "#1f1f1f";
+            const titleCol  = isHigh ? "#fb7185"   : item.type === "risk" ? "#fbbf24"   : "#eee";
+            return (
+              <div key={`${item.type}_${index}`} style={{padding:"11px 12px",background:"#0d0d0d",border:`1px solid ${borderCol}`,borderRadius:9}}>
+                <div style={{fontSize:13,color:titleCol,fontWeight:900}}>{item.title}</div>
+                <div style={{fontSize:12,color:"#888",lineHeight:1.4,marginTop:4}}>{item.detail}</div>
+                {item.actionId && item.actionLabel && (
+                  <button onClick={()=>{
+                    if (item.actionType === "add") {
+                      save({ exerciseIds:[...new Set([...routine.exerciseIds, item.actionId])] });
+                    } else if (item.actionType === "swap" && item.swapFromId) {
+                      const next = routine.exerciseIds.map(id => id === item.swapFromId ? item.actionId : id);
+                      save({ exerciseIds:[...new Set(next)] });
+                    }
+                  }} style={{marginTop:8,padding:"7px 12px",border:`1px solid ${titleCol}66`,borderRadius:7,background:"transparent",color:titleCol,fontSize:11,fontWeight:900,letterSpacing:".06em"}}>
+                    {item.actionLabel}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

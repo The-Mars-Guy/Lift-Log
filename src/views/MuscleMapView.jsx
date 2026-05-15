@@ -151,7 +151,7 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
         </Section>
       )}
 
-      <Section title="Mark Soreness" sub="tap how each muscle feels right now — the coach learns from this">
+      <CollapsibleSection title="Mark Soreness" sub="tap to log how each muscle feels — the coach learns from this">
         <div style={{display:"grid",gap:6}}>
           {status.rows.map(row => (
             <SoreRow
@@ -163,7 +163,7 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
             />
           ))}
         </div>
-      </Section>
+      </CollapsibleSection>
 
       <Section title="Muscle Groups" sub="fatigue is estimated from recent logged work and time since last hit">
         <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5,marginBottom:10}}>
@@ -205,34 +205,31 @@ function formatHours(hours) {
 }
 
 function SoreRow({ muscle, label, current, onSelect }) {
+  const activeLevel = SORE_LEVELS.find(l => l.key === current);
   return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"8px 10px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:8}}>
       <div style={{fontSize:13,color:"#ddd",minWidth:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{label}</div>
-      <div style={{display:"flex",gap:4,flexShrink:0}}>
-        {SORE_LEVELS.map(opt => {
-          const active = current === opt.key;
-          return (
-            <button
-              key={opt.key}
-              onClick={()=>onSelect(opt.key)}
-              style={{
-                padding:"6px 9px",
-                borderRadius:6,
-                fontSize:11,
-                fontWeight:active?700:500,
-                letterSpacing:".05em",
-                textTransform:"uppercase",
-                border:`1px solid ${active?opt.color:"#2a2a2a"}`,
-                background:active?`${opt.color}22`:"#101010",
-                color:active?opt.color:"#888",
-                cursor:"pointer",
-              }}
-            >
-              {opt.label}
-            </button>
-          );
-        })}
-      </div>
+      <select
+        value={current || ""}
+        onChange={e => onSelect(e.target.value || null)}
+        style={{
+          background:"#101010",
+          border:`1px solid ${activeLevel ? activeLevel.color + "66" : "#2a2a2a"}`,
+          borderRadius:7,
+          color: activeLevel ? activeLevel.color : "#888",
+          padding:"6px 10px",
+          fontSize:12,
+          fontWeight:700,
+          outline:"none",
+          cursor:"pointer",
+          minWidth:90,
+        }}
+      >
+        <option value="" style={{color:"#888"}}>— none —</option>
+        {SORE_LEVELS.map(opt => (
+          <option key={opt.key} value={opt.key}>{opt.label}</option>
+        ))}
+      </select>
     </div>
   );
 }
@@ -394,6 +391,23 @@ function Mini({ label, value, color }) {
     <div style={{padding:"12px 13px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10}}>
       <div style={{fontSize:10,color:"#888",letterSpacing:".12em",textTransform:"uppercase",marginBottom:4}}>{label}</div>
       <div style={{fontSize:13,color,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{value}</div>
+    </div>
+  );
+}
+
+function CollapsibleSection({ title, sub, children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{padding:"24px 16px 8px"}}>
+      <button onClick={() => setOpen(v => !v)}
+        style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"transparent",border:"none",padding:0,cursor:"pointer",textAlign:"left",marginBottom:open?8:0}}>
+        <div>
+          <div style={{fontSize:13,color:"#ddd",letterSpacing:".14em",textTransform:"uppercase",fontWeight:500}}>{title}</div>
+          {sub && <div style={{fontSize:12,color:"#888",marginTop:3,letterSpacing:".04em"}}>{sub}</div>}
+        </div>
+        <span style={{fontSize:12,color:"#888",flexShrink:0,marginLeft:12}}>{open ? "▲" : "▼"}</span>
+      </button>
+      {open && <div style={{marginTop:14}}>{children}</div>}
     </div>
   );
 }
