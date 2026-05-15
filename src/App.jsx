@@ -282,11 +282,11 @@ export default function App() {
   const day  = todayName();
   const accent = WORKOUTS[DAYS.includes(day) ? SCHEDULE[day] : "A"].color;
   const level  = getLevel(normalized.xp);
-  const visualTheme = safeSettings.visualTheme || "pop_light";
+  const visualTheme = safeSettings.visualTheme || "dark";
   const lightMode = visualTheme === "pop_light";
   const appBackground = lightMode
     ? `radial-gradient(circle at 18% 0%, ${accent}30 0%, transparent 28%), linear-gradient(180deg,#f8fffb 0%,#eef7ff 52%,#ffffff 100%)`
-    : `radial-gradient(ellipse at top, ${accent}0d 0%, #050505 55%, #000 100%)`;
+    : `radial-gradient(ellipse at top, ${accent}08 0%, #050505 40%, #000 100%)`;
 
   // Onboarding gate
   if (!safeSettings.onboardingDone) {

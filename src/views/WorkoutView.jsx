@@ -24,42 +24,69 @@ const SET_FEELINGS = [
 
 function ReadinessCheckIn({ value, onSave, accent }) {
   const [draft, setDraft] = useState(value || DEFAULT_READINESS);
+  const [open, setOpen] = useState(false);
   const groups = [
     { key:"energy", label:"Energy", options:[["low","Low"],["okay","Okay"],["high","High"]] },
     { key:"soreness", label:"Body", options:[["none","Fresh"],["mild","Mild"],["sore","Sore"]] },
     { key:"time", label:"Time", options:[["short","Short"],["normal","Normal"],["full","Full"]] },
   ];
+  const ENERGY_ICON = { low:"🔋", okay:"⚡", high:"🚀" };
+  const BODY_ICON   = { none:"✅", mild:"🟡", sore:"🔴" };
+  const TIME_ICON   = { short:"⏱", normal:"🕐", full:"🏁" };
+  const summary = `${ENERGY_ICON[draft.energy]||""} ${draft.energy} · ${BODY_ICON[draft.soreness]||""} ${draft.soreness} · ${TIME_ICON[draft.time]||""} ${draft.time}`;
 
   return (
-    <div style={{margin:"0 16px 18px",padding:"16px 18px",background:"#0d0d0d",border:`1.5px solid ${accent}44`,borderRadius:14,boxShadow:`0 0 28px ${accent}12`}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:14}}>
-        <div>
-          <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:500}}>Coach Check-In</div>
-          <div style={{fontSize:14,color:"#ddd",marginTop:4,lineHeight:1.45}}>Tune today's plan before the first set.</div>
-        </div>
+    <div style={{margin:"0 16px 14px",background:"#0d0d0d",border:`1px solid ${accent}33`,borderRadius:12}}>
+      {/* Compact row */}
+      <div style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px"}}>
+        <button onClick={()=>setOpen(v=>!v)}
+          style={{flex:1,background:"transparent",border:"none",padding:0,textAlign:"left",cursor:"pointer"}}>
+          <div style={{fontSize:10,color:accent,letterSpacing:".12em",textTransform:"uppercase",fontWeight:700,marginBottom:3}}>Check-In</div>
+          <div style={{fontSize:12,color:"#aaa"}}>{summary} {open?"▲":"▼"}</div>
+        </button>
         <button onClick={()=>onSave(draft)}
-          style={{background:accent,border:"none",borderRadius:9,color:"#050505",padding:"10px 13px",fontSize:12,fontWeight:700,letterSpacing:".08em",flexShrink:0}}>
+          style={{flexShrink:0,background:accent,border:"none",borderRadius:8,color:"#050505",padding:"9px 16px",fontSize:12,fontWeight:700,letterSpacing:".08em"}}>
           START
         </button>
       </div>
-      <div style={{display:"grid",gap:10}}>
-        {groups.map(group=>(
-          <div key={group.key}>
-            <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:6}}>{group.label}</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
-              {group.options.map(([key,label])=>{
-                const active = draft[group.key] === key;
-                return (
-                  <button key={key} onClick={()=>setDraft(p=>({...p,[group.key]:key}))}
-                    style={{padding:"9px 6px",borderRadius:8,border:`1px solid ${active?accent:"#2a2a2a"}`,background:active?`${accent}22`:"#101010",color:active?accent:"#aaa",fontSize:12,fontWeight:active?700:400}}>
-                    {label}
-                  </button>
-                );
-              })}
+      {/* Expanded picker */}
+      {open && (
+        <div style={{padding:"0 14px 14px",display:"grid",gap:10,borderTop:"1px solid #1a1a1a",paddingTop:12}}>
+          {groups.map(group=>(
+            <div key={group.key}>
+              <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:6}}>{group.label}</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
+                {group.options.map(([key,label])=>{
+                  const active = draft[group.key] === key;
+                  return (
+                    <button key={key} onClick={()=>setDraft(p=>({...p,[group.key]:key}))}
+                      style={{padding:"9px 6px",borderRadius:8,border:`1px solid ${active?accent:"#2a2a2a"}`,background:active?`${accent}22`:"#101010",color:active?accent:"#aaa",fontSize:12,fontWeight:active?700:400}}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NoteField({ value, onChange }) {
+  const [open, setOpen] = useState(!!value);
+  return (
+    <div style={{marginTop:10}}>
+      {!open ? (
+        <button onClick={()=>setOpen(true)}
+          style={{background:"transparent",border:"none",padding:0,color:"#555",fontSize:12,letterSpacing:".06em",cursor:"pointer"}}>
+          + add session note
+        </button>
+      ) : (
+        <textarea value={value} onChange={e=>onChange(e.target.value)} placeholder="Sleep, joints, mood, anything worth remembering..." autoFocus
+          style={{width:"100%",minHeight:54,resize:"vertical",boxSizing:"border-box",padding:"11px 12px",background:"#0d0d0d",border:"1px solid #242424",borderRadius:10,color:"#ddd",fontFamily:"DM Mono, monospace",fontSize:13,lineHeight:1.45,outline:"none"}}/>
+      )}
     </div>
   );
 }
@@ -1086,39 +1113,24 @@ export default function WorkoutView({
       {xpVisible&&<XpFloat amount={xpAmount} onDone={()=>setXpVisible(false)}/>}
 
       {/* HEADER */}
-      <div style={{padding:"34px 16px 18px"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
-          <div>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:52,letterSpacing:".06em",lineHeight:.88,color:"#fafafa"}}>LIFT LOG</div>
-            <div style={{fontSize:13,color:"#999",marginTop:7,letterSpacing:".1em"}}>{level.badge} {level.name.toUpperCase()} · LV.{level.idx+1}</div>
+      <div style={{padding:"20px 16px 10px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{display:"flex",alignItems:"baseline",gap:10}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:32,letterSpacing:".06em",lineHeight:1,color:"#fafafa"}}>LIFT LOG</div>
+            <div style={{fontSize:11,color:"#888",letterSpacing:".08em"}}>{level.badge} {level.name} · LV.{level.idx+1}</div>
           </div>
           <div style={{textAlign:"right"}}>
             {sessionRunning?(<>
-              <div style={{fontSize:11,color:"#888",letterSpacing:".12em"}}>SESSION</div>
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:accent,marginTop:2,filter:`drop-shadow(0 0 8px ${accent}99)`}}>{fmtDuration(sessionElapsed)}</div>
-              <div style={{fontSize:11,color:"#888",marginTop:2}}>~{fmtDuration(estimatedRemaining)} left</div>
-            </>):streak>0?(<>
-              <div style={{fontSize:11,color:"#888",letterSpacing:".1em"}}>STREAK</div>
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#fb923c",marginTop:2,filter:"drop-shadow(0 0 8px #fb923c88)"}}>{streak} 🔥</div>
-            </>):null}
+              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:accent,filter:`drop-shadow(0 0 6px ${accent}99)`}}>{fmtDuration(sessionElapsed)}</div>
+              <div style={{fontSize:10,color:"#888"}}>~{fmtDuration(estimatedRemaining)} left</div>
+            </>):streak>0?(
+              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#fb923c",filter:"drop-shadow(0 0 6px #fb923c88)"}}>{streak} 🔥</div>
+            ):null}
           </div>
         </div>
-
-        {/* XP bar */}
-        <div style={{marginBottom:14}}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-            <span style={{fontSize:12,color:level.color,fontWeight:500}}>{level.badge} {level.name}</span>
-            <span style={{fontSize:12,color:"#888"}}>{level.next?`${xp} / ${level.next.min} XP`:"MAX LEVEL"}</span>
-          </div>
-          <div style={{height:7,background:"#1a1a1a",borderRadius:4,overflow:"hidden"}}>
-            <div style={{height:"100%",width:`${level.pct*100}%`,background:`linear-gradient(90deg,${level.color}aa,${level.color})`,transition:"width .5s ease",boxShadow:`0 0 10px ${level.color}88`}}/>
-          </div>
-        </div>
-
-        <div style={{display:"flex",gap:8}}>
-          <StatCard label="Sessions" value={history.length}/>
-          <StatCard label="Workout" value={workout.label.split(" ")[1]} accent={accent}/>
-          <StatCard label="Today" value={DAYS.includes(todayName())?todayName().slice(0,3).toUpperCase():"REST"}/>
+        {/* Slim XP bar — no labels */}
+        <div style={{marginTop:8,height:3,background:"#1a1a1a",borderRadius:2,overflow:"hidden"}}>
+          <div style={{height:"100%",width:`${level.pct*100}%`,background:`linear-gradient(90deg,${level.color}88,${level.color})`,transition:"width .5s ease"}}/>
         </div>
       </div>
 
@@ -1156,29 +1168,13 @@ export default function WorkoutView({
           </div>
           {doneSets===0&&!isCompleted&&<ProgressionPreview items={progressionPreview} accent={accent}/>}
           {!isCompleted&&(
-            <div style={{marginTop:12}}>
-              <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:6}}>Session Note</div>
-              <textarea value={workoutNote} onChange={e=>setWorkoutNote(e.target.value)} placeholder="Sleep, joints, mood, anything worth remembering..."
-                style={{width:"100%",minHeight:54,resize:"vertical",boxSizing:"border-box",padding:"11px 12px",background:"#0d0d0d",border:"1px solid #242424",borderRadius:10,color:"#ddd",fontFamily:"DM Mono, monospace",fontSize:13,lineHeight:1.45,outline:"none"}}/>
-            </div>
+            <NoteField value={workoutNote} onChange={setWorkoutNote} />
           )}
           {!isCompleted&&(
             <button onClick={()=>setFocusMode(true)}
-              style={{width:"100%",marginTop:14,padding:"18px",background:accent,border:"none",borderRadius:13,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:25,letterSpacing:".12em",boxShadow:`0 0 36px ${accent}55`}}>
+              style={{width:"100%",marginTop:12,padding:"18px",background:accent,border:"none",borderRadius:13,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:25,letterSpacing:".12em",boxShadow:`0 0 36px ${accent}55`}}>
               START WORKOUT
             </button>
-          )}
-          {!isCompleted&&doneSets===0&&(
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:10}}>
-              <div style={{padding:"10px 11px",background:"#0d0d0d",border:"1px solid #242424",borderRadius:9}}>
-                <div style={{fontSize:10,color:accent,letterSpacing:".12em",textTransform:"uppercase",fontWeight:800}}>Warmup</div>
-                <div style={{fontSize:12,color:"#aaa",lineHeight:1.4,marginTop:4}}>2 easy minutes, then one light set before working sets.</div>
-              </div>
-              <div style={{padding:"10px 11px",background:"#0d0d0d",border:"1px solid #242424",borderRadius:9}}>
-                <div style={{fontSize:10,color:accent,letterSpacing:".12em",textTransform:"uppercase",fontWeight:800}}>Cooldown</div>
-                <div style={{fontSize:12,color:"#aaa",lineHeight:1.4,marginTop:4}}>Slow breathing and gentle mobility after final set.</div>
-              </div>
-            </div>
           )}
         </div>
       </div>
