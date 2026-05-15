@@ -10,3 +10,4 @@ pnpm-debug.log*
 Thumbs.db
 .claude/*.local.json
 .claude/launch.json
+scripts/exercises_raw.json
