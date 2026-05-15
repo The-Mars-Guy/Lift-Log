@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { BodyChart, ViewSide, filterMuscles } from "body-muscles";
 
 const MUSCLE_REGION_IDS = {
@@ -131,6 +131,113 @@ function BodyChartPanel({ view, bodyState, label, levelColors }) {
     <div style={{minWidth:0,display:"grid",gap:6,justifyItems:"center"}}>
       <div ref={containerRef} style={{width:"100%",height:330}} />
       <span style={{fontSize:11,letterSpacing:0,textTransform:"uppercase",color:"#64748b",fontWeight:800}}>{label}</span>
+    </div>
+  );
+}
+
+function ClickableBodyPanel({ view, selectedMuscle, onSelect, accent, label }) {
+  const containerRef = useRef(null);
+  const chartRef = useRef(null);
+  const svgRef = useRef(null);
+
+  // Build a neutral bodyState (no activation)
+  const bodyState = useMemo(() => {
+    const state = {};
+    Object.values(MUSCLE_REGION_IDS).flat().forEach(id => {
+      state[id] = { intensity: 0, selected: false };
+    });
+    return state;
+  }, []);
+
+  // Highlight selected muscle group
+  const applyHighlight = useCallback((svgEl, selected, accentColor) => {
+    if (!svgEl) return;
+    const paths = svgEl.querySelectorAll("path.body-chart-muscle");
+    const muscles = filterMuscles(view);
+    paths.forEach((path, i) => {
+      const muscle = muscles[i];
+      if (!muscle) return;
+      const group = MUSCLE_ID_TO_GROUP[muscle.id];
+      if (selected && group === selected) {
+        path.style.fill = accentColor;
+        path.style.fillOpacity = "0.85";
+      } else if (group) {
+        path.style.fill = "#374151";
+        path.style.fillOpacity = "0.7";
+      } else {
+        path.style.fill = "";
+        path.style.fillOpacity = "";
+      }
+    });
+  }, [view]);
+
+  useEffect(() => {
+    if (!containerRef.current) return undefined;
+    chartRef.current = new BodyChart(containerRef.current, {
+      view,
+      bodyState,
+      ariaLabel: `${label} muscle picker`,
+      enableTransitions: false,
+    });
+    svgRef.current = containerRef.current.querySelector("svg.body-chart-svg");
+
+    // Add click handlers
+    const svgEl = svgRef.current;
+    if (svgEl) {
+      const handler = (e) => {
+        const path = e.target.closest("path.body-chart-muscle");
+        if (!path) return;
+        const paths = svgEl.querySelectorAll("path.body-chart-muscle");
+        const muscles = filterMuscles(view);
+        const idx = Array.from(paths).indexOf(path);
+        const muscle = muscles[idx];
+        if (!muscle) return;
+        const group = MUSCLE_ID_TO_GROUP[muscle.id];
+        if (!group) return;
+        onSelect(group);
+      };
+      svgEl.addEventListener("click", handler);
+      svgEl.style.cursor = "pointer";
+      return () => {
+        svgEl.removeEventListener("click", handler);
+        chartRef.current?.destroy();
+        chartRef.current = null;
+        svgRef.current = null;
+      };
+    }
+
+    return () => {
+      chartRef.current?.destroy();
+      chartRef.current = null;
+      svgRef.current = null;
+    };
+  }, [view, label]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    applyHighlight(svgRef.current, selectedMuscle, accent);
+  }, [selectedMuscle, accent, applyHighlight]);
+
+  return (
+    <div style={{ minWidth: 0, display: "grid", gap: 4, justifyItems: "center" }}>
+      <div ref={containerRef} style={{ width: "100%", height: 180 }} />
+      <span style={{ fontSize: 10, letterSpacing: 0, textTransform: "uppercase", color: "#64748b", fontWeight: 800 }}>{label}</span>
+    </div>
+  );
+}
+
+export function MusclePickerDiagram({ selectedMuscle, onSelect, accent = "#4ade80" }) {
+  return (
+    <div style={{ width: "100%", maxWidth: 480, margin: "0 auto", borderRadius: 12, overflow: "hidden", background: "#0d0d0d", border: "1px solid #1f1f1f", padding: "10px 6px 6px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 4, alignItems: "end" }}>
+        <ClickableBodyPanel view={ViewSide.FRONT} selectedMuscle={selectedMuscle} onSelect={g => onSelect(g === selectedMuscle ? null : g)} accent={accent} label="Front" />
+        <ClickableBodyPanel view={ViewSide.BACK}  selectedMuscle={selectedMuscle} onSelect={g => onSelect(g === selectedMuscle ? null : g)} accent={accent} label="Back" />
+      </div>
+      {selectedMuscle && (
+        <button onClick={() => onSelect(null)}
+          style={{ display: "block", margin: "6px auto 0", padding: "5px 14px", background: "transparent", border: `1px solid ${accent}66`, borderRadius: 8, color: accent, fontSize: 11, fontWeight: 800, cursor: "pointer", letterSpacing: ".08em" }}>
+          CLEAR ✕
+        </button>
+      )}
     </div>
   );
 }

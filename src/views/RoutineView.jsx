@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { MusclePickerDiagram } from "../components/MuscleDiagram.jsx";
 import { BENCHMARK_TESTS_V2, EXERCISE_LIBRARY, MUSCLE_COVERAGE_GROUPS, MUSCLE_LABELS, ROUTINE_TEMPLATES, customRoutineWorkout, exerciseId, exerciseIsRisky, exerciseRiskJoints, getDefaultWeight, getExerciseMovement, isUnilateral, normalizeCustomRoutine, normalizeUserProfile, routineBalanceScore, routineCoverage } from "../data.js";
 import { routineEditSuggestions } from "../coach.js";
 
@@ -19,6 +20,8 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
   const [renamingId, setRenamingId] = useState(null);
   const [benchmarkOpen, setBenchmarkOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(true);
+  const [muscleFilter, setMuscleFilter] = useState(null);
+  const [musclePickerOpen, setMusclePickerOpen] = useState(false);
   const selected = useMemo(() => customRoutineWorkout(routine).exercises, [routine]);
   const coverage = routineCoverage(selected);
   const balance = routineBalanceScore(selected);
@@ -33,14 +36,16 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
     [showRisky, profile.limitations, routine.avoidedExerciseIds]
   );
   const visible = EXERCISE_LIBRARY.filter(ex => {
-    const inCategory = category === "all" || MUSCLE_COVERAGE_GROUPS.find(([key]) => key === category)?.[2].some(m => [...(ex.primary || []), ...(ex.secondary || [])].includes(m));
+    const muscles = [...(ex.primary || []), ...(ex.secondary || [])];
+    const inMuscle = !muscleFilter || muscles.includes(muscleFilter);
+    const inCategory = muscleFilter ? true : category === "all" || MUSCLE_COVERAGE_GROUPS.find(([key]) => key === category)?.[2].some(m => muscles.includes(m));
     const inDifficulty = difficulty === "intermediate" || ex.difficulty === "beginner" || difficulty === ex.difficulty;
     const inEquipment = equipment === "all" || ex.equipment === equipment;
     const mv = getExerciseMovement(ex.name) || "";
     const inSearch = !query.trim() || `${ex.name} ${ex.tip} ${ex.equipment} ${ex.primary?.join(" ")} ${mv}`.toLowerCase().includes(query.trim().toLowerCase());
     const notAvoided = !routine.avoidedExerciseIds?.includes(ex.id);
     const notRisky = showRisky || !exerciseIsRisky(ex.name, profile.limitations);
-    return inCategory && inDifficulty && inEquipment && inSearch && notAvoided && notRisky;
+    return inMuscle && inCategory && inDifficulty && inEquipment && inSearch && notAvoided && notRisky;
   });
 
   const save = (patch) => setCustomRoutine(prev => normalizeCustomRoutine({ ...prev, ...patch }));
@@ -241,6 +246,23 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
               const ex = EXERCISE_LIBRARY.find(item => item.id === id);
               return ex ? <button key={id} onClick={()=>toggle(ex.id)} style={{flexShrink:0,padding:"8px 10px",border:`1px solid ${accent}66`,borderRadius:8,background:"#101010",color:accent,fontSize:11,fontWeight:800}}>{ex.name}</button> : null;
             })}
+          </div>
+        )}
+        {/* Muscle map filter */}
+        <button onClick={() => setMusclePickerOpen(v => !v)}
+          style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 13px",marginBottom:8,background:muscleFilter?"#fb923c18":"#0d0d0d",border:`1px solid ${muscleFilter?"#fb923c66":"#1f1f1f"}`,borderRadius:10,cursor:"pointer",textAlign:"left"}}>
+          <span style={{fontSize:12,color:muscleFilter?"#fb923c":"#aaa",fontWeight:800,letterSpacing:".1em",textTransform:"uppercase"}}>
+            {muscleFilter ? `Muscle: ${muscleFilter}` : "Filter by Muscle"}
+          </span>
+          <span style={{fontSize:12,color:"#888"}}>{musclePickerOpen ? "▲" : "▼"}</span>
+        </button>
+        {musclePickerOpen && (
+          <div style={{marginBottom:10}}>
+            <MusclePickerDiagram
+              selectedMuscle={muscleFilter}
+              onSelect={m => { setMuscleFilter(m); }}
+              accent={accent}
+            />
           </div>
         )}
         <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search exercises, muscles, equipment"
