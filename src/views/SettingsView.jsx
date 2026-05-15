@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { DEFAULT_SETTINGS } from "../data.js";
+import { DEFAULT_SETTINGS, LIMITATION_OPTIONS, ageTier, normalizeUserProfile, profileFitnessEstimate, profileRisk } from "../data.js";
 import { EQUIPMENT_PROFILES, JOINT_AREAS, TRAINING_GOALS } from "../coach.js";
 
 const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -54,24 +54,111 @@ export default function SettingsView({
 
       {/* ── PROFILE ─────────────────────────────────────────────────── */}
       <Accordion title="Profile" ui={ui}>
+        {/* Basic stats */}
         <div style={{ background: ui.card, borderRadius: 10, border: `1px solid ${ui.border}`, padding: "14px 16px", display: "grid", gap: 12, boxShadow: ui.shadow }}>
+          <div style={{ fontSize: 11, color: ui.muted, letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700 }}>Basic Info</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
             <ProfileField label="Age"       value={profile.age || ""}      onChange={v => updateProfile("age", v)}      placeholder="34" ui={ui} />
             <ProfileField label="Height ft" value={profile.heightIn ? String(Math.floor(Number(profile.heightIn) / 12)) : ""} onChange={v => updateProfile("heightIn", String((Number(v) || 0) * 12 + (Number(profile.heightIn) % 12 || 0)))} placeholder="5" ui={ui} />
             <ProfileField label="Height in" value={profile.heightIn ? String(Number(profile.heightIn) % 12) : ""} onChange={v => updateProfile("heightIn", String(Math.floor((Number(profile.heightIn) || 0) / 12) * 12 + (Number(v) || 0)))} placeholder="8" ui={ui} />
           </div>
           <ProfileField label="Weight (lb)" value={profile.weightLb || ""} onChange={v => updateProfile("weightLb", v)} placeholder="185" ui={ui} />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
-            {[["male","Male"],["female","Female"],["","Other"]].map(([k,l]) => (
-              <button key={l} onClick={() => updateProfile("sex", k)}
-                style={{ padding: "10px 6px", borderRadius: 8, border: `1px solid ${profile.sex === k ? accent : ui.border}`, background: profile.sex === k ? `${accent}22` : ui.control, color: profile.sex === k ? accent : ui.soft, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
-                {l}
-              </button>
-            ))}
+          <div>
+            <div style={{ fontSize: 11, color: ui.muted, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 8 }}>Sex</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+              {[["male","Male"],["female","Female"],["","Other"]].map(([k,l]) => (
+                <button key={l} onClick={() => updateProfile("sex", k)}
+                  style={{ padding: "10px 6px", borderRadius: 8, border: `1px solid ${profile.sex === k ? accent : ui.border}`, background: profile.sex === k ? `${accent}22` : ui.control, color: profile.sex === k ? accent : ui.soft, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                  {l}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
+
+        {/* Training background */}
+        <div style={{ background: ui.card, borderRadius: 10, border: `1px solid ${ui.border}`, padding: "14px 16px", display: "grid", gap: 14, boxShadow: ui.shadow }}>
+          <div style={{ fontSize: 11, color: ui.muted, letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700 }}>Training Background</div>
+          <div>
+            <div style={{ fontSize: 11, color: ui.muted, marginBottom: 8 }}>Experience level</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+              {[["new","New to lifting"],["returning","Returning"],["trained","Trained (1+ yr)"]].map(([k,l]) => (
+                <button key={k} onClick={() => updateProfile("trainingExperience", k)}
+                  style={{ padding: "10px 6px", borderRadius: 8, border: `1px solid ${profile.trainingExperience === k ? accent : ui.border}`, background: profile.trainingExperience === k ? `${accent}22` : ui.control, color: profile.trainingExperience === k ? accent : ui.soft, fontSize: 11, fontWeight: 800, cursor: "pointer", lineHeight: 1.3 }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: ui.muted, marginBottom: 8 }}>Mobility</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {[["normal","Normal — full range"],["limited","Limited — joint restrictions"]].map(([k,l]) => (
+                <button key={k} onClick={() => updateProfile("mobility", k)}
+                  style={{ padding: "10px 8px", borderRadius: 8, border: `1px solid ${profile.mobility === k ? accent : ui.border}`, background: profile.mobility === k ? `${accent}22` : ui.control, color: profile.mobility === k ? accent : ui.soft, fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: ui.muted, marginBottom: 8 }}>Joint concerns (select all that apply)</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {LIMITATION_OPTIONS.map(([k, l]) => {
+                const active = (profile.limitations || []).includes(k);
+                return (
+                  <button key={k} onClick={() => {
+                    const cur = profile.limitations || [];
+                    updateProfile("limitations", active ? cur.filter(x => x !== k) : [...cur, k]);
+                  }} style={{ padding: "8px 14px", borderRadius: 20, border: `1px solid ${active ? "#fb7185" : ui.border}`, background: active ? "#fb718522" : ui.control, color: active ? "#fb7185" : ui.soft, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                    {l}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* How the system sees you */}
+        {(() => {
+          const safe = normalizeUserProfile(profile);
+          const est  = profileFitnessEstimate(safe);
+          const risk = profileRisk(safe);
+          const tier = ageTier(safe);
+          const hasData = safe.age && safe.weightLb && safe.heightIn;
+          const RISK_COLOR = { standard: "#4ade80", steady: "#fbbf24", protect: "#fb7185" };
+          const RISK_LABEL = { standard: "Standard", steady: "Steady", protect: "Cautious" };
+          const EXP_LABEL  = { new: "New lifter", returning: "Returning", trained: "Trained" };
+          return (
+            <div style={{ background: ui.card, borderRadius: 10, border: `1px solid ${accent}44`, padding: "14px 16px", boxShadow: ui.shadow }}>
+              <div style={{ fontSize: 11, color: accent, letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700, marginBottom: 12 }}>How the system sees you</div>
+              {!hasData ? (
+                <div style={{ fontSize: 13, color: ui.muted }}>Fill in age, height, and weight above to see your profile estimates.</div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  {[
+                    { label: "Lean Mass Est.", value: est.leanMassLb ? `${est.leanMassLb} lb` : "—", note: "Boer formula + experience adj." },
+                    { label: "BMR", value: est.bmr ? `${est.bmr.toLocaleString()} kcal` : "—", note: "Resting daily energy" },
+                    { label: "Risk Profile", value: RISK_LABEL[risk.level] || risk.level, color: RISK_COLOR[risk.level], note: `Score ${risk.score}/5 — affects exercise selection` },
+                    { label: "Age Tier", value: tier.label || tier.coachFocus, note: `Coach focus: ${tier.coachFocus?.replace("_"," ")}` },
+                    { label: "Experience", value: EXP_LABEL[safe.trainingExperience] || safe.trainingExperience, note: "Affects lean mass & progression speed" },
+                    { label: "Joint Concerns", value: (safe.limitations || []).length ? safe.limitations.join(", ") : "None", note: "Filters risky exercises from picker" },
+                  ].map(({ label, value, color, note }) => (
+                    <div key={label} style={{ background: ui.control, borderRadius: 8, padding: "10px 12px" }}>
+                      <div style={{ fontSize: 10, color: ui.muted, letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 4 }}>{label}</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: color || ui.text }}>{value}</div>
+                      <div style={{ fontSize: 10, color: ui.muted, marginTop: 3, lineHeight: 1.35 }}>{note}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Workout days */}
         <div style={{ background: ui.card, borderRadius: 10, border: `1px solid ${ui.border}`, padding: "14px 16px", boxShadow: ui.shadow }}>
-          <div style={{ fontSize: 13, color: ui.muted, marginBottom: 12 }}>Workout days</div>
+          <div style={{ fontSize: 11, color: ui.muted, letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700, marginBottom: 12 }}>Workout Days</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6 }}>
             {ALL_DAYS.map(d => {
               const active = workoutDays.includes(d);
