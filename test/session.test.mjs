@@ -143,10 +143,14 @@ test("custom routine schedule picks the planned day routine", () => {
 
 test("profile fitness estimate uses age sex height and weight", () => {
   const estimate = profileFitnessEstimate({ age:40, sex:"female", heightIn:64, weightLb:160 });
-  assert.equal(estimate.bmi, 27.5);
-  assert.equal(estimate.category, "moderate");
+  // BMI removed — now uses Boer formula for lean mass
   assert.equal(estimate.bmr > 1200, true);
   assert.equal(estimate.leanMassLb > 0, true);
+  // Boer female lean mass for 160lb/5'4" female: ~95lb
+  assert.equal(estimate.leanMassLb > 60 && estimate.leanMassLb < 150, true);
+  // No bmi or category fields
+  assert.equal(estimate.bmi, undefined);
+  assert.equal(estimate.category, undefined);
 });
 
 test("benchmark v2 includes non rep tests", () => {

@@ -298,9 +298,9 @@ export function CoachFab({ onClick, accent }) {
       onPointerMove={moveDrag}
       onPointerUp={endDrag}
       onPointerCancel={()=>{drag.current=null;}}
-      style={{position:"fixed",...position,zIndex:130,width:62,height:62,borderRadius:19,
-        border:`1.5px solid ${accent}88`,background:accent,color:"#050505",
-        boxShadow:`0 16px 42px ${accent}66`,fontWeight:900,letterSpacing:".04em",
+      style={{position:"fixed",...position,zIndex:130,width:59,height:59,borderRadius:18,
+        border:"1.5px solid #fb923c99",background:"#fb923c",color:"#1a0a00",
+        boxShadow:"0 16px 42px #fb923c55",fontWeight:900,letterSpacing:".04em",
         touchAction:"none",cursor:"grab"}}
     >
       AI

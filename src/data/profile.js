@@ -19,14 +19,30 @@ export function profileFitnessEstimate(profile = DEFAULT_USER_PROFILE) {
   const age = Number(safe.age) || 0;
   const heightIn = Number(safe.heightIn) || 0;
   const weightLb = Number(safe.weightLb) || 0;
-  const bmi = weightLb > 0 && heightIn > 0 ? Math.round((weightLb / (heightIn * heightIn)) * 703 * 10) / 10 : null;
   const kg = weightLb / 2.20462;
   const cm = heightIn * 2.54;
   const sexAdj = safe.sex === "female" ? -161 : safe.sex === "male" ? 5 : -78;
   const bmr = kg && cm && age ? Math.round((10 * kg) + (6.25 * cm) - (5 * age) + sexAdj) : null;
-  const leanMassLb = bmi && weightLb ? Math.round(weightLb * (bmi >= 30 ? 0.62 : bmi >= 25 ? 0.68 : 0.74)) : null;
-  const category = !bmi ? "unknown" : bmi < 18.5 ? "under" : bmi >= 30 ? "high" : bmi >= 25 ? "moderate" : "standard";
-  return { bmi, bmr, leanMassLb, category };
+
+  // Boer formula for lean body mass (more accurate than BMI-based estimate)
+  let leanMassKg = null;
+  if (kg > 0 && cm > 0) {
+    const maleLBM   = 0.407 * kg + 0.267 * cm - 19.2;
+    const femaleLBM = 0.252 * kg + 0.473 * cm - 48.3;
+    leanMassKg = safe.sex === "male"   ? maleLBM
+               : safe.sex === "female" ? femaleLBM
+               : (maleLBM + femaleLBM) / 2;
+  }
+  // Adjust for training experience: untrained carry less muscle, trained more
+  if (leanMassKg !== null) {
+    const expAdj = safe.trainingExperience === "trained" ? 1.08
+                 : safe.trainingExperience === "new"     ? 0.92
+                 : 1.0;
+    leanMassKg *= expAdj;
+    leanMassKg = Math.max(0, leanMassKg);
+  }
+  const leanMassLb = leanMassKg !== null ? Math.round(leanMassKg * 2.20462) : null;
+  return { bmr, leanMassLb };
 }
 
 export const LIMITATION_OPTIONS = [
@@ -110,18 +126,14 @@ export function exerciseIsRisky(exerciseName, limitations = []) {
 export function profileRisk(profile = DEFAULT_USER_PROFILE) {
   const safe = normalizeUserProfile(profile);
   const age = Number(safe.age) || 0;
-  const weight = Number(safe.weightLb) || 0;
-  const height = Number(safe.heightIn) || 0;
-  const bmi = weight > 0 && height > 0 ? Math.round((weight / (height * height)) * 703 * 10) / 10 : null;
   let score = 0;
   if (age >= 65) score += 2;
   else if (age >= 50) score += 1;
   if (safe.trainingExperience === "new") score += 1;
   if (safe.mobility === "limited") score += 1;
   if (safe.limitations?.length >= 2) score += 1;
-  if (bmi && (bmi >= 35 || bmi < 18.5)) score += 1;
   const level = score >= 3 ? "protect" : score >= 1 ? "steady" : "standard";
-  return { level, score, bmi };
+  return { level, score };
 }
 
 // Age tier — drives rest, progression speed, coach tone, mobility priority

@@ -11,6 +11,7 @@ import SettingsView from "./views/SettingsView.jsx";
 import RoutineView from "./views/RoutineView.jsx";
 import GoalsView from "./views/GoalsView.jsx";
 import { normalizeLiftLogData } from "./session.js";
+import OnboardingView from "./views/OnboardingView.jsx";
 
 export default function App() {
   const [activeView, setActiveView] = useState("workout");
@@ -287,6 +288,19 @@ export default function App() {
     ? `radial-gradient(circle at 18% 0%, ${accent}30 0%, transparent 28%), linear-gradient(180deg,#f8fffb 0%,#eef7ff 52%,#ffffff 100%)`
     : `radial-gradient(ellipse at top, ${accent}0d 0%, #050505 55%, #000 100%)`;
 
+  // Onboarding gate
+  if (!safeSettings.onboardingDone) {
+    return (
+      <OnboardingView
+        accent={accent}
+        onComplete={({ profile, workoutDays }) => {
+          setUserProfile(prev => ({ ...prev, ...profile }));
+          setSettings(prev => ({ ...prev, onboardingDone: true, workoutDays: workoutDays || prev.workoutDays }));
+        }}
+      />
+    );
+  }
+
   return (
     <div className={`theme-root theme-${visualTheme}`} style={{
       minHeight:"100vh",
@@ -346,6 +360,7 @@ export default function App() {
         )}
         {activeView === "settings" && (
           <SettingsView settings={safeSettings} setSettings={setSettings}
+            userProfile={safeUserProfile} setUserProfile={setUserProfile}
             resetAllData={resetAllData} exportData={exportData} importData={importData}
             repairSavedData={repairSavedData} clearWorkoutState={clearWorkoutState}
             refreshAppCache={refreshAppCache} exportLastBackup={exportLastBackup}

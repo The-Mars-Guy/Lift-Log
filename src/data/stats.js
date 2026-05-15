@@ -19,13 +19,14 @@ export const DEFAULT_SETTINGS = {
   autoDeload: true,
   showReadiness: true,
   fullscreenRest: true,
-  visualTheme: "pop_light",
+  visualTheme: "dark",
   scienceCoach: true,
   equipmentProfile: "fixed_dumbbells",
   trainingGoal: "hypertrophy",
   onboardingDone: false,
   cautiousJoints: [],
   beginnerFormMode: false,
+  workoutDays: ["Mon", "Wed", "Fri"],
 };
 
 // Default starting weights per exercise (lbs, per dumbbell)

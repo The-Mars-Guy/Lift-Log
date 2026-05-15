@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { BENCHMARK_TESTS_V2, DAYS, EXERCISE_LIBRARY, LIMITATION_OPTIONS, MUSCLE_COVERAGE_GROUPS, MUSCLE_LABELS, ROUTINE_TEMPLATES, ageTier, customRoutineWorkout, exerciseId, exerciseIsRisky, exerciseRiskJoints, getDefaultWeight, getExerciseMovement, isUnilateral, normalizeCustomRoutine, normalizeUserProfile, profileFitnessEstimate, profileRisk, routineBalanceScore, routineCoverage } from "../data.js";
+import { BENCHMARK_TESTS_V2, EXERCISE_LIBRARY, MUSCLE_COVERAGE_GROUPS, MUSCLE_LABELS, ROUTINE_TEMPLATES, customRoutineWorkout, exerciseId, exerciseIsRisky, exerciseRiskJoints, getDefaultWeight, getExerciseMovement, isUnilateral, normalizeCustomRoutine, normalizeUserProfile, routineBalanceScore, routineCoverage } from "../data.js";
 import { routineEditSuggestions } from "../coach.js";
 
 const DIFFICULTIES = [
@@ -11,23 +11,20 @@ const DIFFICULTIES = [
 export default function RoutineView({ customRoutine, setCustomRoutine, userProfile, setUserProfile, history = [], accent, setActiveView }) {
   const routine = normalizeCustomRoutine(customRoutine);
   const profile = normalizeUserProfile(userProfile);
-  const risk = profileRisk(profile);
   const [category, setCategory] = useState("all");
   const [query, setQuery] = useState("");
   const [equipment, setEquipment] = useState("all");
   const [difficulty, setDifficulty] = useState(routine.difficulty || "beginner");
   const [showRisky, setShowRisky] = useState(false);
   const [renamingId, setRenamingId] = useState(null);
+  const [benchmarkOpen, setBenchmarkOpen] = useState(false);
   const selected = useMemo(() => customRoutineWorkout(routine).exercises, [routine]);
   const coverage = routineCoverage(selected);
   const balance = routineBalanceScore(selected);
-  const estimate = profileFitnessEstimate(profile);
   const suggestions = useMemo(() => routineEditSuggestions({ routine, exercises:selected, history, userProfile:profile }), [routine, selected, history, profile]);
   const recentIds = useMemo(() => [...new Set(history.flatMap(h => h.exercises || []).slice(0, 18).map(ex => ex.id || ex.plannedId || exerciseId(ex.name)).filter(Boolean))], [history]);
   const complete = coverage.every(item => item.ok);
   const categories = [["all", "All"], ...MUSCLE_COVERAGE_GROUPS.map(([key, label]) => [key, label])];
-  const tier = useMemo(() => ageTier(profile), [profile]);
-  const hasMobility = useMemo(() => selected.some(ex => ex.category === "mobility" || ex.folder === "Mobility"), [selected]);
   const riskyHidden = useMemo(
     () => !showRisky && profile.limitations?.length > 0
       ? EXERCISE_LIBRARY.filter(ex => exerciseIsRisky(ex.name, profile.limitations) && !routine.avoidedExerciseIds?.includes(ex.id)).length
@@ -78,8 +75,6 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
     set.has(id) ? set.delete(id) : set.add(id);
     saveProfile({ limitations:[...set] });
   };
-  const assignDay = (day, id) => save({ schedule:{ ...routine.schedule, [day]:id } });
-
   const duplicateRoutine = (item) => {
     const newId = `routine_${Date.now()}`;
     const copy = { id:newId, name:`${item.name} (copy)`, exerciseIds:[...item.exerciseIds] };
@@ -113,95 +108,6 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:52,letterSpacing:".06em",lineHeight:.88,color:"#fafafa"}}>ROUTINE</div>
         <div style={{fontSize:13,color:"#999",marginTop:7,letterSpacing:".1em",textTransform:"uppercase"}}>build balanced workouts</div>
       </div>
-
-      <Section title="Body Profile">
-        <div style={{padding:"13px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10}}>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7}}>
-            <ProfileInput label="Age" value={profile.age} onChange={v=>saveProfile({age:v})} />
-            <ProfileInput label="Height In" value={profile.heightIn} onChange={v=>saveProfile({heightIn:v})} />
-            <ProfileInput label="Weight Lb" value={profile.weightLb} onChange={v=>saveProfile({weightLb:v})} />
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,marginTop:9}}>
-            {[["","Any"],["male","Male"],["female","Female"]].map(([key,label])=>(
-              <button key={label} onClick={()=>saveProfile({sex:key})}
-                style={{padding:"10px 6px",borderRadius:8,border:`1px solid ${profile.sex===key?accent:"#292929"}`,background:profile.sex===key?`${accent}22`:"#101010",color:profile.sex===key?accent:"#aaa",fontSize:11,fontWeight:800}}>
-                {label}
-              </button>
-            ))}
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6,marginTop:9}}>
-            {LIMITATION_OPTIONS.map(([key,label])=>(
-              <button key={key} onClick={()=>toggleLimitation(key)}
-                style={{padding:"9px 4px",borderRadius:8,border:`1px solid ${profile.limitations?.includes(key)?accent:"#292929"}`,background:profile.limitations?.includes(key)?`${accent}22`:"#101010",color:profile.limitations?.includes(key)?accent:"#aaa",fontSize:10,fontWeight:800}}>
-                {label}
-              </button>
-            ))}
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,marginTop:9}}>
-            {[["new","New"],["returning","Returning"],["trained","Trained"]].map(([key,label])=>(
-              <button key={key} onClick={()=>saveProfile({trainingExperience:key})}
-                style={{padding:"10px 6px",borderRadius:8,border:`1px solid ${profile.trainingExperience===key?accent:"#292929"}`,background:profile.trainingExperience===key?`${accent}22`:"#101010",color:profile.trainingExperience===key?accent:"#aaa",fontSize:11,fontWeight:800}}>
-                {label}
-              </button>
-            ))}
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,marginTop:9}}>
-            {[["general","General"],["strength","Strength"],["mobility","Mobility"]].map(([key,label])=>(
-              <button key={key} onClick={()=>saveProfile({goal:key})}
-                style={{padding:"10px 6px",borderRadius:8,border:`1px solid ${profile.goal===key?accent:"#292929"}`,background:profile.goal===key?`${accent}22`:"#101010",color:profile.goal===key?accent:"#aaa",fontSize:11,fontWeight:800}}>
-                {label}
-              </button>
-            ))}
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:7,marginTop:9}}>
-            {[["normal","Normal mobility"],["limited","Limited mobility"]].map(([key,label])=>(
-              <button key={key} onClick={()=>saveProfile({mobility:key})}
-                style={{padding:"10px 6px",borderRadius:8,border:`1px solid ${profile.mobility===key?accent:"#292929"}`,background:profile.mobility===key?`${accent}22`:"#101010",color:profile.mobility===key?accent:"#aaa",fontSize:11,fontWeight:800}}>
-                {label}
-              </button>
-            ))}
-          </div>
-          <div style={{marginTop:10,padding:"10px 11px",borderRadius:8,border:`1px solid ${risk.level==="protect"?"#fb718566":risk.level==="steady"?"#fbbf2466":"#4ade8066"}`,background:risk.level==="protect"?"#fb718511":risk.level==="steady"?"#fbbf2411":"#4ade8011"}}>
-            <div style={{fontSize:12,color:risk.level==="protect"?"#fb7185":risk.level==="steady"?"#fbbf24":"#4ade80",fontWeight:900,textTransform:"uppercase"}}>{risk.level} benchmark mode</div>
-            <div style={{fontSize:12,color:"#aaa",lineHeight:1.45,marginTop:3}}>Targets start {risk.level==="protect"?"extra conservative":risk.level==="steady"?"moderately conservative":"standard"}{estimate.bmi ? ` · BMI ${estimate.bmi}` : ""}{estimate.bmr ? ` · BMR ${estimate.bmr}` : ""}{estimate.leanMassLb ? ` · lean est ${estimate.leanMassLb}lb` : ""}.</div>
-          </div>
-        </div>
-      </Section>
-
-      {/* 50+ mobility tip */}
-      {tier.mobilityPriority && !hasMobility && (
-        <div style={{margin:"0 16px 14px",padding:"12px 14px",background:"#0d9488" + "11",border:"1px solid #0d948855",borderRadius:10}}>
-          <div style={{fontSize:12,color:"#2dd4bf",fontWeight:900,textTransform:"uppercase",marginBottom:4}}>🧘 Mobility Tip for {tier.label}</div>
-          <div style={{fontSize:12,color:"#aaa",lineHeight:1.45}}>Recovery and joint health improve significantly with dedicated mobility work. Add at least one mobility or stretching exercise to your routine — search "Mobility" in the exercise picker below.</div>
-        </div>
-      )}
-      {tier.coachFocus !== "pr" && profile.age && (
-        <div style={{margin:"0 16px 14px",padding:"10px 13px",background:"#05050566",border:"1px solid #333",borderRadius:9,display:"flex",gap:10,alignItems:"center"}}>
-          <div style={{fontSize:18}}>
-            {tier.tier === "senior" ? "🦴" : "📈"}
-          </div>
-          <div style={{fontSize:12,color:"#888",lineHeight:1.4}}>
-            <strong style={{color:"#ccc"}}>{tier.label} training style:</strong>{" "}
-            {tier.tier === "senior"
-              ? `Rest ${Math.round(60 * tier.restMult)}s between sets · progress after ${tier.progressStyle === "conservative" ? "3" : "2"} clean sessions · deload every ~${tier.deloadWeeks} weeks.`
-              : `Rest ${Math.round(60 * tier.restMult)}s between sets · deload every ~${tier.deloadWeeks} weeks.`}
-          </div>
-        </div>
-      )}
-
-      <Section title="Weekly Schedule">
-        <div style={{display:"grid",gap:8}}>
-          {DAYS.map(day => (
-            <label key={day} style={{display:"grid",gridTemplateColumns:"92px 1fr",gap:8,alignItems:"center",padding:"10px 12px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:9}}>
-              <span style={{fontSize:12,color:"#aaa",fontWeight:900,textTransform:"uppercase"}}>{day}</span>
-              <select value={routine.schedule?.[day] || routine.activeRoutineId} onChange={e=>assignDay(day, e.target.value)}
-                style={{background:"#101010",border:"1px solid #292929",borderRadius:8,color:"#f0f0f0",padding:"9px",fontWeight:800}}>
-                {routine.routines.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
-              </select>
-            </label>
-          ))}
-        </div>
-      </Section>
 
       {suggestions.length > 0 && (
         <Section title="Coach Edits">
@@ -358,22 +264,24 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
         )}
         <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search exercises, muscles, equipment"
           style={{width:"100%",boxSizing:"border-box",marginBottom:8,background:"#101010",border:"1px solid #292929",borderRadius:9,color:"#f0f0f0",padding:"11px 12px",fontSize:14,outline:"none"}} />
-        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5,marginBottom:10}}>
-          {categories.map(([key,label]) => (
-            <button key={key} onClick={()=>setCategory(key)}
-              style={{padding:"8px 4px",borderRadius:7,border:`1px solid ${category===key?accent:"#272727"}`,background:category===key?`${accent}20`:"#0d0d0d",color:category===key?accent:"#888",fontSize:10,fontWeight:800}}>
-              {label}
-            </button>
+        <select
+          value={category}
+          onChange={e => setCategory(e.target.value)}
+          style={{ width: "100%", marginBottom: 10, background: "#101010", border: "1px solid #292929", borderRadius: 9, color: "#f0f0f0", padding: "11px 12px", fontSize: 14, outline: "none" }}
+        >
+          {categories.map(([key, label]) => (
+            <option key={key} value={key}>{label}</option>
           ))}
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,marginBottom:10}}>
-          {[["all","All"],["bodyweight","BW"],["dumbbells","DBs"],["bands","Bands"],["machines","Mach."],["barbell","Barbell"],["kettlebell","KB"],["mobility","Mobility"]].map(([key,label]) => (
-            <button key={key} onClick={()=>setEquipment(key)}
-              style={{padding:"8px 4px",borderRadius:7,border:`1px solid ${equipment===key?accent:"#272727"}`,background:equipment===key?`${accent}20`:"#0d0d0d",color:equipment===key?accent:"#888",fontSize:10,fontWeight:800,textTransform:"uppercase"}}>
-              {label}
-            </button>
+        </select>
+        <select
+          value={equipment}
+          onChange={e => setEquipment(e.target.value)}
+          style={{ width: "100%", marginBottom: 10, background: "#101010", border: "1px solid #292929", borderRadius: 9, color: "#f0f0f0", padding: "11px 12px", fontSize: 14, outline: "none" }}
+        >
+          {[["all","All"],["bodyweight","Bodyweight"],["dumbbells","Dumbbells"],["bands","Bands"],["machines","Machines"],["barbell","Barbell"],["kettlebell","Kettlebell"],["mobility","Mobility"]].map(([key, label]) => (
+            <option key={key} value={key}>{label}</option>
           ))}
-        </div>
+        </select>
         {riskyHidden > 0 && (
           <button onClick={()=>setShowRisky(v=>!v)}
             style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",marginBottom:8,background:"#fb718511",border:"1px solid #fb718555",borderRadius:9,color:"#fb7185",textAlign:"left"}}>
@@ -403,14 +311,27 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
       </Section>
 
       <Section title="Benchmark V2">
-        <div style={{display:"grid",gap:8}}>
-          {BENCHMARK_TESTS_V2.map(test => (
-            <div key={test.id} style={{padding:"11px 12px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:9}}>
-              <div style={{fontSize:13,color:"#eee",fontWeight:900}}>{test.name}</div>
-              <div style={{fontSize:12,color:"#888",lineHeight:1.4,marginTop:4}}>{test.note}</div>
-            </div>
-          ))}
-        </div>
+        <button
+          onClick={() => setBenchmarkOpen(v => !v)}
+          style={{
+            width: "100%", padding: "12px 14px", background: "#0d0d0d",
+            border: "1px solid #1f1f1f", borderRadius: 10, cursor: "pointer",
+            display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left",
+          }}
+        >
+          <span style={{ fontSize: 13, color: "#aaa" }}>{BENCHMARK_TESTS_V2.length} tests defined</span>
+          <span style={{ fontSize: 12, color: "#888" }}>{benchmarkOpen ? "▲ hide" : "▼ view"}</span>
+        </button>
+        {benchmarkOpen && (
+          <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+            {BENCHMARK_TESTS_V2.map(test => (
+              <div key={test.id} style={{ padding: "11px 12px", background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 9 }}>
+                <div style={{ fontSize: 13, color: "#eee", fontWeight: 900 }}>{test.name}</div>
+                <div style={{ fontSize: 12, color: "#888", lineHeight: 1.4, marginTop: 4 }}>{test.note}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </Section>
     </div>
   );
