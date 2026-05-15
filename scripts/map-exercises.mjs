@@ -127,6 +127,8 @@ const raw = JSON.parse(readFileSync(rawPath, "utf8"));
 console.log(`Loaded ${raw.length} raw exercises`);
 
 const seen = new Set([...EXISTING_NAMES].map(n => n.toLowerCase()));
+// Also seed seen-IDs from existing names so hyphen/space variants don't slip through
+const seenIds = new Set([...EXISTING_NAMES].map(n => exerciseId(n)));
 const results = [];
 const skipped = [];
 
@@ -135,7 +137,8 @@ for (const ex of raw) {
   if (!name) continue;
 
   const lname = name.toLowerCase();
-  if (seen.has(lname)) { skipped.push(name); continue; }
+  const id    = exerciseId(name);
+  if (seen.has(lname) || seenIds.has(id)) { skipped.push(name); continue; }
 
   const equip = EQUIP_MAP[ex.equipment?.toLowerCase()] || "bodyweight";
   // Skip equipment we don't support in the app UI
@@ -153,8 +156,8 @@ for (const ex of raw) {
   const category = primary[0];
   const tip = makeTip(ex.instructions || []) || ex.name;
   const { sets, baseReps, repLabel } = defaultSetsReps(category, equip, diff);
-  const id = exerciseId(name);
 
+  seenIds.add(id);
   results.push({
     id,
     name,

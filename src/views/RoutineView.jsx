@@ -366,8 +366,8 @@ function ExercisePick({ ex, active, favorite, risky, riskJoints, accent, onToggl
           <div style={{fontSize:12,color:"#888",lineHeight:1.4,marginTop:4}}>{ex.tip}</div>
           <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:8}}>
             {mv && <span style={{fontSize:10,color:"#60a5fa",border:"1px solid #60a5fa44",borderRadius:5,padding:"3px 6px"}}>{_MOVEMENT_LABELS[mv]||mv}</span>}
-            {[...(ex.primary || []), ...(ex.secondary || [])].slice(0,3).map(m => (
-              <span key={m} style={{fontSize:10,color:"#aaa",border:"1px solid #2a2a2a",borderRadius:5,padding:"3px 6px"}}>{MUSCLE_LABELS[m] || m}</span>
+            {[...(ex.primary || []), ...(ex.secondary || [])].slice(0,3).map((m, i) => (
+              <span key={`${m}_${i}`} style={{fontSize:10,color:"#aaa",border:"1px solid #2a2a2a",borderRadius:5,padding:"3px 6px"}}>{MUSCLE_LABELS[m] || m}</span>
             ))}
           </div>
         </div>
