@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import {
   WORKOUTS, SCHEDULE, DAYS, MUSCLE_LABELS, DEFAULT_WEIGHTS,
   EXERCISE_GUIDES, todayName, dateStr, calcDynamicTarget, assessmentTargetForProfile,
-  getExerciseHistory, XP_VALUES, getLevel, customRoutineWorkout
+  getExerciseHistory, XP_VALUES, getLevel, customRoutineWorkout,
+  ageTier, ageAdjustedRestSeconds,
 } from "../data.js";
 import { useSessionTimer, fmtDuration } from "../hooks.js";
 import { ExerciseAnimation, RestTimer, Toast, MiniGraph } from "../components/shared.jsx";
@@ -611,6 +612,8 @@ export default function WorkoutView({
   benchmarkEditorOpen=false, setBenchmarkEditorOpen,
   customRoutine,
   userProfile,
+  goals = [],
+  bodyMetrics = [],
 }) {
   const [activeTab,    setActiveTab]   = useState(()=>defaultWorkoutDay());
   const [expanded,     setExpanded]    = useState(null);
@@ -697,17 +700,21 @@ export default function WorkoutView({
   );
   const readiness = readinessEntry?.readiness;
   const effectiveReadiness = readiness || DEFAULT_READINESS;
+  const effectiveRest = useMemo(
+    () => ageAdjustedRestSeconds(userProfile, settings.restSeconds || 60),
+    [userProfile, settings.restSeconds]
+  );
   const coachPlan = useMemo(
-    () => buildCoachPlan({workout,history,checkIns,exConfig,settings,readiness:effectiveReadiness}),
-    [workout, history, checkIns, exConfig, settings, effectiveReadiness]
+    () => buildCoachPlan({workout,history,checkIns,exConfig,settings,readiness:effectiveReadiness,userProfile,goals,bodyMetrics}),
+    [workout, history, checkIns, exConfig, settings, effectiveReadiness, userProfile, goals, bodyMetrics]
   );
   const suggestions = useMemo(
     () => [...coachPlan.cards, ...(WORKOUTS[wKey] ? buildSuggestions({history,progression,settings,exConfig,workoutKey:wKey}) : [])],
     [coachPlan, history, progression, settings, exConfig, wKey]
   );
   const coachMemory = useMemo(
-    () => buildCoachMemory({ history, checkIns, exercises:workout.exercises, exConfig }),
-    [history, checkIns, exConfig, workout]
+    () => buildCoachMemory({ history, checkIns, exercises:workout.exercises, exConfig, userProfile, goals, bodyMetrics }),
+    [history, checkIns, exConfig, workout, userProfile, goals, bodyMetrics]
   );
   const exerciseKey = (exOrName) => typeof exOrName === "string" ? exOrName : (exOrName.configName || exOrName.name);
   const exerciseIdFor = (ex) => ex.id || exerciseKey(ex).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
@@ -739,7 +746,7 @@ export default function WorkoutView({
   const sessionElapsed = useSessionTimer(sessionRunning);
   const remainingSets = Math.max(0, totalSets - doneSets);
   const estimatedRemaining = remainingSets
-    ? (remainingSets * 35) + (Math.max(0, remainingSets - 1) * (settings.restSeconds || 60))
+    ? (remainingSets * 35) + (Math.max(0, remainingSets - 1) * effectiveRest)
     : 0;
 
   const getPreviousPerformance = (ex) => {
@@ -816,11 +823,11 @@ export default function WorkoutView({
   useEffect(() => {
     if (!undoSet) return;
     const duration = restState && !restState.done
-      ? Math.max((restState.plannedSeconds || settings.restSeconds || 0) * 1000 + 1200, 4500)
+      ? Math.max((restState.plannedSeconds || effectiveRest || 0) * 1000 + 1200, 4500)
       : 4500;
     const id = setTimeout(() => setUndoSet(null), duration);
     return () => clearTimeout(id);
-  }, [undoSet, restState?.restId, restState?.done, restState?.plannedSeconds, settings.restSeconds]);
+  }, [undoSet, restState?.restId, restState?.done, restState?.plannedSeconds, effectiveRest]);
 
   const spawnXp = (amount) => {
     addXp(amount);
@@ -854,8 +861,8 @@ export default function WorkoutView({
     const next=remaining>0?`Set ${j+2} of ${ex.name}`:hasNextExercise?`Up next: ${workoutPlan.exercises[i+1].name}`:null;
     if(next) {
       const restId = `${sessionKey}_${i}_${j}_${Date.now()}`;
-      logCoachEvent({kind:"rest",action:"start",restId,exercise:ex.name,set:j+1,plannedSeconds:settings.restSeconds});
-      setRestState({label:next,accent,restId,startedAt:Date.now(),plannedSeconds:settings.restSeconds});
+      logCoachEvent({kind:"rest",action:"start",restId,exercise:ex.name,set:j+1,plannedSeconds:effectiveRest});
+      setRestState({label:next,accent,restId,startedAt:Date.now(),plannedSeconds:effectiveRest});
     }
     else setRestState(null);
   };
@@ -954,7 +961,7 @@ export default function WorkoutView({
       const ex=workoutPlan.exercises[i];
       const key=exerciseKey(ex);
       const curW=getWeight(ex);
-      const rec=evaluateProgression({setLog:exS.setLog,targetReps:getTargetReps(ex),currentWeight:curW,previous:exConfig[key],increment:settings.weightIncrement||2.5,style:settings.coachStyle||"balanced",autoDeload:settings.autoDeload!==false});
+      const rec=evaluateProgression({setLog:exS.setLog,targetReps:getTargetReps(ex),currentWeight:curW,previous:exConfig[key],increment:settings.weightIncrement||2.5,style:settings.coachStyle||ageTier(userProfile).progressStyle,autoDeload:settings.autoDeload!==false});
       const curMaxW=exConfig[key]?.maxWeight||0;
       const newMaxW=Math.max(...exS.setLog.map(l=>l.weight));
       if(newMaxW>curMaxW) prs.push({name:ex.name,val:newMaxW});
@@ -1409,20 +1416,22 @@ export default function WorkoutView({
       )}
       {workoutSummary&&<WorkoutSummary summary={workoutSummary} accent={accent} onClose={()=>{setWorkoutSummary(null);setShowFeedback(true);}}/>}
       {restState?.done&&focusMode&&<RestReady label={restState.label} accent={restState.accent} onNext={()=>setRestState(null)}/>}
-      {restState&&!restState.done&&!loggerState&&<RestTimer fullscreen={focusMode&&settings.fullscreenRest!==false} seconds={settings.restSeconds} label={restState.label} accent={restState.accent}
+      {restState&&!restState.done&&!loggerState&&<RestTimer fullscreen={focusMode&&settings.fullscreenRest!==false} seconds={effectiveRest} label={restState.label} accent={restState.accent}
         onSkip={()=>{
-          logCoachEvent({kind:"rest",action:"skip",restId:restState.restId,plannedSeconds:restState.plannedSeconds||settings.restSeconds,elapsedSeconds:Math.round((Date.now()-(restState.startedAt||Date.now()))/1000)});
+          logCoachEvent({kind:"rest",action:"skip",restId:restState.restId,plannedSeconds:restState.plannedSeconds||effectiveRest,elapsedSeconds:Math.round((Date.now()-(restState.startedAt||Date.now()))/1000)});
           setRestState(null);
         }}
         onComplete={()=>{
-          logCoachEvent({kind:"rest",action:"complete",restId:restState.restId,plannedSeconds:restState.plannedSeconds||settings.restSeconds,elapsedSeconds:restState.plannedSeconds||settings.restSeconds});
+          logCoachEvent({kind:"rest",action:"complete",restId:restState.restId,plannedSeconds:restState.plannedSeconds||effectiveRest,elapsedSeconds:restState.plannedSeconds||effectiveRest});
           playSound("restEnd");vibrate([200,60,200]);focusMode?setRestState(p=>p?{...p,done:true}:null):setRestState(null);
         }}/>}
       {showFeedback&&<PostWorkoutFeedback exercises={workoutPlan.exercises} sessionLogs={sessionLogs} getLogKey={logKey} exConfig={exConfig} history={history} onComplete={handleFeedback} accent={accent}/>}
       {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}
       <Confetti active={confetti} accent={accent} onDone={()=>setConfetti(false)}/>
-      <CoachFab onClick={()=>setCoachOpen(true)} accent={accent} count={suggestions.length}/>
-      <CoachDrawer open={coachOpen} onClose={()=>setCoachOpen(false)} suggestions={suggestions} memory={coachMemory} plan={coachPlan} accent={accent}/>
+      <CoachFab onClick={()=>setCoachOpen(true)} accent={accent}/>
+      <CoachDrawer open={coachOpen} onClose={()=>setCoachOpen(false)} suggestions={suggestions} memory={coachMemory} plan={coachPlan} accent={accent}
+        exercises={workout.exercises} history={history} checkIns={checkIns} exConfig={exConfig}
+        userProfile={userProfile} goals={goals} bodyMetrics={bodyMetrics}/>
     </div>
   );
 }

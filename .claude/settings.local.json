@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(node --test test/coach.test.mjs)",
-      "Bash(npm run *)"
-    ]
-  }
-}

@@ -3,6 +3,36 @@ import { WORKOUTS, MUSCLE_LABELS, customRoutineWorkout } from "../data.js";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
 import { muscleRecoveryStats, latestMuscleSoreness } from "../coach.js";
 
+// Research-backed per-muscle recovery baselines (hours)
+// Sources: NSCA JSCR 2011, PMC11057610, PubMed 30036284, 28965198
+const MUSCLE_BASE_RECOVERY_HOURS = {
+  quads:      60,  // 48-72h — large compound, squat/leg-press dominant
+  hamstrings: 60,  // 48-72h — eccentric-dominant (RDLs, curls)
+  glutes:     64,  // 48-72h — hip-hinge emphasis extends recovery
+  lats:       60,  // 48-72h — multi-joint pulling
+  upperBack:  68,  // 48-72h — traps/mid-back; deadlift emphasis → higher
+  lowerBack:  72,  // 72-96h — erectors; longest recovery of any group
+  chest:      52,  // 48-60h — upper-body pressing recovers faster than lower
+  frontDelts: 40,  // 36-48h — smaller volume, faster clearance
+  sideDelts:  40,  // 36-48h
+  rearDelts:  44,  // ~48h — slightly slower than front/side
+  biceps:     42,  // 36-48h — single-joint, fast recovery
+  triceps:    44,  // 36-48h — slightly higher when paired with heavy chest day
+  calves:     36,  // 24-48h — high slow-twitch ratio, fastest recovery
+  core:       28,  // 24-36h — endurance fibers, tolerates high frequency
+  forearms:   36,  // 24-48h — similar to calves
+};
+
+// Recovery state legend (replaces strength-level legend on body map)
+const RECOVERY_LEGEND = [
+  { color:"#4ade80", label:"Ready" },
+  { color:"#60a5fa", label:"Recovering" },
+  { color:"#fbbf24", label:"Fatigued" },
+  { color:"#fb7185", label:"Sore" },
+  { color:"#333",    label:"No data" },
+];
+
+// Strength-level lookup (still used in detail rows)
 const MUSCLE_LEVELS = [
   { key:"beginner", label:"Beginner", min:0, color:"#64748b" },
   { key:"novice", label:"Novice", min:80, color:"#60a5fa" },
@@ -25,7 +55,14 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
   const ahead = status.rows.filter(row => status.avg && row.recentPoints > status.avg * 1.25);
   const behind = status.rows.filter(row => status.avg && row.recentPoints < status.avg * 0.65 && row.planned > 0);
   const fatigued = status.rows.filter(row => row.fatigue >= 55 || row.soreness === "sore");
-  const levelColors = Object.fromEntries(status.rows.map(row => [row.muscle, row.level.color]));
+  const levelColors = Object.fromEntries(status.rows.map(row => {
+    if (!row.lastHit) return [row.muscle, "#333"];          // no data
+    if (row.soreness === "sore") return [row.muscle, "#fb7185"]; // self-reported sore
+    if (row.recoveredPct >= 90) return [row.muscle, "#4ade80"]; // ready
+    if (row.recoveredPct >= 60) return [row.muscle, "#60a5fa"]; // recovering
+    if (row.recoveredPct >= 30) return [row.muscle, "#fbbf24"]; // fatigued
+    return [row.muscle, "#fb923c"];                         // very fatigued
+  }));
   const recovery = muscleRecoveryStats(checkIns);
   const focusItems = buildMuscleFocus({ rows:status.rows, avg:status.avg });
   const filteredRows = status.rows.filter(row => {
@@ -56,11 +93,11 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
 
       <div style={{margin:"0 16px 14px",padding:"16px",background:"#0d0d0d",border:`1.5px solid ${accent}33`,borderRadius:12,boxShadow:`0 0 24px ${accent}12`}}>
         <MuscleDiagram activation={status.activation} levelColors={levelColors} accent={accent}/>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",marginTop:12}}>
-          {MUSCLE_LEVELS.map(level=>(
-            <div key={level.key} style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#aaa"}}>
-              <span style={{width:9,height:9,borderRadius:3,background:level.color,display:"inline-block"}}/>
-              {level.label}
+        <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center",marginTop:12}}>
+          {RECOVERY_LEGEND.map(item=>(
+            <div key={item.color} style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#aaa"}}>
+              <span style={{width:9,height:9,borderRadius:3,background:item.color,display:"inline-block"}}/>
+              {item.label}
             </div>
           ))}
         </div>
@@ -236,7 +273,11 @@ export function buildMuscleStatus({ history, exercises, soreness = {} }) {
   const rows = Object.values(byMuscle).map(item => {
     const level = [...MUSCLE_LEVELS].reverse().find(l => item.points >= l.min) || MUSCLE_LEVELS[0];
     const hoursSince = item.lastHit ? Math.max(0, (now - item.lastHit) / 3600000) : null;
-    const recoveryHours = item.recentPoints >= 180 ? 72 : item.recentPoints >= 95 ? 48 : item.recentPoints > 0 ? 24 : 0;
+    // Per-muscle research baseline scaled by training load
+    // Light load (<50pts) → 70% of base, moderate → 100%, heavy (>180pts) → 120%
+    const baseHours = MUSCLE_BASE_RECOVERY_HOURS[item.muscle] || 48;
+    const loadMult = item.recentPoints > 180 ? 1.2 : item.recentPoints > 50 ? 1.0 : item.recentPoints > 0 ? 0.7 : 0;
+    const recoveryHours = Math.round(baseHours * loadMult);
     const recoveredPct = recoveryHours ? Math.min(100, Math.round((hoursSince / recoveryHours) * 100)) : 100;
     const sorenessLevel = soreness[item.muscle] || null;
     const sorenessPenalty = sorenessLevel === "sore" ? 35 : sorenessLevel === "mild" ? 15 : 0;

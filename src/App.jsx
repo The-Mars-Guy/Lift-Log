@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { WORKOUTS, SCHEDULE, DEFAULT_SETTINGS, DEFAULT_WEIGHTS, ACHIEVEMENTS, computeStats, todayName, DAYS, getLevel, XP_VALUES, DEFAULT_CUSTOM_ROUTINE, normalizeCustomRoutine, customRoutineWorkout, DEFAULT_USER_PROFILE, normalizeUserProfile } from "./data.js";
+import { WORKOUTS, SCHEDULE, DEFAULT_SETTINGS, DEFAULT_WEIGHTS, ACHIEVEMENTS, computeStats, todayName, DAYS, getLevel, XP_VALUES, DEFAULT_CUSTOM_ROUTINE, DEFAULT_GOALS, normalizeCustomRoutine, customRoutineWorkout, DEFAULT_USER_PROFILE, normalizeUserProfile } from "./data.js";
 import { useLocalStorage } from "./hooks.js";
 import { makePlay, vibrate as vib } from "./audio.js";
 import { BottomNav, Toast } from "./components/shared.jsx";
@@ -9,6 +9,7 @@ import MuscleMapView from "./views/MuscleMapView.jsx";
 import CalendarView from "./views/CalendarView.jsx";
 import SettingsView from "./views/SettingsView.jsx";
 import RoutineView from "./views/RoutineView.jsx";
+import GoalsView from "./views/GoalsView.jsx";
 import { normalizeLiftLogData } from "./session.js";
 
 export default function App() {
@@ -30,6 +31,7 @@ export default function App() {
   const [bodyMetrics, setBodyMetrics] = useLocalStorage("wt_body_metrics", []);
   const [customRoutine, setCustomRoutine] = useLocalStorage("wt_custom_routine", DEFAULT_CUSTOM_ROUTINE);
   const [userProfile, setUserProfile] = useLocalStorage("wt_user_profile", DEFAULT_USER_PROFILE);
+  const [goals,       setGoals]       = useLocalStorage("wt_goals",        DEFAULT_GOALS);
 
   const [achievementToast, setAchievementToast] = useState(null);
   const [assessmentDone, setAssessmentDone] = useLocalStorage("wt_assessment_done", false);
@@ -308,6 +310,8 @@ export default function App() {
             benchmarkEditorOpen={benchmarkEditorOpen} setBenchmarkEditorOpen={setBenchmarkEditorOpen}
             customRoutine={safeCustomRoutine}
             userProfile={safeUserProfile}
+            goals={Array.isArray(goals) ? goals : DEFAULT_GOALS}
+            bodyMetrics={normalized.bodyMetrics}
             playSound={playSound} vibrate={vibrate}
             setActiveView={setActiveView}
             theme={visualTheme}
@@ -320,13 +324,25 @@ export default function App() {
           <StatsView history={normalized.history} progression={normalized.progression} settings={safeSettings}
             achievements={normalized.achievements} accent={accent} xp={normalized.xp} level={level}
             exConfig={normalized.exConfig} checkIns={normalized.checkIns}
-            bodyMetrics={normalized.bodyMetrics} setBodyMetrics={setBodyMetrics} customRoutine={safeCustomRoutine} />
+            bodyMetrics={normalized.bodyMetrics} setBodyMetrics={setBodyMetrics} customRoutine={safeCustomRoutine}
+            userProfile={safeUserProfile} goals={Array.isArray(goals) ? goals : DEFAULT_GOALS} />
         )}
         {activeView === "muscles" && (
           <MuscleMapView history={normalized.history} accent={accent} checkIns={normalized.checkIns} setCheckIns={setCheckIns} customRoutine={safeCustomRoutine} />
         )}
         {activeView === "calendar" && (
           <CalendarView history={normalized.history} progression={normalized.progression} settings={safeSettings} accent={accent} theme={visualTheme} />
+        )}
+        {activeView === "goals" && (
+          <GoalsView
+            goals={Array.isArray(goals) ? goals : DEFAULT_GOALS}
+            setGoals={setGoals}
+            history={normalized.history}
+            exConfig={normalized.exConfig}
+            checkIns={normalized.checkIns}
+            accent={accent}
+            totalSessions={normalized.history?.length || 0}
+          />
         )}
         {activeView === "settings" && (
           <SettingsView settings={safeSettings} setSettings={setSettings}

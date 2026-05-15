@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { BENCHMARK_TESTS_V2, WORKOUTS, assessmentTargetForProfile, benchmarkModeForProfile, profileRisk } from "../../data.js";
+import { BENCHMARK_TESTS_V2, WORKOUTS, assessmentTargetForExercise, assessmentTargetForProfile, benchmarkEffort, benchmarkModeForProfile, normativeGrade, profileRisk } from "../../data.js";
 import { ExerciseAnimation } from "../../components/shared.jsx";
 
 export const ASSESSMENT_EXERCISES = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
+const _gradeColors = ["#fb7185","#fbbf24","#94a3b8","#4ade80","#a78bfa"];
 
 export function FirstRunSetup({ settings, setSettings, accent }) {
   const [goal, setGoal] = useState(settings.trainingGoal || "hypertrophy");
@@ -129,23 +130,43 @@ export function AssessmentFlow({ onComplete, accent, theme="dark", initialResult
   );
 
   if (step >= total) {
-    const targets = Object.entries(results).map(([name, max]) => ({ name, max, target: assessmentTargetForProfile(max, userProfile) }));
+    const targets = Object.entries(results).map(([name, max]) => ({
+      name, max,
+      target: assessmentTargetForExercise(max, name, userProfile),
+      effort: benchmarkEffort(userProfile, name),
+      norm: normativeGrade(max, name, userProfile),
+    }));
     return (
       <div style={{minHeight:"100vh",overflowY:"auto",padding:"44px 24px 40px",background:ui.page,color:ui.text}}>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:44,color:"#4ade80",letterSpacing:".06em",lineHeight:.9,marginBottom:12}}>
           ASSESSMENT<br/>COMPLETE ✓
         </div>
-        <div style={{fontSize:14,color:ui.soft,marginBottom:24,lineHeight:1.55}}>Your personalized starting targets. {risk.level !== "standard" ? "They start more conservative from your profile and " : "They "}adjust each week based on how each session feels.</div>
+        <div style={{fontSize:14,color:ui.soft,marginBottom:24,lineHeight:1.55}}>
+          {risk.level !== "standard" ? "Targets start conservative for your profile and " : "Targets "}
+          adjust each week based on how sessions feel.
+        </div>
         <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:28}}>
           {targets.map(t=>(
-            <div key={t.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 18px",background:ui.card,borderRadius:11,border:`1px solid ${ui.border}`,boxShadow:ui.shadow}}>
-              <div>
-                <div style={{fontSize:15,color:ui.text,fontWeight:500}}>{t.name}</div>
-                <div style={{fontSize:12,color:ui.muted,marginTop:2}}>Max: {t.max} reps</div>
+            <div key={t.name} style={{padding:"14px 18px",background:ui.card,borderRadius:11,border:`1px solid ${ui.border}`,boxShadow:ui.shadow}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                <div>
+                  <div style={{fontSize:15,color:ui.text,fontWeight:500}}>{t.name}</div>
+                  <div style={{fontSize:12,color:ui.muted,marginTop:2}}>Max logged: {t.max} reps</div>
+                  <div style={{display:"inline-block",marginTop:6,padding:"3px 9px",borderRadius:20,background:`${t.norm.color}22`,border:`1px solid ${t.norm.color}66`}}>
+                    <span style={{fontSize:11,fontWeight:900,color:t.norm.color}}>{t.norm.grade}</span>
+                    <span style={{fontSize:10,color:ui.muted,marginLeft:5}}>~{t.norm.percentile}th pct</span>
+                  </div>
+                </div>
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#4ade80",letterSpacing:".04em"}}>×{t.target}</div>
+                  <div style={{fontSize:10,color:ui.muted}}>target · {Math.round(t.effort*100)}% of max</div>
+                </div>
               </div>
-              <div style={{textAlign:"right"}}>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#4ade80",letterSpacing:".04em"}}>×{t.target}</div>
-                <div style={{fontSize:11,color:ui.muted}}>starting target</div>
+              <div style={{marginTop:8,display:"flex",gap:3,alignItems:"center"}}>
+                {t.norm.thresholds.map((v,i)=>(
+                  <div key={i} style={{flex:1,height:4,borderRadius:3,background: t.max >= v ? _gradeColors[i] : ui.rail, opacity: t.max >= v ? 1 : 0.35, transition:"background .3s"}}/>
+                ))}
+                <span style={{fontSize:9,color:ui.muted,marginLeft:4,whiteSpace:"nowrap"}}>Poor→Elite</span>
               </div>
             </div>
           ))}
@@ -197,7 +218,14 @@ export function AssessmentFlow({ onComplete, accent, theme="dark", initialResult
             style={{width:72,height:76,background:"transparent",border:"none",color:ui.soft,fontSize:34,fontWeight:300}}>+</button>
         </div>
         <div style={{fontSize:13,color:ui.muted,letterSpacing:".06em",textAlign:"center",marginTop:10}}>
-          Starting target → <strong style={{color:exColor}}>×{assessmentTargetForProfile(count, userProfile)}</strong> per set
+          Starting target → <strong style={{color:exColor}}>×{assessmentTargetForExercise(count, ex.name, userProfile)}</strong> per set
+          <span style={{color:"#555",margin:"0 6px"}}>·</span>
+          <span style={{color:normativeGrade(count, ex.name, userProfile).color, fontWeight:900}}>
+            {normativeGrade(count, ex.name, userProfile).grade}
+          </span>
+          <span style={{color:ui.muted,fontSize:11,marginLeft:4}}>
+            (~{normativeGrade(count, ex.name, userProfile).percentile}th pct)
+          </span>
         </div>
       </div>
 

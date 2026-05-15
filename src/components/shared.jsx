@@ -245,10 +245,25 @@ function IconGear({ color, size=22 }) {
   );
 }
 
+function IconGoals({ color, size=22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <circle cx="12" cy="12" r="5"/>
+      <circle cx="12" cy="12" r="1.5" fill={color} stroke="none"/>
+      <line x1="12" y1="2" x2="12" y2="4.5"/>
+      <line x1="12" y1="19.5" x2="12" y2="22"/>
+      <line x1="2" y1="12" x2="4.5" y2="12"/>
+      <line x1="19.5" y1="12" x2="22" y2="12"/>
+    </svg>
+  );
+}
+
 const NAV_ITEMS = [
-  { id:"workout",  label:"Workout",  Icon:IconDumbbell },
+  { id:"workout",  label:"Train",    Icon:IconDumbbell },
   { id:"routine",  label:"Routine",  Icon:IconRoutine  },
   { id:"stats",    label:"Stats",    Icon:IconStats    },
+  { id:"goals",    label:"Goals",    Icon:IconGoals    },
   { id:"muscles",  label:"Muscles",  Icon:IconMuscles  },
   { id:"settings", label:"Settings", Icon:IconGear     },
 ];
@@ -290,9 +305,9 @@ export function BottomNav({ active, onSelect, accent, level, theme="dark" }) {
                 </div>
               )}
               <div style={{ filter: isActive ? `drop-shadow(0 0 7px ${accent}bb)` : "none", transition:"filter .2s" }}>
-                <Icon color={color} size={26} />
+                <Icon color={color} size={22} />
               </div>
-              <div style={{ fontSize:10, letterSpacing:"0.08em", textTransform:"uppercase", fontWeight:isActive?700:400, color, lineHeight:1 }}>
+              <div style={{ fontSize:9, letterSpacing:"0.06em", textTransform:"uppercase", fontWeight:isActive?700:400, color, lineHeight:1 }}>
                 {label}
               </div>
             </button>

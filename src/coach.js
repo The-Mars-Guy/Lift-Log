@@ -1,4 +1,4 @@
-import { exerciseId, routineBalanceScore, routineCoverage } from "./data.js";
+import { EXERCISE_LIBRARY, MUSCLE_COVERAGE_GROUPS, ageTier, exerciseId, exerciseIsRisky, exerciseRiskJoints, mesocyclePhase, normalizeUserProfile, routineBalanceScore, routineCoverage, shouldDeload } from "./data.js";
 
 export const READINESS = {
   energy: {
@@ -444,8 +444,76 @@ export function exerciseTrend(history, exercise, targetReps) {
   return { status: "steady", hitRate, dropoff, recentMisses };
 }
 
-export function buildCoachPlan({ workout, history, checkIns = [], exConfig, settings, readiness }) {
+/**
+ * Aggregates ALL available user data into one context object.
+ * Pass to buildCoachPlan / buildCoachMemory / buildCoachInsights.
+ */
+function buildFullUserContext({
+  userProfile = null,
+  history = [],
+  checkIns = [],
+  exConfig = {},
+  exercises = [],
+  goals = [],
+  bodyMetrics = [],
+  settings = {},
+}) {
+  const profile = normalizeUserProfile(userProfile);
+  const tier = ageTier(profile);
+  const muscleSoreness = latestMuscleSoreness(checkIns);
+  const soreMuscles = Object.entries(muscleSoreness).filter(([,l]) => l === "sore").map(([m]) => m);
+  const mildMuscles = Object.entries(muscleSoreness).filter(([,l]) => l === "mild").map(([m]) => m);
+  const recoveryStats = muscleRecoveryStats(checkIns);
+  const trainingLoad = recentTrainingLoad(history);
+  const behavior = behaviorMemory(checkIns);
+  const painBlocked = painBlockedExercises(checkIns);
+  const activeGoals = (Array.isArray(goals) ? goals : []).filter(g => !g.achieved);
+  const phase = mesocyclePhase(history);
+  const deloadSignal = shouldDeload(checkIns, history);
+  const weakPoints = detectWeakPoints({ history, exercises, exConfig });
+
+  // Body weight trend
+  const sortedMetrics = [...(Array.isArray(bodyMetrics) ? bodyMetrics : [])]
+    .filter(m => m.weight)
+    .sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
+  const latestWeight = sortedMetrics[0]?.weight ?? null;
+  const weightTrend = sortedMetrics.length >= 2
+    ? Math.round((sortedMetrics[0].weight - sortedMetrics[sortedMetrics.length-1].weight) * 10) / 10
+    : null;
+
+  // Readiness pattern last 7 days
+  const now = Date.now();
+  const recentReadiness = checkIns
+    .filter(ci => ci.kind === "readiness" && now - (ci.timestamp||0) <= 7 * 86400000)
+    .map(ci => ci.readiness)
+    .filter(Boolean);
+  const lowEnergyDays = recentReadiness.filter(r => r.energy === "low").length;
+
+  return {
+    profile,
+    tier,
+    muscleSoreness,
+    soreMuscles,
+    mildMuscles,
+    recoveryStats,
+    trainingLoad,
+    behavior,
+    painBlocked,
+    activeGoals,
+    phase,
+    deloadSignal,
+    weakPoints,
+    latestWeight,
+    weightTrend,
+    lowEnergyDays,
+    totalSessions: history.length,
+    recentReadiness,
+  };
+}
+
+export function buildCoachPlan({ workout, history, checkIns = [], exConfig, settings, readiness, userProfile = null, goals = [], bodyMetrics = [] }) {
   const score = readinessScore(readiness);
+  const tier = ageTier(userProfile);
   const cards = [];
   const adjustments = [];
   const watch = [];
@@ -522,6 +590,43 @@ export function buildCoachPlan({ workout, history, checkIns = [], exConfig, sett
   substitutions.forEach(sub => cards.push({ icon: "🔁", cat: "Swap", msg: `${sub.exercise}: use ${sub.substitute} if ${sub.reason}.` }));
   blockedToday.slice(0, 2).forEach(name => cards.push({ icon:"🛡️", cat:"Safety", msg:`${name}: repeated pain flags. Avoid loading this until pain-free.` }));
   watch.forEach(msg => cards.push({ icon: "👁️", cat: "Watch", msg }));
+
+  // Age-tier coaching tone
+  if (tier.coachFocus === "joint_health") {
+    cards.push({ icon:"🦴", cat:"Longevity", msg:"Prioritize full range of motion and clean eccentric control over load. Joint health compounds like interest." });
+    if (!deload.recommended) cards.push({ icon:"🔄", cat:"Recovery", msg:`At ${tier.label} recovery takes longer. Full rest between sets pays back in session quality.` });
+  } else if (tier.coachFocus === "consistency") {
+    cards.push({ icon:"📈", cat:"Build", msg:"Consistency over intensity. Three quality sessions beats six grind sessions every time." });
+  } else if (tier.coachFocus === "pr" && score >= 1) {
+    cards.push({ icon:"🏋️", cat:"Push", msg:"Energy is high — push the top set on your best movement today and chase the rep PR." });
+  }
+
+  // Goal alignment — flag if today's exercises match an active goal
+  const activeGoals = (Array.isArray(goals) ? goals : []).filter(g => !g.achieved);
+  activeGoals.forEach(goal => {
+    if (!goal.exerciseName) return;
+    const hit = workout.exercises.some(ex => ex.name === goal.exerciseName || (ex.originalName || ex.name) === goal.exerciseName);
+    if (hit) {
+      const pct = exConfig[goal.exerciseName]?.weight
+        ? Math.round((exConfig[goal.exerciseName].weight / goal.targetValue) * 100)
+        : null;
+      const pctStr = pct != null ? ` (${pct}% of goal)` : "";
+      cards.push({ icon:"🎯", cat:"Goal", msg:`${goal.exerciseName} is in today's session — goal target: ${goal.targetValue}${goal.type==="weight"?"lb":goal.type==="reps"?" reps":" sessions"}${pctStr}.` });
+    }
+  });
+
+  // Mesocycle phase context
+  const phase = mesocyclePhase(history);
+  cards.push({ icon:"📅", cat:"Phase", msg:`${phase.label} — ${phase.hint}` });
+
+  // Body weight note (if tracked)
+  const sortedMetrics = [...(Array.isArray(bodyMetrics) ? bodyMetrics : [])].filter(m => m.weight).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+  if (sortedMetrics.length >= 2) {
+    const trend = Math.round((sortedMetrics[0].weight - sortedMetrics[sortedMetrics.length-1].weight) * 10) / 10;
+    if (trend !== 0) {
+      cards.push({ icon:"⚖️", cat:"Body", msg:`Weight ${trend > 0 ? "up" : "down"} ${Math.abs(trend)}lb since you started tracking. ${trend < 0 ? "Maintain protein to protect muscle." : "Normal during a gaining phase."}` });
+    }
+  }
 
   return {
     readinessScore: score,
@@ -809,7 +914,7 @@ export function muscleRecoveryStats(checkIns = []) {
   };
 }
 
-export function buildCoachMemory({ history = [], checkIns = [], exercises = [], exConfig = {} }) {
+export function buildCoachMemory({ history = [], checkIns = [], exercises = [], exConfig = {}, userProfile = null, goals = [], bodyMetrics = [] }) {
   const readinessEntries = checkIns.filter(ci => ci.kind === "readiness" && ci.readiness);
   const setFeedback = checkIns.filter(ci => ci.kind === "set_feedback" && ci.exercise);
   const behavior = behaviorMemory(checkIns);
@@ -862,6 +967,40 @@ export function buildCoachMemory({ history = [], checkIns = [], exercises = [], 
     ? `${recovery.slowest.muscle} typically takes ~${Math.round(recovery.slowest.avgHours)}h to recover${recovery.fastest ? `; ${recovery.fastest.muscle} clears in ~${Math.round(recovery.fastest.avgHours)}h` : ""}.`
     : null;
 
+  // Profile context
+  const profile = normalizeUserProfile(userProfile);
+  const tier = ageTier(profile);
+  const profileNote = profile.age
+    ? `${tier.label} lifter${profile.sex ? `, ${profile.sex}` : ""}${profile.trainingExperience ? `, ${profile.trainingExperience}` : ""}${profile.limitations?.length ? `, limitations: ${profile.limitations.join("/")}` : ""}.`
+    : null;
+
+  // Active goals summary
+  const activeGoals = (Array.isArray(goals) ? goals : []).filter(g => !g.achieved);
+  const goalNote = activeGoals.length
+    ? `${activeGoals.length} active goal${activeGoals.length > 1 ? "s" : ""}: ${activeGoals.slice(0,2).map(g => `${g.exerciseName || "sessions"} → ${g.targetValue}${g.type==="weight"?"lb":g.type==="reps"?" reps":" sessions"}`).join(", ")}.`
+    : null;
+
+  // Body weight context
+  const sortedMetrics = [...(Array.isArray(bodyMetrics) ? bodyMetrics : [])].filter(m => m.weight).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+  const weightNote = sortedMetrics.length >= 2
+    ? `Body weight: ${sortedMetrics[0].weight}lb (${Math.round((sortedMetrics[0].weight - sortedMetrics[sortedMetrics.length-1].weight)*10)/10 > 0 ? "+" : ""}${Math.round((sortedMetrics[0].weight - sortedMetrics[sortedMetrics.length-1].weight)*10)/10}lb trend).`
+    : sortedMetrics[0]?.weight ? `Latest weight: ${sortedMetrics[0].weight}lb.` : null;
+
+  const fullSummary = [
+    stillSore.length
+      ? `${stillSore.slice(0, 3).join(", ")} ${stillSore.length === 1 ? "is" : "are"} flagged sore right now. Ease or swap work for those muscles.`
+      : painFlags.length
+      ? `${painFlags[0].name} has been flagged for discomfort. Bias toward swaps or lighter work there.`
+      : stalling.length
+      ? `${stalling[0].name} needs steadier reps before increasing load.`
+      : progressing.length
+        ? `${progressing[0].name} is trending well. May be ready for progression.`
+        : "Still collecting enough sessions to see a clear pattern.",
+    profileNote,
+    goalNote,
+    weightNote,
+  ].filter(Boolean).join(" ");
+
   return {
     commonEnergy,
     readinessCount: readinessEntries.length,
@@ -879,15 +1018,10 @@ export function buildCoachMemory({ history = [], checkIns = [], exercises = [], 
     recovery,
     currentSoreness,
     stillSore,
-    summary: stillSore.length
-      ? `${stillSore.slice(0, 3).join(", ")} ${stillSore.length === 1 ? "is" : "are"} flagged sore right now. The coach should ease or swap work for those muscles.`
-      : painFlags.length
-      ? `${painFlags[0].name} has been flagged for discomfort. The coach should bias toward swaps or lighter work there.`
-      : stalling.length
-      ? `${stalling[0].name} needs steadier reps before increasing load.`
-      : progressing.length
-        ? `${progressing[0].name} is trending well. It may be ready for progression.`
-        : "The coach is still collecting enough sessions to see a clear pattern.",
+    profileNote,
+    goalNote,
+    weightNote,
+    summary: fullSummary,
     recoverySummary,
   };
 }
@@ -990,24 +1124,195 @@ export function detectWeakPoints({ history = [], exercises = [], exConfig = {} }
   return messages.slice(0, 5);
 }
 
-export function routineEditSuggestions({ routine, exercises = [], history = [], checkIns = [] }) {
+// Pick best fill exercise for a missing muscle group
+function _pickFillExercise(muscleGroupKey, currentIds, userProfile, equipment = "all") {
+  const safe = normalizeUserProfile(userProfile);
+  const muscles = MUSCLE_COVERAGE_GROUPS.find(([k]) => k === muscleGroupKey)?.[2] || [];
+  let candidates = EXERCISE_LIBRARY.filter(ex =>
+    ex.primary?.some(m => muscles.includes(m)) &&
+    !currentIds.includes(ex.id) &&
+    !exerciseIsRisky(ex.name, safe.limitations)
+  );
+  if (equipment !== "all") {
+    const withEquip = candidates.filter(ex => ex.equipment === equipment);
+    if (withEquip.length) candidates = withEquip;
+  }
+  // prefer age-friendly and beginner difficulty
+  return candidates.find(ex => ex.ageFriendly && ex.difficulty === "beginner")
+    || candidates.find(ex => ex.ageFriendly)
+    || candidates[0]
+    || null;
+}
+
+// Pick safe swap for a risky/blocked exercise (same primary muscle, no risk, not already in routine)
+function _pickSafeSwap(exName, currentIds, userProfile) {
+  const safe = normalizeUserProfile(userProfile);
+  const source = EXERCISE_LIBRARY.find(e => e.name === exName || e.id === exerciseId(exName));
+  if (!source) return null;
+  const muscles = source.primary || [];
+  return EXERCISE_LIBRARY.find(e =>
+    e.id !== source.id &&
+    !currentIds.includes(e.id) &&
+    !exerciseIsRisky(e.name, safe.limitations) &&
+    e.primary?.some(m => muscles.includes(m)) &&
+    e.ageFriendly
+  ) || null;
+}
+
+export function routineEditSuggestions({ routine, exercises = [], history = [], checkIns = [], userProfile = null }) {
   const suggestions = [];
+  const currentIds = exercises.map(ex => ex.id || exerciseId(ex.name));
   const coverage = routineCoverage(exercises);
   const balance = routineBalanceScore(exercises);
+
+  // 1. Coverage gaps → suggest exact exercise to add
   coverage.filter(item => !item.ok).forEach(item => {
-    suggestions.push({ type:"add", priority:3, title:`Add ${item.label}`, detail:`Routine needs at least one ${item.label.toLowerCase()} movement.` });
+    const fill = _pickFillExercise(item.key, currentIds, userProfile);
+    suggestions.push({
+      type:"add",
+      priority:3,
+      title:`Add ${item.label}`,
+      detail: fill
+        ? `Missing ${item.label.toLowerCase()}. Try: ${fill.name} — ${fill.tip?.split(",")[0]}.`
+        : `Routine needs at least one ${item.label.toLowerCase()} movement.`,
+      actionType:"add",
+      actionId: fill?.id || null,
+      actionLabel: fill ? `+ Add ${fill.name}` : null,
+    });
   });
+
+  // 2. Pain-blocked exercises → suggest specific safe swap
   const blocked = painBlockedExercises(checkIns);
   exercises.filter(ex => blocked.includes(ex.name) || blocked.includes(ex.id)).forEach(ex => {
-    suggestions.push({ type:"swap", priority:3, title:`Swap ${ex.name}`, detail:"Recent pain feedback hit this movement. Pick a friendlier option for now." });
+    const swap = _pickSafeSwap(ex.name, currentIds.filter(id => id !== ex.id), userProfile);
+    suggestions.push({
+      type:"swap",
+      priority:3,
+      title:`Swap ${ex.name}`,
+      detail: swap
+        ? `Recent pain on this movement. Swap to ${swap.name} — same muscles, friendlier.`
+        : "Recent pain on this movement. Pick a friendlier option for now.",
+      actionType:"swap",
+      actionId: swap?.id || null,
+      swapFromId: ex.id || exerciseId(ex.name),
+      actionLabel: swap ? `⇄ Swap → ${swap.name}` : null,
+    });
   });
+
+  // 3. Risky exercises already in routine (matching user limitations) → suggest swap
+  if (userProfile) {
+    const safe = normalizeUserProfile(userProfile);
+    if (safe.limitations?.length) {
+      exercises
+        .filter(ex => exerciseIsRisky(ex.name, safe.limitations))
+        .slice(0, 2)
+        .forEach(ex => {
+          const swap = _pickSafeSwap(ex.name, currentIds.filter(id => id !== ex.id), userProfile);
+          if (swap) {
+            suggestions.push({
+              type:"risk",
+              priority:2,
+              title:`${ex.name} — joint risk`,
+              detail:`Flags your ${exerciseRiskJoints(ex.name).filter(l => safe.limitations.includes(l)).join("/")} limitation. Consider: ${swap.name} — same muscles, safer angle.`,
+              actionType:"swap",
+              actionId: swap.id,
+              swapFromId: ex.id || exerciseId(ex.name),
+              actionLabel: `⇄ Swap → ${swap.name}`,
+            });
+          }
+        });
+    }
+  }
+
+  // 4. Not-logged exercises
   const used = new Set(history.slice(0, 6).flatMap(h => h.exercises || []).map(ex => ex.id || ex.plannedId || exerciseId(ex.name)));
-  exercises.filter(ex => !used.has(ex.id)).slice(0, 2).forEach(ex => {
-    suggestions.push({ type:"practice", priority:1, title:`Practice ${ex.name}`, detail:"In routine but not logged recently." });
+  exercises.filter(ex => !used.has(ex.id)).slice(0, 1).forEach(ex => {
+    suggestions.push({ type:"practice", priority:1, title:`Practice ${ex.name}`, detail:"In routine but not logged recently.", actionType:null, actionId:null });
   });
-  if (balance < 80) suggestions.push({ type:"balance", priority:2, title:"Improve balance", detail:`Routine balance is ${balance}/100. Cover push, pull, legs, and core.` });
-  if (routine?.avoidedExerciseIds?.length) suggestions.push({ type:"avoid", priority:2, title:"Avoid list active", detail:`${routine.avoidedExerciseIds.length} movement${routine.avoidedExerciseIds.length === 1 ? "" : "s"} hidden from picker.` });
-  return suggestions.sort((a,b)=>b.priority-a.priority).slice(0, 5);
+
+  if (balance < 80) suggestions.push({ type:"balance", priority:2, title:"Improve balance", detail:`Balance ${balance}/100 — cover push, pull, legs, and core.`, actionType:null, actionId:null });
+  if (routine?.avoidedExerciseIds?.length) suggestions.push({ type:"avoid", priority:1, title:"Avoid list active", detail:`${routine.avoidedExerciseIds.length} movement${routine.avoidedExerciseIds.length===1?"":"s"} hidden from picker.`, actionType:null, actionId:null });
+
+  // 5. Age-tier: 50+ with no mobility exercises → suggest adding one
+  const tier = ageTier(userProfile);
+  if (tier.mobilityPriority) {
+    const hasMobility = exercises.some(ex => ex.category === "mobility" || ex.folder === "Mobility");
+    if (!hasMobility) {
+      const mobilityEx = EXERCISE_LIBRARY.find(ex => (ex.category === "mobility" || ex.folder === "Mobility") && !currentIds.includes(ex.id));
+      suggestions.push({
+        type:"mobility",
+        priority:3,
+        title:"Add mobility work",
+        detail: mobilityEx
+          ? `Recovery improves with mobility at 50+. Try: ${mobilityEx.name} — ${mobilityEx.tip?.split(",")[0]}.`
+          : "Adding a mobility or stretch exercise helps joint health and recovery at 50+.",
+        actionType:"add",
+        actionId: mobilityEx?.id || null,
+        actionLabel: mobilityEx ? `+ Add ${mobilityEx.name}` : null,
+      });
+    }
+  }
+
+  return suggestions.sort((a,b)=>b.priority-a.priority).slice(0, 6);
+}
+
+const _INSIGHT_MUSCLES = ["chest","lats","upperBack","sideDelts","biceps","triceps","quads","hamstrings","glutes","calves","core"];
+
+export function buildCoachInsights({ history = [], exercises = [], exConfig = {}, checkIns = [], userProfile = null, goals = [], bodyMetrics = [] }) {
+  const now = Date.now();
+
+  // Muscle recency: days since last trained (null = never)
+  const muscleLastTrained = {};
+  _INSIGHT_MUSCLES.forEach(m => { muscleLastTrained[m] = null; });
+
+  [...history]
+    .sort((a,b) => (b.timestamp||0) - (a.timestamp||0))
+    .forEach(session => {
+      const daysAgo = Math.round((now - (session.timestamp||0)) / 86400000);
+      (session.exercises||[]).forEach(logged => {
+        const base = exercises.find(e =>
+          e.name === (logged.originalName || logged.substitutedFor || logged.name));
+        if (!base) return;
+        [...(base.primary||[]), ...(base.secondary||[])].forEach(m => {
+          if (_INSIGHT_MUSCLES.includes(m) && muscleLastTrained[m] === null) {
+            muscleLastTrained[m] = daysAgo;
+          }
+        });
+      });
+    });
+
+  const weakPoints = detectWeakPoints({ history, exercises, exConfig });
+
+  // Stale: muscles not trained in 5+ days (or never)
+  const stale = _INSIGHT_MUSCLES
+    .map(m => ({ muscle:m, days:muscleLastTrained[m] }))
+    .filter(item => item.days === null || item.days > 5)
+    .sort((a,b) => (b.days===null?999:b.days) - (a.days===null?999:a.days));
+
+  // Current soreness from check-ins
+  const muscleSoreness = latestMuscleSoreness(checkIns);
+  const soreMuscles = Object.entries(muscleSoreness).filter(([,l]) => l === "sore").map(([m]) => m);
+
+  // Profile context
+  const tier = ageTier(userProfile);
+  const profile = normalizeUserProfile(userProfile);
+
+  // Active goals
+  const activeGoals = (Array.isArray(goals) ? goals : []).filter(g => !g.achieved);
+
+  // Body weight
+  const sortedMetrics = [...(Array.isArray(bodyMetrics) ? bodyMetrics : [])].filter(m => m.weight).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+  const latestWeight = sortedMetrics[0]?.weight ?? null;
+
+  const suggestion = soreMuscles.length
+    ? `${soreMuscles[0]} is sore — avoid loading it today.`
+    : stale.length
+      ? stale[0].days === null
+        ? `${stale[0].muscle} has no recent work — add a movement targeting it.`
+        : `${stale[0].muscle} last hit ${stale[0].days}d ago — work it in this week.`
+      : null;
+
+  return { muscleLastTrained, weakPoints, suggestion, stale, muscleSoreness, soreMuscles, tier, profile, activeGoals, latestWeight };
 }
 
 export function computePersonalRecords({ history = [] }) {
