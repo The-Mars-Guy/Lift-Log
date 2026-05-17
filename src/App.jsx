@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { WORKOUTS, SCHEDULE, DEFAULT_SETTINGS, DEFAULT_WEIGHTS, ACHIEVEMENTS, computeStats, todayName, DAYS, getLevel, XP_VALUES, DEFAULT_CUSTOM_ROUTINE, DEFAULT_GOALS, normalizeCustomRoutine, customRoutineWorkout, DEFAULT_USER_PROFILE, normalizeUserProfile } from "./data.js";
+import { WORKOUTS, SCHEDULE, DEFAULT_SETTINGS, DEFAULT_WEIGHTS, ACHIEVEMENTS, computeStats, todayName, DAYS, getLevel, XP_VALUES, DEFAULT_CUSTOM_ROUTINE, DEFAULT_GOALS, normalizeCustomRoutine, customRoutineWorkout, DEFAULT_USER_PROFILE, normalizeUserProfile, assessmentTargetForProfile } from "./data.js";
 import { useLocalStorage } from "./hooks.js";
 import { makePlay, vibrate as vib } from "./audio.js";
 import { BottomNav, Toast } from "./components/shared.jsx";
@@ -293,8 +293,30 @@ export default function App() {
     return (
       <OnboardingView
         accent={accent}
-        onComplete={({ profile, workoutDays }) => {
+        onComplete={({ profile, workoutDays, selfTest }) => {
+          const safeProfile = { ...safeUserProfile, ...profile };
+          const allBaseExercises = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
+          const startingConfig = {};
+          allBaseExercises.forEach(ex => {
+            const muscles = [...(ex.primary || []), ...(ex.secondary || [])];
+            const mappedMax = muscles.some(m => ["chest", "triceps", "frontDelts"].includes(m))
+              ? selfTest?.pushups
+              : muscles.some(m => ["quads", "glutes", "hamstrings", "calves"].includes(m))
+                ? selfTest?.squats
+                : muscles.includes("core")
+                  ? Math.max(3, Math.round((selfTest?.plank || 30) / 5))
+                  : null;
+            const target = mappedMax ? assessmentTargetForProfile(mappedMax, safeProfile) : ex.baseReps;
+            startingConfig[ex.name] = {
+              ...(exConfig[ex.name] || {}),
+              maxRepsTest:mappedMax || null,
+              targetReps:target,
+              weight:exConfig[ex.name]?.weight ?? DEFAULT_WEIGHTS[ex.name] ?? safeSettings.dumbbellWeight,
+            };
+          });
           setUserProfile(prev => ({ ...prev, ...profile }));
+          setExConfig(prev => ({ ...prev, ...startingConfig }));
+          setAssessmentDone(true);
           setSettings(prev => ({ ...prev, onboardingDone: true, workoutDays: workoutDays || prev.workoutDays }));
         }}
       />
