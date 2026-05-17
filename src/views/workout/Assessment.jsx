@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BENCHMARK_TESTS_V2, WORKOUTS, assessmentTargetForExercise, assessmentTargetForProfile, benchmarkEffort, benchmarkModeForProfile, normativeGrade, profileRisk } from "../../data.js";
+import { BENCHMARK_TESTS_V2, WORKOUTS, assessmentTargetForExercise, assessmentTargetForProfile, benchmarkEffort, benchmarkModeForProfile, normativeGrade, profileRisk, exerciseFolder } from "../../data.js";
 import { ExerciseAnimation } from "../../components/shared.jsx";
 
 export const ASSESSMENT_EXERCISES = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
@@ -198,7 +198,7 @@ export function AssessmentFlow({ onComplete, accent, theme="dark", initialResult
       <div style={{fontSize:14,color:ui.muted,marginBottom:16,lineHeight:1.45}}>→ {ex.tip}</div>
 
       <div style={{marginBottom:16}}>
-        <ExerciseAnimation folder={ex.folder} accent={exColor}/>
+        <ExerciseAnimation folder={exerciseFolder(ex)} accent={exColor}/>
       </div>
 
       <div style={{padding:"14px 18px",background:ui.card,borderRadius:12,border:`1.5px solid ${exColor}44`,marginBottom:24,boxShadow:ui.shadow}}>

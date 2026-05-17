@@ -3,7 +3,7 @@ import {
   WORKOUTS, SCHEDULE, DAYS, MUSCLE_LABELS, DEFAULT_WEIGHTS,
   EXERCISE_GUIDES, todayName, dateStr, calcDynamicTarget, assessmentTargetForProfile,
   getExerciseHistory, XP_VALUES, getLevel, customRoutineWorkout,
-  ageTier, ageAdjustedRestSeconds, EXERCISE_LIBRARY,
+  ageTier, ageAdjustedRestSeconds, EXERCISE_LIBRARY, exerciseFolder,
 } from "../data.js";
 import { useSessionTimer, fmtDuration } from "../hooks.js";
 import { ExerciseAnimation, RestTimer, Toast, MiniGraph } from "../components/shared.jsx";
@@ -255,7 +255,7 @@ function FocusWorkoutMode({
           </div>
         )}
 
-        <ExerciseAnimation folder={next.ex.folder} video={next.ex.video} accent={accent} compact bare/>
+        <ExerciseAnimation folder={exerciseFolder(next.ex)} video={next.ex.video} accent={accent} compact bare/>
 
         <div style={{marginTop:10,display:"grid",gridTemplateColumns:`repeat(${plannedSets},1fr)`,gap:8}}>
           {Array.from({length:plannedSets},(_,j)=>{
@@ -1443,7 +1443,7 @@ export default function WorkoutView({
               {open&&(
                 <div style={{marginTop:18,padding:18,background:"linear-gradient(180deg,#0e0e0e,#090909)",border:"1px solid #232323",borderRadius:14,animation:"slideDown .25s ease-out"}}>
                   <SLabel>Animation</SLabel>
-                  <ExerciseAnimation folder={ex.folder} video={ex.video} accent={accent}/>
+                  <ExerciseAnimation folder={exerciseFolder(ex)} video={ex.video} accent={accent}/>
 
                   {/* Progress graph */}
                   <div style={{marginTop:16,padding:"14px 16px",background:"#080808",borderRadius:10,border:`1.5px solid ${exColor}33`}}>

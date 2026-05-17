@@ -1,4 +1,4 @@
-import { exerciseId, getExerciseById, MUSCLE_COVERAGE_GROUPS, DAYS } from "./exercises.js";
+import { exerciseId, getExerciseById, exerciseFolder, MUSCLE_COVERAGE_GROUPS, DAYS } from "./exercises.js";
 
 export const DEFAULT_CUSTOM_ROUTINE = {
   enabled:false,
@@ -69,9 +69,7 @@ export function customRoutineWorkout(routine = DEFAULT_CUSTOM_ROUTINE, day = nul
     custom:true,
     exercises:ids.map(id => getExerciseById(id)).filter(Boolean).map(ex => ({
       ...ex,
-      folder: ex.source === "free-exercise-db" && ex.id
-        ? ex.id.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("_")
-        : ex.folder,
+      folder: exerciseFolder(ex),
     })),
   };
 }

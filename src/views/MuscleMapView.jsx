@@ -151,20 +151,6 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
         </Section>
       )}
 
-      <CollapsibleSection title="Mark Soreness" sub="tap to log how each muscle feels — the coach learns from this">
-        <div style={{display:"grid",gap:6}}>
-          {status.rows.map(row => (
-            <SoreRow
-              key={row.muscle}
-              muscle={row.muscle}
-              label={row.label}
-              current={currentSoreness[row.muscle] || null}
-              onSelect={(level) => logSoreness(row.muscle, level)}
-            />
-          ))}
-        </div>
-      </CollapsibleSection>
-
       <Section title="Muscle Groups" sub="fatigue is estimated from recent logged work and time since last hit">
         <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5,marginBottom:10}}>
           {[
@@ -181,7 +167,7 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
           ))}
         </div>
         <div style={{display:"grid",gap:8}}>
-          {filteredRows.map(row=><MuscleRow key={row.muscle} row={row} avg={status.avg}/>)}
+          {filteredRows.map(row=><MuscleRow key={row.muscle} row={row} avg={status.avg} currentSoreness={currentSoreness[row.muscle]||null} onSoreness={logSoreness}/>)}
           {!filteredRows.length&&(
             <div style={{padding:"14px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10,fontSize:13,color:"#888",textAlign:"center"}}>Nothing in this group yet.</div>
           )}
@@ -342,7 +328,7 @@ function buildMuscleFocus({ rows, avg }) {
   }];
 }
 
-function MuscleRow({ row, avg }) {
+function MuscleRow({ row, avg, currentSoreness, onSoreness }) {
   const ahead = avg && row.recentPoints > avg * 1.25;
   const behind = avg && row.recentPoints < avg * 0.65 && row.planned > 0;
   const recovery = row.recoveryHours
@@ -365,9 +351,22 @@ function MuscleRow({ row, avg }) {
         <SmallMeter label="Fatigue" value={row.fatigue} color={readinessColor}/>
         <SmallMeter label="Recovery" value={row.recoveredPct} color={row.recoveredPct>=100?"#4ade80":"#60a5fa"}/>
       </div>
-      <div style={{display:"flex",justifyContent:"space-between",gap:10,fontSize:11,color:"#888",overflow:"hidden"}}>
-        <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>{ahead ? "ahead" : behind ? "behind" : "even"} · {row.recentPoints} pts{row.soreness ? ` · ${row.soreness}` : ""}</span>
-        <span style={{flexShrink:0}}>{recovery}</span>
+      {/* Bottom row: stats left, soreness chips right */}
+      <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",overflow:"hidden"}}>
+        <span style={{fontSize:11,color:"#666",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>
+          {ahead ? "ahead" : behind ? "behind" : "even"} · {row.recentPoints} pts · {recovery}
+        </span>
+        <div style={{display:"flex",gap:3,flexShrink:0}}>
+          {SORE_LEVELS.map(level => {
+            const active = currentSoreness === level.key;
+            return (
+              <button key={level.key} onClick={() => onSoreness?.(row.muscle, active ? null : level.key)}
+                style={{padding:"4px 7px",borderRadius:6,border:`1px solid ${active?level.color:"#232323"}`,background:active?`${level.color}28`:"#101010",color:active?level.color:"#444",fontSize:10,fontWeight:800,cursor:"pointer",letterSpacing:".03em",lineHeight:1.2}}>
+                {level.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

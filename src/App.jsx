@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { WORKOUTS, SCHEDULE, DEFAULT_SETTINGS, DEFAULT_WEIGHTS, ACHIEVEMENTS, computeStats, todayName, DAYS, getLevel, XP_VALUES, DEFAULT_CUSTOM_ROUTINE, DEFAULT_GOALS, normalizeCustomRoutine, customRoutineWorkout, DEFAULT_USER_PROFILE, normalizeUserProfile, assessmentTargetForProfile } from "./data.js";
+import { WORKOUTS, SCHEDULE, DEFAULT_SETTINGS, DEFAULT_WEIGHTS, ACHIEVEMENTS, computeStats, todayName, DAYS, getLevel, XP_VALUES, DEFAULT_CUSTOM_ROUTINE, DEFAULT_GOALS, IMG_BASE, normalizeCustomRoutine, customRoutineWorkout, DEFAULT_USER_PROFILE, normalizeUserProfile, assessmentTargetForProfile } from "./data.js";
 import { useLocalStorage } from "./hooks.js";
 import { makePlay, vibrate as vib } from "./audio.js";
 import { BottomNav, Toast } from "./components/shared.jsx";
@@ -34,6 +34,8 @@ export default function App() {
   const [userProfile, setUserProfile] = useLocalStorage("wt_user_profile", DEFAULT_USER_PROFILE);
   const [goals,       setGoals]       = useLocalStorage("wt_goals",        DEFAULT_GOALS);
 
+  const [splashDone, setSplashDone] = useState(false);
+  const [splashFading, setSplashFading] = useState(false);
   const [achievementToast, setAchievementToast] = useState(null);
   const [assessmentDone, setAssessmentDone] = useLocalStorage("wt_assessment_done", false);
   const [updateReady, setUpdateReady] = useState(null);
@@ -105,6 +107,12 @@ export default function App() {
     const onUpdate = (event) => setUpdateReady(event.detail?.registration || null);
     window.addEventListener("lift-log-update", onUpdate);
     return () => window.removeEventListener("lift-log-update", onUpdate);
+  }, []);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setSplashFading(true), 700);
+    const t2 = setTimeout(() => setSplashDone(true), 1100);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
   useEffect(() => {
@@ -283,13 +291,31 @@ export default function App() {
   };
 
   const day  = todayName();
-  const accent = WORKOUTS[DAYS.includes(day) ? SCHEDULE[day] : "A"].color;
+  const scheduledDay = DAYS.includes(day) ? day : null;
+  const scheduledKey = scheduledDay ? SCHEDULE[scheduledDay] : "A";
+  const accent = WORKOUTS[scheduledKey].color;
   const level  = getLevel(normalized.xp);
   const visualTheme = safeSettings.visualTheme || "dark";
   const lightMode = visualTheme === "pop_light";
   const appBackground = lightMode
     ? `radial-gradient(circle at 18% 0%, ${accent}30 0%, transparent 28%), linear-gradient(180deg,#f8fffb 0%,#eef7ff 52%,#ffffff 100%)`
     : `radial-gradient(ellipse at top, ${accent}08 0%, #050505 40%, #000 100%)`;
+  const preloadWorkout = safeCustomRoutine.enabled ? customRoutineWorkout(safeCustomRoutine, scheduledDay) : WORKOUTS[scheduledKey];
+  const preloadFolders = [...new Set((preloadWorkout?.exercises || []).map(ex => ex.folder).filter(Boolean))].slice(0, 8).join("|");
+
+  useEffect(() => {
+    if (!safeSettings.onboardingDone || !preloadFolders || typeof Image === "undefined") return;
+    const images = [];
+    preloadFolders.split("|").forEach(folder => {
+      [0, 1].forEach(frame => {
+        const img = new Image();
+        img.decoding = "async";
+        img.src = `${IMG_BASE}/${folder}/${frame}.jpg`;
+        images.push(img);
+      });
+    });
+    return () => images.forEach(img => { img.onload = null; img.onerror = null; });
+  }, [safeSettings.onboardingDone, preloadFolders]);
 
   // Onboarding gate
   if (!safeSettings.onboardingDone) {
@@ -327,6 +353,8 @@ export default function App() {
   }
 
   return (
+    <>
+    {!splashDone && <SplashScreen accent={accent} fading={splashFading}/>}
     <div className={`theme-root theme-${visualTheme}`} style={{
       minHeight:"100vh",
       background:appBackground,
@@ -427,6 +455,44 @@ export default function App() {
           </div>
         </div>
       )}
+    </div>
+    </>
+  );
+}
+
+function SplashScreen({ accent, fading }) {
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    const start = Date.now();
+    const dur = 650;
+    let frame;
+    const tick = () => {
+      const pct = Math.min(100, ((Date.now() - start) / dur) * 100);
+      setProgress(pct);
+      if (pct < 100) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  return (
+    <div style={{
+      position:"fixed", inset:0, zIndex:9999,
+      background:"#000",
+      display:"flex", flexDirection:"column",
+      alignItems:"center", justifyContent:"center",
+      opacity: fading ? 0 : 1,
+      transition: "opacity 0.4s ease",
+      pointerEvents: fading ? "none" : "all",
+    }}>
+      <div style={{textAlign:"center", marginBottom:40}}>
+        <div style={{fontFamily:"'Bebas Neue',sans-serif", fontSize:80, letterSpacing:".1em", color:"#fafafa", lineHeight:1}}>LIFT</div>
+        <div style={{fontFamily:"'Bebas Neue',sans-serif", fontSize:80, letterSpacing:".1em", color:accent, lineHeight:1}}>LOG</div>
+        <div style={{fontSize:11, color:"#444", marginTop:10, letterSpacing:".25em", textTransform:"uppercase"}}>your training, your data</div>
+      </div>
+      <div style={{width:140, height:2, background:"#111", borderRadius:2, overflow:"hidden"}}>
+        <div style={{height:"100%", width:`${progress}%`, background:accent, borderRadius:2, transition:"width 0.05s linear"}}/>
+      </div>
     </div>
   );
 }
