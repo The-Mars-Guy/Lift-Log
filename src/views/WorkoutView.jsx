@@ -3,7 +3,7 @@ import {
   WORKOUTS, SCHEDULE, DAYS, MUSCLE_LABELS, DEFAULT_WEIGHTS,
   EXERCISE_GUIDES, todayName, dateStr, calcDynamicTarget, assessmentTargetForProfile,
   getExerciseHistory, XP_VALUES, getLevel, customRoutineWorkout,
-  ageTier, ageAdjustedRestSeconds,
+  ageTier, ageAdjustedRestSeconds, EXERCISE_LIBRARY,
 } from "../data.js";
 import { useSessionTimer, fmtDuration } from "../hooks.js";
 import { ExerciseAnimation, RestTimer, Toast, MiniGraph } from "../components/shared.jsx";
@@ -627,6 +627,162 @@ function parseTempoCode(code) {
   return parts.slice(0, 3);
 }
 
+// ── LOGBOOK MODE ──────────────────────────────────────────────────────────────
+function LogbookPanel({ accent, onClose, onSave }) {
+  const [entries, setEntries] = useState([]); // [{name, sets:[{weight,reps}]}]
+  const [query, setQuery]     = useState("");
+  const [addingSet, setAddingSet] = useState(null); // exercise name currently open
+  const [setDraft, setSetDraft]   = useState({ weight: 0, reps: 10 });
+  const timer = useSessionTimer(true);
+  const totalSets = entries.reduce((s, e) => s + e.sets.length, 0);
+  const hasEntries = entries.length > 0;
+
+  const libMatches = query.trim().length > 0
+    ? EXERCISE_LIBRARY.filter(ex => ex.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 6)
+    : [];
+
+  const addExercise = (name) => {
+    if (!entries.find(e => e.name === name)) setEntries(p => [...p, { name, sets: [] }]);
+    setQuery("");
+    setAddingSet(name);
+    setSetDraft({ weight: 0, reps: 10 });
+  };
+
+  const logSet = (name) => {
+    setEntries(p => p.map(e => e.name === name ? { ...e, sets: [...e.sets, { weight: setDraft.weight, reps: setDraft.reps }] } : e));
+    setAddingSet(null);
+  };
+
+  const removeSet = (name, idx) => setEntries(p => p.map(e => e.name === name ? { ...e, sets: e.sets.filter((_, i) => i !== idx) } : e));
+  const removeExercise = (name) => { setEntries(p => p.filter(e => e.name !== name)); if (addingSet === name) setAddingSet(null); };
+
+  const finish = () => {
+    if (!hasEntries) { onClose(); return; }
+    const exSnap = entries.map(e => ({
+      id: e.name.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+      name: e.name,
+      sets: e.sets.length,
+      reps: e.sets[0]?.reps || 0,
+      setLog: e.sets,
+    }));
+    onSave({ exercises: exSnap, duration: timer });
+  };
+
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:150,background:"#050505",overflowY:"auto",WebkitOverflowScrolling:"touch",padding:`calc(16px + env(safe-area-inset-top)) 16px calc(80px + env(safe-area-inset-bottom))`}}>
+      <div className="mobile-shell">
+        {/* Header */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <div>
+            <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,marginBottom:2}}>Free Log</div>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:"#fafafa",letterSpacing:".06em",lineHeight:.9}}>LOGBOOK</div>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:accent}}>{fmtDuration(timer)}</div>
+            <div style={{fontSize:11,color:"#777",marginTop:2}}>{totalSets} set{totalSets!==1?"s":""} logged</div>
+            <button onClick={onClose} style={{marginTop:6,background:"transparent",border:"1px solid #2c2c2c",borderRadius:8,color:"#888",padding:"6px 12px",fontSize:11,letterSpacing:".08em",cursor:"pointer"}}>EXIT</button>
+          </div>
+        </div>
+
+        {/* Exercise entries */}
+        {entries.map(entry => (
+          <div key={entry.name} style={{marginBottom:12,background:"#0d0d0d",border:`1.5px solid ${addingSet===entry.name?accent:"#1f1f1f"}`,borderRadius:12,overflow:"hidden"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 13px"}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:15,fontWeight:800,color:"#f0f0f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{entry.name}</div>
+                <div style={{fontSize:12,color:"#666",marginTop:2}}>{entry.sets.length} set{entry.sets.length!==1?"s":""}</div>
+              </div>
+              <button onClick={() => { setAddingSet(addingSet===entry.name?null:entry.name); setSetDraft({ weight:0, reps:10 }); }}
+                style={{padding:"8px 12px",background:addingSet===entry.name?`${accent}22`:"#161616",border:`1px solid ${addingSet===entry.name?accent:"#2a2a2a"}`,borderRadius:8,color:addingSet===entry.name?accent:"#aaa",fontSize:12,fontWeight:800,letterSpacing:".06em",cursor:"pointer"}}>
+                + SET
+              </button>
+              <button onClick={() => removeExercise(entry.name)}
+                style={{padding:"6px 10px",background:"transparent",border:"none",color:"#555",fontSize:18,cursor:"pointer",lineHeight:1}}>×</button>
+            </div>
+            {/* Logged sets */}
+            {entry.sets.length > 0 && (
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",padding:"0 13px 12px"}}>
+                {entry.sets.map((s, idx) => (
+                  <div key={idx} onClick={() => removeSet(entry.name, idx)} title="Tap to remove"
+                    style={{padding:"7px 10px",background:`${accent}18`,border:`1px solid ${accent}44`,borderRadius:8,fontSize:12,color:accent,fontWeight:700,cursor:"pointer"}}>
+                    {s.weight > 0 ? `${s.weight}lb` : "BW"} × {s.reps}
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Inline set logger */}
+            {addingSet === entry.name && (
+              <div style={{borderTop:"1px solid #1a1a1a",padding:"13px"}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                  <div>
+                    <div style={{fontSize:10,color:"#888",letterSpacing:".1em",marginBottom:5}}>WEIGHT (lbs)</div>
+                    <div style={{display:"flex",alignItems:"center",background:"#141414",borderRadius:9,border:`1px solid ${accent}33`,overflow:"hidden"}}>
+                      <button onClick={() => setSetDraft(p => ({...p,weight:Math.max(p.weight-5,0)}))} style={{width:36,height:40,background:"transparent",border:"none",color:"#ccc",fontSize:18,cursor:"pointer"}}>−</button>
+                      <input value={setDraft.weight} onChange={e=>setSetDraft(p=>({...p,weight:Math.max(Number(e.target.value)||0,0)}))} inputMode="decimal" type="number" min="0"
+                        style={{flex:1,minWidth:0,textAlign:"center",fontSize:16,fontWeight:700,color:"#fff",background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono,monospace"}}/>
+                      <button onClick={() => setSetDraft(p => ({...p,weight:p.weight+5}))} style={{width:36,height:40,background:"transparent",border:"none",color:"#ccc",fontSize:18,cursor:"pointer"}}>+</button>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:10,color:"#888",letterSpacing:".1em",marginBottom:5}}>REPS</div>
+                    <div style={{display:"flex",alignItems:"center",background:"#141414",borderRadius:9,border:`1px solid ${accent}33`,overflow:"hidden"}}>
+                      <button onClick={() => setSetDraft(p => ({...p,reps:Math.max(p.reps-1,0)}))} style={{width:36,height:40,background:"transparent",border:"none",color:"#ccc",fontSize:18,cursor:"pointer"}}>−</button>
+                      <input value={setDraft.reps} onChange={e=>setSetDraft(p=>({...p,reps:Math.max(Math.round(Number(e.target.value)||0),0)}))} inputMode="numeric" type="number" min="0"
+                        style={{flex:1,minWidth:0,textAlign:"center",fontSize:16,fontWeight:700,color:"#fff",background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono,monospace"}}/>
+                      <button onClick={() => setSetDraft(p => ({...p,reps:p.reps+1}))} style={{width:36,height:40,background:"transparent",border:"none",color:"#ccc",fontSize:18,cursor:"pointer"}}>+</button>
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => logSet(entry.name)}
+                  style={{width:"100%",padding:"11px",background:accent,border:"none",borderRadius:9,color:"#050505",fontSize:13,fontWeight:800,letterSpacing:".08em",cursor:"pointer"}}>LOG SET</button>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* Add exercise search */}
+        <div style={{marginBottom:16}}>
+          <div style={{position:"relative"}}>
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && query.trim() && !libMatches.length) addExercise(query.trim()); }}
+              placeholder="Search or type exercise name…"
+              style={{width:"100%",boxSizing:"border-box",padding:"13px 54px 13px 14px",background:"#0d0d0d",border:`1px solid ${accent}44`,borderRadius:10,color:"#f0f0f0",fontSize:14,outline:"none"}}
+            />
+            {query.trim() && (
+              <button onClick={() => addExercise(query.trim())}
+                style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",padding:"7px 10px",background:accent,border:"none",borderRadius:7,color:"#050505",fontSize:11,fontWeight:800,cursor:"pointer",letterSpacing:".06em"}}>ADD</button>
+            )}
+          </div>
+          {libMatches.length > 0 && (
+            <div style={{marginTop:4,background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10,overflow:"hidden"}}>
+              {libMatches.map(ex => (
+                <button key={ex.id} onClick={() => addExercise(ex.name)}
+                  style={{width:"100%",display:"flex",justifyContent:"space-between",padding:"11px 14px",background:"transparent",border:"none",borderBottom:"1px solid #141414",color:"#f0f0f0",textAlign:"left",cursor:"pointer"}}>
+                  <span style={{fontSize:14,fontWeight:700}}>{ex.name}</span>
+                  <span style={{fontSize:11,color:"#777"}}>{ex.equipment}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Finish */}
+        <button onClick={finish} disabled={!hasEntries}
+          style={{width:"100%",padding:"18px",borderRadius:13,border:hasEntries?"none":"1px solid #2a2a2a",background:hasEntries?accent:"#1a1a1a",color:hasEntries?"#050505":"#555",fontFamily:"'Bebas Neue',sans-serif",fontSize:24,letterSpacing:".12em",boxShadow:hasEntries?`0 0 36px ${accent}55`:"none",cursor:hasEntries?"pointer":"default"}}>
+          {hasEntries ? "💾 SAVE SESSION" : "ADD AN EXERCISE TO BEGIN"}
+        </button>
+
+        {hasEntries && (
+          <button onClick={onClose}
+            style={{display:"block",margin:"12px auto 0",background:"transparent",border:"none",color:"#555",fontSize:12,letterSpacing:".06em",cursor:"pointer"}}>discard &amp; exit</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── MAIN VIEW ─────────────────────────────────────────────────────────────────
 export default function WorkoutView({
   sets, setSets, history, setHistory, completed, setCompleted,
@@ -661,6 +817,8 @@ export default function WorkoutView({
   const [coachOpen,    setCoachOpen]    = useState(false);
   const [workoutNote,  setWorkoutNote]  = useState("");
   const [exerciseOrder, setExerciseOrder] = useState([]);
+  const [benchmarkDismissed, setBenchmarkDismissed] = useState(false);
+  const [logbookMode, setLogbookMode] = useState(false);
 
   const customWorkout = customRoutine?.enabled ? customRoutineWorkout(customRoutine, activeTab) : null;
   const wKey    = customWorkout ? "CUSTOM" : SCHEDULE[activeTab];
@@ -1103,9 +1261,27 @@ export default function WorkoutView({
     );
   }
 
-  // Show assessment if not done yet and no history
-  if (!assessmentDone && history.length===0) {
-    return <AssessmentFlow onComplete={completeAssessment} accent={accent} theme={theme} exercises={assessmentExercises} userProfile={userProfile}/>;
+  // Assessment is now optional — users can dismiss and do it later via Settings → Edit Benchmark
+
+  if (logbookMode) {
+    return (
+      <LogbookPanel
+        accent={accent}
+        onClose={() => setLogbookMode(false)}
+        onSave={({ exercises, duration }) => {
+          setHistory(p => [{
+            day: activeTab,
+            workout: "LOGBOOK",
+            date: dateStr(scheduledDate(activeTab)),
+            timestamp: Date.now(),
+            duration,
+            exercises,
+            note: "Free log session",
+          }, ...p].slice(0, 120));
+          setLogbookMode(false);
+        }}
+      />
+    );
   }
 
   return (
@@ -1137,6 +1313,21 @@ export default function WorkoutView({
       {!readiness&&!isCompleted&&doneSets===0&&(
         settings.showReadiness!==false&&<ReadinessCheckIn value={DEFAULT_READINESS} onSave={saveReadiness} accent={accent}/>
       )}
+      {/* BENCHMARK SUGGESTION — dismissable, shown until assessment done */}
+      {!assessmentDone && !benchmarkDismissed && history.length < 3 && (
+        <div style={{margin:"0 16px 8px",padding:"13px 14px",background:"#0d0d0d",border:`1px solid ${accent}44`,borderRadius:11,display:"flex",alignItems:"flex-start",gap:12}}>
+          <span style={{fontSize:20,flexShrink:0}}>🧠</span>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:13,color:accent,fontWeight:800,marginBottom:3}}>Help the coach learn your baseline</div>
+            <div style={{fontSize:12,color:"#888",lineHeight:1.45}}>A quick 3-exercise test (plank, push-ups, squats) lets the coach calibrate your starting reps and targets. Optional — skip anytime.</div>
+            <div style={{display:"flex",gap:8,marginTop:10}}>
+              <button onClick={()=>setBenchmarkEditorOpen?.(true)} style={{padding:"8px 14px",background:accent,border:"none",borderRadius:8,color:"#050505",fontSize:12,fontWeight:800,cursor:"pointer",letterSpacing:".06em"}}>TAKE TEST</button>
+              <button onClick={()=>setBenchmarkDismissed(true)} style={{padding:"8px 12px",background:"transparent",border:"1px solid #2a2a2a",borderRadius:8,color:"#666",fontSize:12,cursor:"pointer"}}>Skip for now</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* DAY TABS */}
       <div style={{display:"flex",borderTop:"1px solid #1a1a1a",borderBottom:"1px solid #1a1a1a",background:"#080808"}}>
         {DAYS.map(day=>{
@@ -1171,10 +1362,16 @@ export default function WorkoutView({
             <NoteField value={workoutNote} onChange={setWorkoutNote} />
           )}
           {!isCompleted&&(
-            <button onClick={()=>setFocusMode(true)}
-              style={{width:"100%",marginTop:12,padding:"18px",background:accent,border:"none",borderRadius:13,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:25,letterSpacing:".12em",boxShadow:`0 0 36px ${accent}55`}}>
-              START WORKOUT
-            </button>
+            <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8,marginTop:12}}>
+              <button onClick={()=>setFocusMode(true)}
+                style={{padding:"18px",background:accent,border:"none",borderRadius:13,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:25,letterSpacing:".12em",boxShadow:`0 0 36px ${accent}55`}}>
+                START WORKOUT
+              </button>
+              <button onClick={() => setLogbookMode(true)}
+                style={{padding:"14px 16px",background:"#0d0d0d",border:`1px solid ${accent}55`,borderRadius:13,color:accent,fontSize:11,fontWeight:800,letterSpacing:".08em",textTransform:"uppercase",lineHeight:1.3}}>
+                📓{"\n"}FREE{"\n"}LOG
+              </button>
+            </div>
           )}
         </div>
       </div>

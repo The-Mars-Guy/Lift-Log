@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { MusclePickerDiagram } from "../components/MuscleDiagram.jsx";
 import { BENCHMARK_TESTS_V2, EXERCISE_LIBRARY, MUSCLE_COVERAGE_GROUPS, MUSCLE_LABELS, ROUTINE_TEMPLATES, customRoutineWorkout, exerciseId, exerciseIsRisky, exerciseRiskJoints, getDefaultWeight, getExerciseMovement, isUnilateral, normalizeCustomRoutine, normalizeUserProfile, routineBalanceScore, routineCoverage } from "../data.js";
-import { routineEditSuggestions } from "../coach.js";
+import { generateCoachRoutine, routineEditSuggestions } from "../coach.js";
 
 const DIFFICULTIES = [
   ["beginner", "Beginner"],
@@ -22,6 +22,8 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
   const [templatesOpen, setTemplatesOpen] = useState(true);
   const [muscleFilter, setMuscleFilter] = useState(null);
   const [musclePickerOpen, setMusclePickerOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [coachGenerated, setCoachGenerated] = useState(null); // rationale from last generate
   const selected = useMemo(() => customRoutineWorkout(routine).exercises, [routine]);
   const coverage = routineCoverage(selected);
   const balance = routineBalanceScore(selected);
@@ -65,6 +67,12 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
   const saveCurrentAsRoutine = () => {
     const id = `routine_${Date.now()}`;
     save({ activeRoutineId:id, routines:[...routine.routines, { id, name:routine.name || "Custom Routine", exerciseIds:routine.exerciseIds }] });
+  };
+  const buildWithCoach = () => {
+    const result = generateCoachRoutine({ userProfile:profile, settings:{ trainingGoal:routine.difficulty==="intermediate"?"strength":"hypertrophy", equipmentProfile:"fixed_dumbbells", ...{} }, history, checkIns:[] });
+    save({ name:result.name, exerciseIds:result.exerciseIds, difficulty:result.difficulty });
+    setCoachGenerated(result.rationale);
+    setTemplatesOpen(false);
   };
   const toggleFavorite = (id) => {
     const set = new Set(routine.favoriteExerciseIds || []);
@@ -115,7 +123,24 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
         <div style={{fontSize:13,color:"#999",marginTop:7,letterSpacing:".1em",textTransform:"uppercase"}}>build balanced workouts</div>
       </div>
 
-      <div style={{padding:"20px 16px 6px"}}>
+      {/* BUILD WITH COACH */}
+      <div style={{padding:"12px 16px 0"}}>
+        <button onClick={buildWithCoach}
+          style={{width:"100%",padding:"16px",background:`linear-gradient(135deg,${accent}22,${accent}0a)`,border:`1.5px solid ${accent}66`,borderRadius:12,color:accent,fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:".1em",cursor:"pointer",boxShadow:`0 0 24px ${accent}22`,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+          <span style={{fontSize:20}}>🤖</span> BUILD ROUTINE WITH COACH
+        </button>
+        {coachGenerated && (
+          <div style={{marginTop:8,padding:"10px 12px",background:"#0d0d0d",border:`1px solid ${accent}33`,borderRadius:9}}>
+            <div style={{fontSize:11,color:accent,fontWeight:800,marginBottom:5,letterSpacing:".1em",textTransform:"uppercase"}}>Coach built your routine</div>
+            {coachGenerated.map((line, i) => (
+              <div key={i} style={{fontSize:12,color:"#888",lineHeight:1.45}}>· {line}</div>
+            ))}
+            <button onClick={()=>setCoachGenerated(null)} style={{marginTop:6,fontSize:11,color:"#555",background:"transparent",border:"none",cursor:"pointer",padding:0}}>dismiss</button>
+          </div>
+        )}
+      </div>
+
+      <div style={{padding:"12px 16px 6px"}}>
         <button onClick={() => setTemplatesOpen(v => !v)}
           style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10,cursor:"pointer",textAlign:"left",marginBottom:templatesOpen?8:0}}>
           <div>
@@ -228,17 +253,6 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
         {!complete&&<div style={{fontSize:12,color:"#fbbf24",lineHeight:1.45,marginTop:10}}>Add at least one push, pull, legs, and core movement before using this routine.</div>}
       </div>
 
-      <Section title="Training Level">
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7}}>
-          {DIFFICULTIES.map(([key,label]) => (
-            <button key={key} onClick={()=>{ setDifficulty(key); save({difficulty:key}); }}
-              style={{padding:"11px 8px",borderRadius:9,border:`1px solid ${difficulty===key?accent:"#292929"}`,background:difficulty===key?`${accent}22`:"#0d0d0d",color:difficulty===key?accent:"#aaa",fontWeight:800}}>
-              {label}
-            </button>
-          ))}
-        </div>
-      </Section>
-
       <Section title="Browse Exercises">
         {recentIds.length > 0 && (
           <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8}}>
@@ -265,26 +279,41 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
             />
           </div>
         )}
-        <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search exercises, muscles, equipment"
-          style={{width:"100%",boxSizing:"border-box",marginBottom:8,background:"#101010",border:"1px solid #292929",borderRadius:9,color:"#f0f0f0",padding:"11px 12px",fontSize:14,outline:"none"}} />
-        <select
-          value={category}
-          onChange={e => setCategory(e.target.value)}
-          style={{ width: "100%", marginBottom: 10, background: "#101010", border: "1px solid #292929", borderRadius: 9, color: "#f0f0f0", padding: "11px 12px", fontSize: 14, outline: "none" }}
-        >
+        {/* Quick category chips */}
+        <div style={{display:"flex",gap:6,marginBottom:8,overflowX:"auto",paddingBottom:2}}>
           {categories.map(([key, label]) => (
-            <option key={key} value={key}>{label}</option>
+            <button key={key} onClick={() => setCategory(key)}
+              style={{flexShrink:0,padding:"7px 14px",borderRadius:20,border:`1px solid ${category===key?accent:"#2a2a2a"}`,background:category===key?`${accent}22`:"#0d0d0d",color:category===key?accent:"#888",fontSize:12,fontWeight:800,letterSpacing:".05em",cursor:"pointer"}}>
+              {label}
+            </button>
           ))}
-        </select>
-        <select
-          value={equipment}
-          onChange={e => setEquipment(e.target.value)}
-          style={{ width: "100%", marginBottom: 10, background: "#101010", border: "1px solid #292929", borderRadius: 9, color: "#f0f0f0", padding: "11px 12px", fontSize: 14, outline: "none" }}
-        >
-          {[["all","All"],["bodyweight","Bodyweight"],["dumbbells","Dumbbells"],["bands","Bands"],["machines","Machines"],["barbell","Barbell"],["kettlebell","Kettlebell"],["mobility","Mobility"]].map(([key, label]) => (
-            <option key={key} value={key}>{label}</option>
-          ))}
-        </select>
+        </div>
+        <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search exercises, muscles, equipment…"
+          style={{width:"100%",boxSizing:"border-box",marginBottom:8,background:"#101010",border:"1px solid #292929",borderRadius:9,color:"#f0f0f0",padding:"11px 12px",fontSize:14,outline:"none"}} />
+        {/* Collapsed filters row */}
+        <button onClick={()=>setFiltersOpen(v=>!v)}
+          style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 12px",marginBottom:filtersOpen?8:0,background:"#0d0d0d",border:`1px solid ${(equipment!=="all"||difficulty!=="beginner")?"#4ade8066":"#1f1f1f"}`,borderRadius:9,cursor:"pointer",textAlign:"left"}}>
+          <span style={{fontSize:12,color:(equipment!=="all"||difficulty!=="beginner")?"#4ade80":"#888",fontWeight:800,letterSpacing:".1em",textTransform:"uppercase"}}>
+            Filters {equipment!=="all"||difficulty!=="beginner" ? "· active" : ""}
+          </span>
+          <span style={{fontSize:12,color:"#888"}}>{filtersOpen?"▲":"▼"}</span>
+        </button>
+        {filtersOpen && (
+          <div style={{display:"grid",gap:7,marginBottom:10}}>
+            <select value={equipment} onChange={e=>setEquipment(e.target.value)}
+              style={{width:"100%",background:"#101010",border:"1px solid #292929",borderRadius:9,color:"#f0f0f0",padding:"10px 12px",fontSize:13,outline:"none"}}>
+              {[["all","All Equipment"],["bodyweight","Bodyweight"],["dumbbells","Dumbbells"],["bands","Bands"],["machines","Machines"],["barbell","Barbell"],["kettlebell","Kettlebell"],["mobility","Mobility"]].map(([k,l])=>(<option key={k} value={k}>{l}</option>))}
+            </select>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
+              {DIFFICULTIES.map(([key,label])=>(
+                <button key={key} onClick={()=>{setDifficulty(key);save({difficulty:key});}}
+                  style={{padding:"9px 6px",borderRadius:8,border:`1px solid ${difficulty===key?accent:"#292929"}`,background:difficulty===key?`${accent}22`:"#0d0d0d",color:difficulty===key?accent:"#888",fontSize:12,fontWeight:800,cursor:"pointer"}}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {riskyHidden > 0 && (
           <button onClick={()=>setShowRisky(v=>!v)}
             style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",marginBottom:8,background:"#fb718511",border:"1px solid #fb718555",borderRadius:9,color:"#fb7185",textAlign:"left"}}>
@@ -472,11 +501,16 @@ function CoachEditsSection({ suggestions, save, routine, accent }) {
   );
 }
 
-function Section({ title, children }) {
+function Section({ title, children, defaultOpen = true }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div style={{padding:"20px 16px 6px"}}>
-      <div style={{fontSize:13,color:"#ddd",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,marginBottom:11}}>{title}</div>
-      {children}
+    <div style={{padding:"8px 16px 6px"}}>
+      <button onClick={() => setOpen(v => !v)}
+        style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"transparent",border:"none",padding:"10px 0",cursor:"pointer",textAlign:"left",marginBottom:open?8:0}}>
+        <span style={{fontSize:13,color:"#ddd",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700}}>{title}</span>
+        <span style={{fontSize:12,color:"#555",transition:"transform .2s",display:"inline-block",transform:open?"rotate(0)":"rotate(-90deg)"}}>▼</span>
+      </button>
+      {open && children}
     </div>
   );
 }

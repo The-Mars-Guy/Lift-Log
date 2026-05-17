@@ -1360,3 +1360,132 @@ export function computePersonalRecords({ history = [] }) {
 
   return { exerciseRecords, bestSessionVolume, fastestSession, longestSession };
 }
+
+/**
+ * generateCoachRoutine
+ * Builds a balanced full workout from scratch using user profile, settings, and history.
+ * Returns { name, exerciseIds, difficulty, exercises, rationale }
+ */
+export function generateCoachRoutine({
+  userProfile = null,
+  settings = {},
+  history = [],
+  checkIns = [],
+  targetCount = null,
+}) {
+  const profile    = normalizeUserProfile(userProfile);
+  const tier       = ageTier(profile);
+  const experience = profile.trainingExperience || "new";
+  const limitations = profile.limitations || [];
+  const goal       = settings.trainingGoal   || "general";
+  const equip      = settings.equipmentProfile || "fixed_dumbbells";
+
+  // Target exercise count by experience
+  const count = targetCount ?? (
+    experience === "trained"   ? 7 :
+    experience === "returning" ? 6 : 5
+  );
+
+  // Equipment preference order
+  const EQUIP_PREF = {
+    gym_access:            ["barbell","machines","dumbbells","bodyweight","bands"],
+    adjustable_dumbbells:  ["dumbbells","bodyweight","bands","kettlebell"],
+    fixed_dumbbells:       ["dumbbells","bodyweight","bands"],
+  };
+  const equipPref = EQUIP_PREF[equip] || EQUIP_PREF.fixed_dumbbells;
+
+  // Difficulty ceiling
+  const diffOk = (d) => {
+    if (experience === "trained")   return ["beginner","novice","intermediate"].includes(d);
+    if (experience === "returning") return ["beginner","novice"].includes(d);
+    return d === "beginner";
+  };
+
+  // Pain-blocked exercises to avoid
+  const blocked = new Set(painBlockedExercises(checkIns));
+
+  // Pick best exercise for a muscle group (primary muscles list)
+  const selectedIds = new Set();
+  const selected    = [];
+
+  const pickForMuscles = (muscles) => {
+    let candidates = EXERCISE_LIBRARY.filter(ex =>
+      ex.primary?.some(m => muscles.includes(m)) &&
+      !selectedIds.has(ex.id) &&
+      !exerciseIsRisky(ex.name, limitations) &&
+      !blocked.has(ex.name) &&
+      diffOk(ex.difficulty)
+    );
+    // Sort by equipment preference
+    candidates.sort((a, b) => {
+      const ai = equipPref.indexOf(a.equipment);
+      const bi = equipPref.indexOf(b.equipment);
+      const aScore = (ai === -1 ? 99 : ai) + (a.ageFriendly ? 0 : 3) + (a.difficulty === "beginner" ? 0 : 1);
+      const bScore = (bi === -1 ? 99 : bi) + (b.ageFriendly ? 0 : 3) + (b.difficulty === "beginner" ? 0 : 1);
+      return aScore - bScore;
+    });
+    // Prefer age-friendly for 50+ tier
+    if (tier.ageFriendly) {
+      const ageFriendly = candidates.filter(ex => ex.ageFriendly);
+      if (ageFriendly.length) candidates = ageFriendly;
+    }
+    return candidates[0] || null;
+  };
+
+  // Coverage groups: push, pull, legs, core → fill remaining with goal-biased muscles
+  const GOAL_MUSCLE_BIAS = {
+    strength:         [["chest","triceps","frontDelts"],["lats","upperBack","biceps"],["quads","glutes","hamstrings"],["core"]],
+    hypertrophy:      [["chest","triceps"],["lats","upperBack"],["quads","glutes"],["core"],["biceps"],["hamstrings","calves"],["sideDelts"]],
+    fatigue_friendly: [["quads","glutes"],["chest"],["lats","upperBack"],["core"],["hamstrings"]],
+    general:          [["chest","triceps"],["lats","upperBack"],["quads","glutes","hamstrings"],["core"],["sideDelts","biceps"]],
+  };
+  const musclePriority = GOAL_MUSCLE_BIAS[goal] || GOAL_MUSCLE_BIAS.general;
+
+  for (const muscles of musclePriority) {
+    if (selected.length >= count) break;
+    const pick = pickForMuscles(muscles);
+    if (pick) {
+      selected.push(pick);
+      selectedIds.add(pick.id);
+    }
+  }
+
+  // Fill remaining slots with any unrepresented muscles
+  if (selected.length < count) {
+    const allMuscleGroups = [
+      ["quads","glutes","hamstrings"],["chest","frontDelts"],
+      ["lats","upperBack"],["core"],["biceps"],["triceps"],
+      ["sideDelts","rearDelts"],["calves","forearms"],
+    ];
+    for (const muscles of allMuscleGroups) {
+      if (selected.length >= count) break;
+      const pick = pickForMuscles(muscles);
+      if (pick) {
+        selected.push(pick);
+        selectedIds.add(pick.id);
+      }
+    }
+  }
+
+  const difficulty = experience === "trained" ? "novice" : "beginner";
+  const goalLabel  = { strength:"Strength", hypertrophy:"Muscle", fatigue_friendly:"Tone", general:"General" }[goal] || "General";
+  const date       = new Date().toLocaleDateString("en-US", { month:"short", day:"numeric" });
+
+  const rationale = [
+    `${selected.length} exercises selected for ${goalLabel.toLowerCase()} goal.`,
+    equip !== "fixed_dumbbells"
+      ? `Equipment: ${EQUIPMENT_PROFILES[equip]?.label || equip}.`
+      : "Dumbbell-focused for home training.",
+    limitations.length ? `Avoided exercises that stress: ${limitations.join(", ")}.` : null,
+    tier.ageFriendly   ? `Age-friendly exercises prioritized for ${tier.label} tier.`  : null,
+    blocked.size        ? `Skipped ${blocked.size} pain-flagged exercise(s).`          : null,
+  ].filter(Boolean);
+
+  return {
+    name:        `Coach Plan · ${goalLabel} · ${date}`,
+    exerciseIds: selected.map(ex => ex.id),
+    difficulty,
+    exercises:   selected,
+    rationale,
+  };
+}

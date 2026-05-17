@@ -85,7 +85,7 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
   };
 
   return (
-    <div>
+    <div style={{overflowX:"hidden"}}>
       <div style={{padding:"34px 16px 18px"}}>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:52,letterSpacing:".06em",lineHeight:.88,color:"#fafafa"}}>MUSCLE MAP</div>
         <div style={{fontSize:13,color:"#999",marginTop:7,letterSpacing:".1em",textTransform:"uppercase"}}>readiness, recovery, balance</div>
@@ -365,9 +365,9 @@ function MuscleRow({ row, avg }) {
         <SmallMeter label="Fatigue" value={row.fatigue} color={readinessColor}/>
         <SmallMeter label="Recovery" value={row.recoveredPct} color={row.recoveredPct>=100?"#4ade80":"#60a5fa"}/>
       </div>
-      <div style={{display:"flex",justifyContent:"space-between",gap:10,fontSize:11,color:"#888"}}>
-        <span>{ahead ? "ahead" : behind ? "behind" : "even"} · {row.recentPoints} work pts{row.soreness ? ` · ${row.soreness}` : ""}</span>
-        <span>{recovery}</span>
+      <div style={{display:"flex",justifyContent:"space-between",gap:10,fontSize:11,color:"#888",overflow:"hidden"}}>
+        <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>{ahead ? "ahead" : behind ? "behind" : "even"} · {row.recentPoints} pts{row.soreness ? ` · ${row.soreness}` : ""}</span>
+        <span style={{flexShrink:0}}>{recovery}</span>
       </div>
     </div>
   );
@@ -375,9 +375,10 @@ function MuscleRow({ row, avg }) {
 
 function SmallMeter({ label, value, color }) {
   return (
-    <div>
-      <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#777",letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>
-        <span>{label}</span><span>{Math.round(value)}%</span>
+    <div style={{minWidth:0,overflow:"hidden"}}>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#777",letterSpacing:".08em",textTransform:"uppercase",marginBottom:4}}>
+        <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</span>
+        <span style={{flexShrink:0,marginLeft:4}}>{Math.round(value)}%</span>
       </div>
       <div style={{height:6,background:"#171717",borderRadius:5,overflow:"hidden"}}>
         <div style={{height:"100%",width:`${Math.min(100, value)}%`,background:color,transition:"width .3s"}}/>
@@ -388,8 +389,8 @@ function SmallMeter({ label, value, color }) {
 
 function Mini({ label, value, color }) {
   return (
-    <div style={{padding:"12px 13px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10}}>
-      <div style={{fontSize:10,color:"#888",letterSpacing:".12em",textTransform:"uppercase",marginBottom:4}}>{label}</div>
+    <div style={{padding:"12px 13px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10,minWidth:0,overflow:"hidden"}}>
+      <div style={{fontSize:10,color:"#888",letterSpacing:".1em",textTransform:"uppercase",marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{label}</div>
       <div style={{fontSize:13,color,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{value}</div>
     </div>
   );
