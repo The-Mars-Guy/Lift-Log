@@ -9,7 +9,7 @@ const DIFFICULTIES = [
   ["intermediate", "All"],
 ];
 
-export default function RoutineView({ customRoutine, setCustomRoutine, userProfile, setUserProfile, history = [], accent, setActiveView }) {
+export default function RoutineView({ customRoutine, setCustomRoutine, userProfile, setUserProfile, history = [], accent, setActiveView, checkIns = [], settings = {} }) {
   const routine = normalizeCustomRoutine(customRoutine);
   const profile = normalizeUserProfile(userProfile);
   const [category, setCategory] = useState("all");
@@ -19,11 +19,12 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
   const [showRisky, setShowRisky] = useState(false);
   const [renamingId, setRenamingId] = useState(null);
   const [benchmarkOpen, setBenchmarkOpen] = useState(false);
-  const [templatesOpen, setTemplatesOpen] = useState(true);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   const [muscleFilter, setMuscleFilter] = useState(null);
   const [musclePickerOpen, setMusclePickerOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [coachGenerated, setCoachGenerated] = useState(null); // rationale from last generate
+  const [coachGenerated, setCoachGenerated] = useState(null);
+  const [browseTab, setBrowseTab] = useState("browse"); // "browse" | "selected"
   const selected = useMemo(() => customRoutineWorkout(routine).exercises, [routine]);
   const coverage = routineCoverage(selected);
   const balance = routineBalanceScore(selected);
@@ -69,10 +70,21 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
     save({ activeRoutineId:id, routines:[...routine.routines, { id, name:routine.name || "Custom Routine", exerciseIds:routine.exerciseIds }] });
   };
   const buildWithCoach = () => {
-    const result = generateCoachRoutine({ userProfile:profile, settings:{ trainingGoal:routine.difficulty==="intermediate"?"strength":"hypertrophy", equipmentProfile:"fixed_dumbbells", ...{} }, history, checkIns:[] });
+    const result = generateCoachRoutine({ userProfile:profile, settings, history, checkIns });
     save({ name:result.name, exerciseIds:result.exerciseIds, difficulty:result.difficulty });
     setCoachGenerated(result.rationale);
     setTemplatesOpen(false);
+    setBrowseTab("selected");
+  };
+
+  const moveExerciseInRoutine = (id, dir) => {
+    const ids = [...routine.exerciseIds];
+    const idx = ids.indexOf(id);
+    if (idx < 0) return;
+    const next = idx + dir;
+    if (next < 0 || next >= ids.length) return;
+    [ids[idx], ids[next]] = [ids[next], ids[idx]];
+    save({ exerciseIds: ids });
   };
   const toggleFavorite = (id) => {
     const set = new Set(routine.favoriteExerciseIds || []);
@@ -142,12 +154,12 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
 
       <div style={{padding:"12px 16px 6px"}}>
         <button onClick={() => setTemplatesOpen(v => !v)}
-          style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10,cursor:"pointer",textAlign:"left",marginBottom:templatesOpen?8:0}}>
-          <div>
-            <span style={{fontSize:13,color:"#ddd",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700}}>Templates</span>
-            {!templatesOpen && routine.activeRoutineId && (() => { const t = ROUTINE_TEMPLATES.find(t => t.id === routine.activeRoutineId); return t ? <span style={{fontSize:11,color:"#888",marginLeft:10}}>{t.name}</span> : null; })()}
+          style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 15px",background:"#0d0d0d",border:`1.5px solid ${templatesOpen?"#2a2a2a":"#1a1a1a"}`,borderRadius:10,cursor:"pointer",textAlign:"left",marginBottom:templatesOpen?10:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:13,color:"#e0e0e0",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700}}>Templates</span>
+            {!templatesOpen && routine.activeRoutineId && (() => { const t = ROUTINE_TEMPLATES.find(t => t.id === routine.activeRoutineId); return t ? <span style={{fontSize:11,color:"#666",background:"#161616",padding:"3px 8px",borderRadius:5}}>{t.name}</span> : null; })()}
           </div>
-          <span style={{fontSize:12,color:"#888"}}>{templatesOpen ? "▲" : "▼"}</span>
+          <span style={{fontSize:16,color:"#aaa",transition:"transform .2s",display:"inline-block",transform:templatesOpen?"rotate(180deg)":"rotate(0deg)"}}>⌄</span>
         </button>
         {templatesOpen && (
           <div style={{display:"grid",gap:8}}>
@@ -253,67 +265,130 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
         {!complete&&<div style={{fontSize:12,color:"#fbbf24",lineHeight:1.45,marginTop:10}}>Add at least one push, pull, legs, and core movement before using this routine.</div>}
       </div>
 
-      <Section title="Browse Exercises">
-        {recentIds.length > 0 && (
-          <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8}}>
-            {recentIds.slice(0, 8).map(id => {
-              const ex = EXERCISE_LIBRARY.find(item => item.id === id);
-              return ex ? <button key={id} onClick={()=>toggle(ex.id)} style={{flexShrink:0,padding:"8px 10px",border:`1px solid ${accent}66`,borderRadius:8,background:"#101010",color:accent,fontSize:11,fontWeight:800}}>{ex.name}</button> : null;
-            })}
-          </div>
-        )}
-        {/* Muscle map filter */}
-        <button onClick={() => setMusclePickerOpen(v => !v)}
-          style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 13px",marginBottom:8,background:muscleFilter?"#fb923c18":"#0d0d0d",border:`1px solid ${muscleFilter?"#fb923c66":"#1f1f1f"}`,borderRadius:10,cursor:"pointer",textAlign:"left"}}>
-          <span style={{fontSize:12,color:muscleFilter?"#fb923c":"#aaa",fontWeight:800,letterSpacing:".1em",textTransform:"uppercase"}}>
-            {muscleFilter ? `Muscle: ${muscleFilter}` : "Filter by Muscle"}
-          </span>
-          <span style={{fontSize:12,color:"#888"}}>{musclePickerOpen ? "▲" : "▼"}</span>
-        </button>
-        {musclePickerOpen && (
-          <div style={{marginBottom:10}}>
-            <MusclePickerDiagram
-              selectedMuscle={muscleFilter}
-              onSelect={m => { setMuscleFilter(m); }}
-              accent={accent}
-            />
-          </div>
-        )}
-        {/* Quick category chips */}
-        <div style={{display:"flex",gap:6,marginBottom:8,overflowX:"auto",paddingBottom:2}}>
-          {categories.map(([key, label]) => (
-            <button key={key} onClick={() => setCategory(key)}
-              style={{flexShrink:0,padding:"7px 14px",borderRadius:20,border:`1px solid ${category===key?accent:"#2a2a2a"}`,background:category===key?`${accent}22`:"#0d0d0d",color:category===key?accent:"#888",fontSize:12,fontWeight:800,letterSpacing:".05em",cursor:"pointer"}}>
+      <Section title="Exercises">
+        {/* SELECTED / BROWSE tabs */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
+          {[["selected",`Selected (${selected.length})`],["browse","Browse"]].map(([tab,label])=>(
+            <button key={tab} onClick={()=>setBrowseTab(tab)}
+              style={{padding:"10px",borderRadius:9,border:`1.5px solid ${browseTab===tab?accent:"#1f1f1f"}`,background:browseTab===tab?`${accent}18`:"#0d0d0d",color:browseTab===tab?accent:"#777",fontSize:12,fontWeight:800,letterSpacing:".08em",textTransform:"uppercase",cursor:"pointer"}}>
               {label}
             </button>
           ))}
         </div>
-        <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search exercises, muscles, equipment…"
-          style={{width:"100%",boxSizing:"border-box",marginBottom:8,background:"#101010",border:"1px solid #292929",borderRadius:9,color:"#f0f0f0",padding:"11px 12px",fontSize:14,outline:"none"}} />
-        {/* Collapsed filters row */}
-        <button onClick={()=>setFiltersOpen(v=>!v)}
-          style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 12px",marginBottom:filtersOpen?8:0,background:"#0d0d0d",border:`1px solid ${(equipment!=="all"||difficulty!=="beginner")?"#4ade8066":"#1f1f1f"}`,borderRadius:9,cursor:"pointer",textAlign:"left"}}>
-          <span style={{fontSize:12,color:(equipment!=="all"||difficulty!=="beginner")?"#4ade80":"#888",fontWeight:800,letterSpacing:".1em",textTransform:"uppercase"}}>
-            Filters {equipment!=="all"||difficulty!=="beginner" ? "· active" : ""}
-          </span>
-          <span style={{fontSize:12,color:"#888"}}>{filtersOpen?"▲":"▼"}</span>
-        </button>
-        {filtersOpen && (
-          <div style={{display:"grid",gap:7,marginBottom:10}}>
-            <select value={equipment} onChange={e=>setEquipment(e.target.value)}
-              style={{width:"100%",background:"#101010",border:"1px solid #292929",borderRadius:9,color:"#f0f0f0",padding:"10px 12px",fontSize:13,outline:"none"}}>
-              {[["all","All Equipment"],["bodyweight","Bodyweight"],["dumbbells","Dumbbells"],["bands","Bands"],["machines","Machines"],["barbell","Barbell"],["kettlebell","Kettlebell"],["mobility","Mobility"]].map(([k,l])=>(<option key={k} value={k}>{l}</option>))}
-            </select>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
-              {DIFFICULTIES.map(([key,label])=>(
-                <button key={key} onClick={()=>{setDifficulty(key);save({difficulty:key});}}
-                  style={{padding:"9px 6px",borderRadius:8,border:`1px solid ${difficulty===key?accent:"#292929"}`,background:difficulty===key?`${accent}22`:"#0d0d0d",color:difficulty===key?accent:"#888",fontSize:12,fontWeight:800,cursor:"pointer"}}>
-                  {label}
-                </button>
-              ))}
-            </div>
+
+        {/* ── SELECTED VIEW ─────────────────────────────────────── */}
+        {browseTab === "selected" && (
+          <div style={{display:"grid",gap:7}}>
+            {selected.length === 0 && (
+              <div style={{padding:"20px",textAlign:"center",color:"#555",fontSize:13}}>No exercises selected yet. Use Browse or Build with Coach.</div>
+            )}
+            {selected.map((ex, idx) => (
+              <div key={ex.id || ex.name} style={{display:"flex",alignItems:"center",gap:8,padding:"11px 12px",background:"#0d0d0d",border:`1.5px solid ${accent}33`,borderRadius:10}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:14,fontWeight:800,color:accent,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ex.name}</div>
+                  <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:5}}>
+                    {[...(ex.primary||[]),...(ex.secondary||[])].slice(0,3).map(m=>(
+                      <span key={m} style={{fontSize:10,color:"#888",border:"1px solid #2a2a2a",borderRadius:5,padding:"2px 6px"}}>{MUSCLE_LABELS[m]||m}</span>
+                    ))}
+                    <span style={{fontSize:10,color:"#666",border:"1px solid #1f1f1f",borderRadius:5,padding:"2px 6px"}}>{ex.equipment}</span>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:4,flexShrink:0}}>
+                  <button onClick={()=>moveExerciseInRoutine(ex.id,-1)} disabled={idx===0}
+                    style={{width:30,height:30,background:"#161616",border:"1px solid #2a2a2a",borderRadius:7,color:idx===0?"#333":"#aaa",fontSize:13,cursor:idx===0?"default":"pointer"}}>↑</button>
+                  <button onClick={()=>moveExerciseInRoutine(ex.id,1)} disabled={idx===selected.length-1}
+                    style={{width:30,height:30,background:"#161616",border:"1px solid #2a2a2a",borderRadius:7,color:idx===selected.length-1?"#333":"#aaa",fontSize:13,cursor:idx===selected.length-1?"default":"pointer"}}>↓</button>
+                  <button onClick={()=>toggle(ex.id)}
+                    style={{width:30,height:30,background:"#161616",border:"1px solid #fb718544",borderRadius:7,color:"#fb7185",fontSize:14,cursor:"pointer"}}>×</button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
+
+        {/* ── BROWSE VIEW ───────────────────────────────────────── */}
+        {browseTab === "browse" && (<>
+        {recentIds.length > 0 && (
+          <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8,marginBottom:4}}>
+            {recentIds.slice(0, 8).map(id => {
+              const ex = EXERCISE_LIBRARY.find(item => item.id === id);
+              return ex ? <button key={id} onClick={()=>toggle(ex.id)} style={{flexShrink:0,padding:"8px 10px",border:`1px solid ${accent}66`,borderRadius:8,background:"#101010",color:accent,fontSize:11,fontWeight:800,cursor:"pointer"}}>{ex.name}</button> : null;
+            })}
+          </div>
+        )}
+
+        {/* Search — always visible */}
+        <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search exercises, muscles, equipment…"
+          style={{width:"100%",boxSizing:"border-box",marginBottom:8,background:"#101010",border:"1px solid #2a2a2a",borderRadius:10,color:"#f0f0f0",padding:"13px 14px",fontSize:14,outline:"none"}} />
+
+        {/* Filters accordion — contains muscle map, category chips, equipment, difficulty */}
+        {(() => {
+          const filtersActive = muscleFilter || category !== "all" || equipment !== "all" || difficulty !== "beginner";
+          return (
+            <>
+              <button onClick={() => setFiltersOpen(v => !v)}
+                style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 15px",marginBottom:filtersOpen?0:8,background:filtersActive?`${accent}14`:"#0d0d0d",border:`1.5px solid ${filtersActive?`${accent}66`:"#1f1f1f"}`,borderRadius:10,cursor:"pointer",textAlign:"left"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:13,color:filtersActive?accent:"#bbb",fontWeight:800,letterSpacing:".1em",textTransform:"uppercase"}}>Filters</span>
+                  {filtersActive && (
+                    <span style={{fontSize:10,color:accent,background:`${accent}22`,border:`1px solid ${accent}44`,borderRadius:10,padding:"2px 8px",fontWeight:800,letterSpacing:".06em"}}>ACTIVE</span>
+                  )}
+                </div>
+                <span style={{fontSize:16,color:"#aaa",transition:"transform .2s",display:"inline-block",transform:filtersOpen?"rotate(180deg)":"rotate(0deg)"}}>⌄</span>
+              </button>
+              {filtersOpen && (
+                <div style={{padding:"14px",background:"#070707",border:`1px solid #1f1f1f`,borderRadius:10,marginBottom:10,display:"grid",gap:12}}>
+                  {/* Muscle map */}
+                  <div>
+                    <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:8,fontWeight:700}}>Filter by Muscle</div>
+                    <MusclePickerDiagram
+                      selectedMuscle={muscleFilter}
+                      onSelect={m => { setMuscleFilter(prev => prev === m ? null : m); }}
+                      accent={accent}
+                    />
+                    {muscleFilter && (
+                      <button onClick={() => setMuscleFilter(null)} style={{marginTop:6,fontSize:11,color:"#888",background:"transparent",border:"1px solid #2a2a2a",borderRadius:6,padding:"4px 10px",cursor:"pointer"}}>
+                        Clear muscle filter
+                      </button>
+                    )}
+                  </div>
+                  {/* Category chips */}
+                  <div>
+                    <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:8,fontWeight:700}}>Category</div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                      {categories.map(([key, label]) => (
+                        <button key={key} onClick={() => setCategory(key)}
+                          style={{flexShrink:0,padding:"7px 14px",borderRadius:20,border:`1.5px solid ${category===key?accent:"#2a2a2a"}`,background:category===key?`${accent}22`:"#101010",color:category===key?accent:"#888",fontSize:12,fontWeight:800,letterSpacing:".05em",cursor:"pointer"}}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Equipment */}
+                  <div>
+                    <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:8,fontWeight:700}}>Equipment</div>
+                    <select value={equipment} onChange={e=>setEquipment(e.target.value)}
+                      style={{width:"100%",background:"#101010",border:"1px solid #2a2a2a",borderRadius:9,color:"#f0f0f0",padding:"10px 12px",fontSize:13,outline:"none"}}>
+                      {[["all","All Equipment"],["bodyweight","Bodyweight"],["dumbbells","Dumbbells"],["bands","Bands"],["machines","Machines"],["barbell","Barbell"],["kettlebell","Kettlebell"],["mobility","Mobility"]].map(([k,l])=>(<option key={k} value={k}>{l}</option>))}
+                    </select>
+                  </div>
+                  {/* Difficulty */}
+                  <div>
+                    <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:8,fontWeight:700}}>Difficulty</div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
+                      {DIFFICULTIES.map(([key,label])=>(
+                        <button key={key} onClick={()=>{setDifficulty(key);save({difficulty:key});}}
+                          style={{padding:"9px 6px",borderRadius:8,border:`1.5px solid ${difficulty===key?accent:"#2a2a2a"}`,background:difficulty===key?`${accent}22`:"#101010",color:difficulty===key?accent:"#888",fontSize:12,fontWeight:800,cursor:"pointer"}}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        })()}
         {riskyHidden > 0 && (
           <button onClick={()=>setShowRisky(v=>!v)}
             style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",marginBottom:8,background:"#fb718511",border:"1px solid #fb718555",borderRadius:9,color:"#fb7185",textAlign:"left"}}>
@@ -340,35 +415,9 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
             </div>
           )}
         </div>
+        </>)}
       </Section>
 
-      <Section title="Benchmark V2">
-        <button
-          onClick={() => setBenchmarkOpen(v => !v)}
-          style={{
-            width: "100%", padding: "12px 14px", background: "#0d0d0d",
-            border: "1px solid #1f1f1f", borderRadius: 10, cursor: "pointer",
-            display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left",
-          }}
-        >
-          <span style={{ fontSize: 13, color: "#aaa" }}>{BENCHMARK_TESTS_V2.length} tests defined</span>
-          <span style={{ fontSize: 12, color: "#888" }}>{benchmarkOpen ? "▲ hide" : "▼ view"}</span>
-        </button>
-        {benchmarkOpen && (
-          <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-            {BENCHMARK_TESTS_V2.map(test => (
-              <div key={test.id} style={{ padding: "11px 12px", background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 9 }}>
-                <div style={{ fontSize: 13, color: "#eee", fontWeight: 900 }}>{test.name}</div>
-                <div style={{ fontSize: 12, color: "#888", lineHeight: 1.4, marginTop: 4 }}>{test.note}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
-
-      {suggestions.length > 0 && (
-        <CoachEditsSection suggestions={suggestions} save={save} routine={routine} accent={accent} />
-      )}
     </div>
   );
 }
@@ -506,9 +555,9 @@ function Section({ title, children, defaultOpen = true }) {
   return (
     <div style={{padding:"8px 16px 6px"}}>
       <button onClick={() => setOpen(v => !v)}
-        style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"transparent",border:"none",padding:"10px 0",cursor:"pointer",textAlign:"left",marginBottom:open?8:0}}>
-        <span style={{fontSize:13,color:"#ddd",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700}}>{title}</span>
-        <span style={{fontSize:12,color:"#555",transition:"transform .2s",display:"inline-block",transform:open?"rotate(0)":"rotate(-90deg)"}}>▼</span>
+        style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#0d0d0d",border:"1.5px solid #1f1f1f",borderRadius:10,padding:"13px 15px",cursor:"pointer",textAlign:"left",marginBottom:open?10:0}}>
+        <span style={{fontSize:13,color:"#e0e0e0",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700}}>{title}</span>
+        <span style={{fontSize:16,color:"#aaa",transition:"transform .2s",display:"inline-block",transform:open?"rotate(180deg)":"rotate(0deg)"}}>⌄</span>
       </button>
       {open && children}
     </div>

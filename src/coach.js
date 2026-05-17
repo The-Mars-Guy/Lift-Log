@@ -1,4 +1,4 @@
-import { EXERCISE_LIBRARY, MUSCLE_COVERAGE_GROUPS, ageTier, exerciseId, exerciseIsRisky, exerciseRiskJoints, mesocyclePhase, normalizeUserProfile, routineBalanceScore, routineCoverage, shouldDeload } from "./data.js";
+import { EXERCISE_LIBRARY, MUSCLE_COVERAGE_GROUPS, MUSCLE_LABELS, ageTier, exerciseId, exerciseIsRisky, exerciseRiskJoints, mesocyclePhase, normalizeUserProfile, routineBalanceScore, routineCoverage, shouldDeload } from "./data.js";
 
 export const READINESS = {
   energy: {
@@ -1373,40 +1373,86 @@ export function generateCoachRoutine({
   checkIns = [],
   targetCount = null,
 }) {
-  const profile    = normalizeUserProfile(userProfile);
-  const tier       = ageTier(profile);
-  const experience = profile.trainingExperience || "new";
+  const profile     = normalizeUserProfile(userProfile);
+  const tier        = ageTier(profile);
+  const experience  = profile.trainingExperience || "new";
   const limitations = profile.limitations || [];
-  const goal       = settings.trainingGoal   || "general";
-  const equip      = settings.equipmentProfile || "fixed_dumbbells";
+  const goal        = settings.trainingGoal    || "general";
+  const equip       = settings.equipmentProfile || "fixed_dumbbells";
+  const mobility    = profile.mobilityLevel    || "normal";
+  const sessionCount = history.length;
+  const isNewUser   = sessionCount < 5;
 
-  // Target exercise count by experience
-  const count = targetCount ?? (
-    experience === "trained"   ? 7 :
-    experience === "returning" ? 6 : 5
+  // ── History-aware analysis ─────────────────────────────────────────────────
+  // Muscles trained in last 5 days
+  const RECENCY_MS = 5 * 86400000;
+  const recentSessions = history.filter(h => (Date.now() - (h.timestamp || 0)) < RECENCY_MS);
+  const recentMuscles = new Set(
+    recentSessions.flatMap(h => h.exercises || []).flatMap(ex => {
+      const lib = EXERCISE_LIBRARY.find(e => e.name === ex.name || e.id === (ex.id || exerciseId(ex.name)));
+      return [...(lib?.primary || []), ...(lib?.secondary || [])];
+    })
   );
 
-  // Equipment preference order
+  // Exercises done in last 2 sessions — avoid repeat for variety
+  const recentExIds = new Set(
+    history.slice(0, 2).flatMap(h => h.exercises || []).map(ex => ex.id || exerciseId(ex.name))
+  );
+
+  // Exercises with 2+ pain flags — strong avoid
+  const painCounts = checkIns
+    .filter(ci => ci.kind === "set_feedback" && ci.feeling === "pain" && ci.exercise)
+    .reduce((acc, ci) => { acc[ci.exercise] = (acc[ci.exercise] || 0) + 1; return acc; }, {});
+  const painFlagged = new Set(Object.entries(painCounts).filter(([,n]) => n >= 2).map(([name]) => name));
+
+  const blocked = new Set([...painBlockedExercises(checkIns), ...painFlagged]);
+
+  // Recent fatigue: last session < 18h ago → trim volume
+  const lastSession  = history[0];
+  const hoursSinceLast = lastSession ? (Date.now() - (lastSession.timestamp || 0)) / 3600000 : 999;
+  const fatigued = hoursSinceLast < 18;
+
+  // Undertrained muscles — not hit in last 5 days
+  const allLibMuscles = [...new Set(EXERCISE_LIBRARY.flatMap(ex => ex.primary || []))];
+  const undertrained  = allLibMuscles.filter(m => !recentMuscles.has(m));
+
+  // ── Exercise count ─────────────────────────────────────────────────────────
+  let count = targetCount ?? (experience === "trained" ? 7 : experience === "returning" ? 6 : 5);
+  if (fatigued)                      count = Math.max(4, count - 1);
+  if (tier.ageFriendly && count > 6) count = 6;
+  if (goal === "fatigue_friendly")   count = Math.min(count, 5);
+
+  // ── Equipment preference ───────────────────────────────────────────────────
   const EQUIP_PREF = {
-    gym_access:            ["barbell","machines","dumbbells","bodyweight","bands"],
-    adjustable_dumbbells:  ["dumbbells","bodyweight","bands","kettlebell"],
-    fixed_dumbbells:       ["dumbbells","bodyweight","bands"],
+    gym_access:           ["barbell","machines","dumbbells","bodyweight","bands"],
+    adjustable_dumbbells: ["dumbbells","bodyweight","bands","kettlebell"],
+    fixed_dumbbells:      ["dumbbells","bodyweight","bands"],
   };
   const equipPref = EQUIP_PREF[equip] || EQUIP_PREF.fixed_dumbbells;
 
-  // Difficulty ceiling
+  // ── Difficulty ceiling ─────────────────────────────────────────────────────
   const diffOk = (d) => {
     if (experience === "trained")   return ["beginner","novice","intermediate"].includes(d);
     if (experience === "returning") return ["beginner","novice"].includes(d);
     return d === "beginner";
   };
 
-  // Pain-blocked exercises to avoid
-  const blocked = new Set(painBlockedExercises(checkIns));
-
-  // Pick best exercise for a muscle group (primary muscles list)
   const selectedIds = new Set();
   const selected    = [];
+  const pickReasons = {};
+
+  // ── Unified exercise scorer ────────────────────────────────────────────────
+  const scoreExercise = (ex) => {
+    const ei = equipPref.indexOf(ex.equipment);
+    let score = ei === -1 ? 99 : ei;
+    if (!ex.ageFriendly)                                    score += tier.ageFriendly ? 6 : 2;
+    if (ex.difficulty !== "beginner")                       score += 1;
+    if (recentExIds.has(ex.id))                             score += 5;   // variety penalty
+    if (ex.primary?.some(m => undertrained.includes(m)))    score -= 4;   // undertrained bonus
+    if (isNewUser && ex.difficulty === "beginner")          score -= 1;
+    if (mobility === "limited" && ex.ageFriendly)           score -= 1;
+    return score;
+  };
 
   const pickForMuscles = (muscles) => {
     let candidates = EXERCISE_LIBRARY.filter(ex =>
@@ -1416,28 +1462,21 @@ export function generateCoachRoutine({
       !blocked.has(ex.name) &&
       diffOk(ex.difficulty)
     );
-    // Sort by equipment preference
-    candidates.sort((a, b) => {
-      const ai = equipPref.indexOf(a.equipment);
-      const bi = equipPref.indexOf(b.equipment);
-      const aScore = (ai === -1 ? 99 : ai) + (a.ageFriendly ? 0 : 3) + (a.difficulty === "beginner" ? 0 : 1);
-      const bScore = (bi === -1 ? 99 : bi) + (b.ageFriendly ? 0 : 3) + (b.difficulty === "beginner" ? 0 : 1);
-      return aScore - bScore;
-    });
-    // Prefer age-friendly for 50+ tier
-    if (tier.ageFriendly) {
-      const ageFriendly = candidates.filter(ex => ex.ageFriendly);
-      if (ageFriendly.length) candidates = ageFriendly;
+    // Strong age filter for non-trained 50+ users
+    if (tier.ageFriendly && experience !== "trained") {
+      const safe = candidates.filter(ex => ex.ageFriendly);
+      if (safe.length >= 2) candidates = safe;
     }
+    candidates.sort((a, b) => scoreExercise(a) - scoreExercise(b));
     return candidates[0] || null;
   };
 
-  // Coverage groups: push, pull, legs, core → fill remaining with goal-biased muscles
+  // ── Goal-biased muscle priority ────────────────────────────────────────────
   const GOAL_MUSCLE_BIAS = {
-    strength:         [["chest","triceps","frontDelts"],["lats","upperBack","biceps"],["quads","glutes","hamstrings"],["core"]],
-    hypertrophy:      [["chest","triceps"],["lats","upperBack"],["quads","glutes"],["core"],["biceps"],["hamstrings","calves"],["sideDelts"]],
+    strength:         [["chest","triceps","frontDelts"],["lats","upperBack","biceps"],["quads","glutes","hamstrings"],["core","lowerBack"],["sideDelts"],["hamstrings"]],
+    hypertrophy:      [["chest","triceps"],["lats","upperBack"],["quads","glutes"],["core"],["biceps"],["hamstrings","calves"],["sideDelts"],["rearDelts"]],
     fatigue_friendly: [["quads","glutes"],["chest"],["lats","upperBack"],["core"],["hamstrings"]],
-    general:          [["chest","triceps"],["lats","upperBack"],["quads","glutes","hamstrings"],["core"],["sideDelts","biceps"]],
+    general:          [["chest","triceps"],["lats","upperBack"],["quads","glutes","hamstrings"],["core"],["sideDelts","biceps"],["hamstrings"]],
   };
   const musclePriority = GOAL_MUSCLE_BIAS[goal] || GOAL_MUSCLE_BIAS.general;
 
@@ -1445,40 +1484,47 @@ export function generateCoachRoutine({
     if (selected.length >= count) break;
     const pick = pickForMuscles(muscles);
     if (pick) {
+      const hitsUnder = pick.primary?.some(m => undertrained.includes(m));
+      const isFresh   = !recentExIds.has(pick.id);
+      pickReasons[pick.id] = hitsUnder
+        ? `targets ${(pick.primary || []).filter(m => undertrained.includes(m)).map(m => MUSCLE_LABELS[m] || m).slice(0,2).join("/")} — not trained in 5+ days`
+        : isFresh ? "rotated in for variety"
+        : `core ${goal} movement`;
       selected.push(pick);
       selectedIds.add(pick.id);
     }
   }
 
-  // Fill remaining slots with any unrepresented muscles
+  // Fill remaining slots
   if (selected.length < count) {
-    const allMuscleGroups = [
+    const fillGroups = [
       ["quads","glutes","hamstrings"],["chest","frontDelts"],
       ["lats","upperBack"],["core"],["biceps"],["triceps"],
       ["sideDelts","rearDelts"],["calves","forearms"],
     ];
-    for (const muscles of allMuscleGroups) {
+    for (const muscles of fillGroups) {
       if (selected.length >= count) break;
       const pick = pickForMuscles(muscles);
-      if (pick) {
-        selected.push(pick);
-        selectedIds.add(pick.id);
-      }
+      if (pick) { pickReasons[pick.id] = "fills coverage gap"; selected.push(pick); selectedIds.add(pick.id); }
     }
   }
 
+  // ── Rationale ──────────────────────────────────────────────────────────────
   const difficulty = experience === "trained" ? "novice" : "beginner";
   const goalLabel  = { strength:"Strength", hypertrophy:"Muscle", fatigue_friendly:"Tone", general:"General" }[goal] || "General";
   const date       = new Date().toLocaleDateString("en-US", { month:"short", day:"numeric" });
 
   const rationale = [
-    `${selected.length} exercises selected for ${goalLabel.toLowerCase()} goal.`,
-    equip !== "fixed_dumbbells"
-      ? `Equipment: ${EQUIPMENT_PROFILES[equip]?.label || equip}.`
-      : "Dumbbell-focused for home training.",
-    limitations.length ? `Avoided exercises that stress: ${limitations.join(", ")}.` : null,
-    tier.ageFriendly   ? `Age-friendly exercises prioritized for ${tier.label} tier.`  : null,
-    blocked.size        ? `Skipped ${blocked.size} pain-flagged exercise(s).`          : null,
+    `${selected.length} exercises for ${goalLabel.toLowerCase()} (${experience}, ${equip.replace("_"," ")}).`,
+    undertrained.length
+      ? `Undertrained muscles targeted: ${undertrained.slice(0,3).map(m => MUSCLE_LABELS[m] || m).join(", ")}.`
+      : "All major muscles hit recently — rotating for variety.",
+    fatigued         ? "Recent session detected — volume trimmed by 1 for recovery." : null,
+    tier.ageFriendly ? `Age-safe selection (${tier.label}) — lower-impact movements preferred.` : null,
+    blocked.size     ? `Skipped ${blocked.size} pain-flagged movement${blocked.size===1?"":"s"}.` : null,
+    limitations.length ? `Avoided stress on: ${limitations.join(", ")}.` : null,
+    recentExIds.size > 0 && !isNewUser ? "Rotated out exercises from last 2 sessions for fresh stimulus." : null,
+    ...selected.map(ex => pickReasons[ex.id] ? `• ${ex.name}: ${pickReasons[ex.id]}.` : null),
   ].filter(Boolean);
 
   return {

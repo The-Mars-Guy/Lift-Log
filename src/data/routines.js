@@ -67,7 +67,12 @@ export function customRoutineWorkout(routine = DEFAULT_CUSTOM_ROUTINE, day = nul
     days:day || "Custom",
     color:"#fbbf24",
     custom:true,
-    exercises:ids.map(id => getExerciseById(id)).filter(Boolean).map(ex => ({ ...ex })),
+    exercises:ids.map(id => getExerciseById(id)).filter(Boolean).map(ex => ({
+      ...ex,
+      folder: ex.source === "free-exercise-db" && ex.id
+        ? ex.id.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("_")
+        : ex.folder,
+    })),
   };
 }
 

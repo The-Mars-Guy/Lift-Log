@@ -42,7 +42,7 @@ function ReadinessCheckIn({ value, onSave, accent }) {
         <button onClick={()=>setOpen(v=>!v)}
           style={{flex:1,background:"transparent",border:"none",padding:0,textAlign:"left",cursor:"pointer"}}>
           <div style={{fontSize:10,color:accent,letterSpacing:".12em",textTransform:"uppercase",fontWeight:700,marginBottom:3}}>Check-In</div>
-          <div style={{fontSize:12,color:"#aaa"}}>{summary} {open?"▲":"▼"}</div>
+          <div style={{fontSize:12,color:"#aaa"}}>{summary} <span style={{fontSize:14,display:"inline-block",transform:open?"rotate(180deg)":"none",transition:"transform .2s",verticalAlign:"middle"}}>⌄</span></div>
         </button>
         <button onClick={()=>onSave(draft)}
           style={{flexShrink:0,background:accent,border:"none",borderRadius:8,color:"#050505",padding:"9px 16px",fontSize:12,fontWeight:700,letterSpacing:".08em"}}>
@@ -102,7 +102,7 @@ function TodayPlan({ plan, readiness, accent, substitutions, onApplySubstitution
           <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:27,color:"#f5f5f5",letterSpacing:".06em",lineHeight:1}}>{plan.headline}</div>
           <div style={{fontSize:12,color:"#888",marginTop:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{plan.focus}</div>
         </div>
-        <div style={{fontSize:18,color:accent,transform:open?"rotate(180deg)":"none",transition:"transform .2s"}}>⌄</div>
+        <div style={{fontSize:20,color:"#bbb",transform:open?"rotate(180deg)":"none",transition:"transform .2s"}}>⌄</div>
       </button>
       {open&&(
         <div style={{animation:"slideDown .2s ease-out"}}>
@@ -1410,7 +1410,7 @@ export default function WorkoutView({
                     {done&&<span style={{color:accent,fontSize:17}}>✓</span>}
                     <span style={{fontSize:18,fontWeight:500,color:"#f5f5f5",opacity:done?.5:1,textDecoration:done?"line-through":"none",textDecorationColor:accent,textDecorationThickness:"1.5px"}}>{ex.name}</span>
                     {ex.substitutedFor&&<span style={{fontSize:10,color:accent,border:`1px solid ${accent}66`,borderRadius:5,padding:"2px 6px",letterSpacing:".08em"}}>SWAP</span>}
-                    <span style={{fontSize:11,color:open?accent:"#888",transform:open?"rotate(180deg)":"none",transition:"all .2s",display:"inline-block"}}>▼</span>
+                    <span style={{fontSize:14,color:open?accent:"#aaa",transform:open?"rotate(180deg)":"none",transition:"all .2s",display:"inline-block"}}>⌄</span>
                   </div>
                   <div style={{fontSize:14,color:"#bbb",marginTop:5,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                     <span>{getSetCount(ex)} × {reps}{ex.repSuffix||""}</span>
