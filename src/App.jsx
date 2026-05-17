@@ -293,7 +293,7 @@ export default function App() {
     return (
       <OnboardingView
         accent={accent}
-        onComplete={({ profile, workoutDays, selfTest }) => {
+        onComplete={({ profile, workoutDays, selfTest, settingsOverrides }) => {
           const safeProfile = { ...safeUserProfile, ...profile };
           const allBaseExercises = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
           const startingConfig = {};
@@ -317,7 +317,7 @@ export default function App() {
           setUserProfile(prev => ({ ...prev, ...profile }));
           setExConfig(prev => ({ ...prev, ...startingConfig }));
           setAssessmentDone(true);
-          setSettings(prev => ({ ...prev, onboardingDone: true, workoutDays: workoutDays || prev.workoutDays }));
+          setSettings(prev => ({ ...prev, ...(settingsOverrides || {}), onboardingDone: true, workoutDays: workoutDays || prev.workoutDays }));
         }}
       />
     );
