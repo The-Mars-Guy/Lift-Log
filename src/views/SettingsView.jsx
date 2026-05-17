@@ -215,7 +215,7 @@ export default function SettingsView({
         </>}
         {confirming ? (
           <div style={{ padding:16, background:"#1a0a0a", border:"1px solid #ff444466", borderRadius:10 }}>
-            <div style={{ fontSize:14, color:"#ff8888", marginBottom:12 }}>This deletes all sessions, progression, and achievements. A local backup snapshot will be created first.</div>
+            <div style={{ fontSize:14, color:"#ff8888", marginBottom:12 }}>This wipes ALL data — sessions, history, settings, and profile. App restarts fresh. A backup snapshot is saved first so you can recover.</div>
             <div style={{ display:"flex", gap:8 }}>
               <button onClick={() => { resetAllData(); setConfirming(false); }} style={{ flex:1, padding:"10px 14px", background:"#ff4444", color:"#fff", border:"none", borderRadius:7, cursor:"pointer", fontFamily:"DM Mono, monospace", fontSize:15, letterSpacing:"0.1em" }}>YES, DELETE ALL</button>
               <button onClick={() => setConfirming(false)} style={{ flex:1, padding:"10px 14px", background:"transparent", color:"#aaa", border:"1px solid #333", borderRadius:7, cursor:"pointer", fontFamily:"DM Mono, monospace", fontSize:15, letterSpacing:"0.1em" }}>CANCEL</button>

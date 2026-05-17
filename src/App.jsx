@@ -159,8 +159,11 @@ export default function App() {
 
   const resetAllData = () => {
     createBackupSnapshot("before_reset");
-    setSets({}); setHistory([]); setCompleted({}); setProgression({});
-    setAchievements([]); setXp(0); setCheckIns([]); setBodyMetrics([]); setExConfig({}); setAssessmentDone(false);
+    // Save the backup so user can still download it after wipe
+    const backup = localStorage.getItem("wt_last_backup");
+    localStorage.clear();
+    if (backup) localStorage.setItem("wt_last_backup", backup);
+    window.location.reload();
   };
 
   const repairSavedData = () => {
