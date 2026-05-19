@@ -52,11 +52,11 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
   const [filter, setFilter] = useState("all");
   const exercises = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises, ...(customRoutine?.enabled ? customRoutineWorkout(customRoutine).exercises : [])];
   const currentSoreness = latestMuscleSoreness(checkIns);
-  const status = buildMuscleStatus({ history, exercises, soreness:currentSoreness });
-  const ahead = status.rows.filter(row => status.avg && row.recentPoints > status.avg * 1.25);
-  const behind = status.rows.filter(row => status.avg && row.recentPoints < status.avg * 0.65 && row.planned > 0);
-  const fatigued = status.rows.filter(row => row.fatigue >= 55 || row.soreness === "sore");
-  const levelColors = Object.fromEntries(status.rows.map(row => {
+  const muscleStatus = buildMuscleStatus({ history, exercises, soreness:currentSoreness });
+  const ahead = muscleStatus.rows.filter(row => muscleStatus.avg && row.recentPoints > muscleStatus.avg * 1.25);
+  const behind = muscleStatus.rows.filter(row => muscleStatus.avg && row.recentPoints < muscleStatus.avg * 0.65 && row.planned > 0);
+  const fatigued = muscleStatus.rows.filter(row => row.fatigue >= 55 || row.soreness === "sore");
+  const levelColors = Object.fromEntries(muscleStatus.rows.map(row => {
     if (!row.lastHit) return [row.muscle, "#333"];          // no data
     if (row.soreness === "sore") return [row.muscle, status.caution]; // self-reported sore
     if (row.recoveredPct >= 90) return [row.muscle, status.good]; // ready
@@ -65,12 +65,12 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
     return [row.muscle, "#fb923c"];                         // very fatigued
   }));
   const recovery = muscleRecoveryStats(checkIns);
-  const focusItems = buildMuscleFocus({ rows:status.rows, avg:status.avg });
-  const filteredRows = status.rows.filter(row => {
+  const focusItems = buildMuscleFocus({ rows:muscleStatus.rows, avg:muscleStatus.avg });
+  const filteredRows = muscleStatus.rows.filter(row => {
     if (filter === "ready") return row.readiness === "Ready";
     if (filter === "recovering") return row.readiness === "Recovering";
     if (filter === "sore") return row.soreness === "sore" || row.soreness === "mild";
-    if (filter === "needs") return status.avg && row.recentPoints < status.avg * 0.65 && row.planned > 0;
+    if (filter === "needs") return muscleStatus.avg && row.recentPoints < muscleStatus.avg * 0.65 && row.planned > 0;
     return true;
   });
 
@@ -93,7 +93,7 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
       </div>
 
       <div style={{margin:"0 16px 14px",padding:"16px",background:surface.bg0,border:`1.5px solid ${accent}33`,borderRadius:12,boxShadow:`0 0 24px ${accent}12`}}>
-        <MuscleDiagram activation={status.activation} levelColors={levelColors} accent={accent}/>
+        <MuscleDiagram activation={muscleStatus.activation} levelColors={levelColors} accent={accent}/>
         <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center",marginTop:12}}>
           {RECOVERY_LEGEND.map(item=>(
             <div key={item.color} style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#aaa"}}>
@@ -106,7 +106,7 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
 
       <div style={{padding:"0 16px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
         <Mini label="Most Fatigued" value={fatigued[0]?.label || "None"} color={status.caution}/>
-        <Mini label="Most Ready" value={status.rows.find(row => row.readiness === "Ready")?.label || "Learning"} color={status.good}/>
+        <Mini label="Most Ready" value={muscleStatus.rows.find(row => row.readiness === "Ready")?.label || "Learning"} color={status.good}/>
         <Mini label="Ahead" value={ahead[0]?.label || "Balanced"} color={status.info}/>
         <Mini label="Needs Touch" value={behind[0]?.label || "None"} color={status.warn}/>
       </div>
@@ -168,7 +168,7 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
           ))}
         </div>
         <div style={{display:"grid",gap:8}}>
-          {filteredRows.map(row=><MuscleRow key={row.muscle} row={row} avg={status.avg} currentSoreness={currentSoreness[row.muscle]||null} onSoreness={logSoreness}/>)}
+          {filteredRows.map(row=><MuscleRow key={row.muscle} row={row} avg={muscleStatus.avg} currentSoreness={currentSoreness[row.muscle]||null} onSoreness={logSoreness}/>)}
           {!filteredRows.length&&(
             <div style={{padding:"14px",background:surface.bg0,border:"1px solid #1f1f1f",borderRadius:10,fontSize:13,color:text.tertiary,textAlign:"center"}}>Nothing in this group yet.</div>
           )}
