@@ -12,6 +12,7 @@ import RoutineView from "./views/RoutineView.jsx";
 import GoalsView from "./views/GoalsView.jsx";
 import { normalizeLiftLogData } from "./session.js";
 import OnboardingView from "./views/OnboardingView.jsx";
+import { nukeAndReload } from "./nuke.js";
 
 export default function App() {
   const [activeView, setActiveView] = useState("workout");
@@ -166,12 +167,9 @@ export default function App() {
   };
 
   const resetAllData = () => {
-    createBackupSnapshot("before_reset");
-    // Save the backup so user can still download it after wipe
-    const backup = localStorage.getItem("wt_last_backup");
-    localStorage.clear();
-    if (backup) localStorage.setItem("wt_last_backup", backup);
-    window.location.reload();
+    // Full nuke: localStorage, sessionStorage, IndexedDB, Cache API, service workers.
+    // No backup is preserved — this is a 100% clean slate by user request.
+    nukeAndReload();
   };
 
   const repairSavedData = () => {

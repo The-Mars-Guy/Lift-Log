@@ -1,9 +1,10 @@
 import { Component } from "react";
+import { nukeAndReload } from "../nuke.js";
 
 export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { error: null };
+    this.state = { error: null, resetting: false };
   }
 
   static getDerivedStateFromError(error) {
@@ -36,6 +37,15 @@ export default class ErrorBoundary extends Component {
     this.setState({ error: null });
   };
 
+  handleFullReset = () => {
+    const ok = window.confirm(
+      "This deletes ALL data, cache, and offline storage on this device, then restarts the app fresh. This cannot be undone. Continue?"
+    );
+    if (!ok) return;
+    this.setState({ resetting: true });
+    nukeAndReload();
+  };
+
   render() {
     if (!this.state.error) return this.props.children;
     const message = this.state.error?.message || String(this.state.error);
@@ -55,9 +65,16 @@ export default class ErrorBoundary extends Component {
           RELOAD APP
         </button>
         <button onClick={this.handleClearAndReload}
-          style={{width:"100%",padding:"14px",background:"transparent",border:"1px solid rgba(103,122,150,.32)",borderRadius:11,fontSize:13,color:"#435166",letterSpacing:".08em"}}>
+          style={{width:"100%",padding:"14px",background:"transparent",border:"1px solid rgba(103,122,150,.32)",borderRadius:11,fontSize:13,color:"#435166",letterSpacing:".08em",marginBottom:10}}>
           DOWNLOAD LAST BACKUP & DISMISS
         </button>
+        <button onClick={this.handleFullReset} disabled={this.state.resetting}
+          style={{width:"100%",padding:"14px",background:"transparent",border:"1px solid rgba(220,38,38,.45)",borderRadius:11,fontSize:13,color:"#dc2626",letterSpacing:".06em",fontWeight:600,opacity:this.state.resetting?0.5:1}}>
+          {this.state.resetting ? "Resetting…" : "Full reset — delete all data and restart"}
+        </button>
+        <div style={{fontSize:11,color:"#8896a8",lineHeight:1.5,marginTop:10,textAlign:"center"}}>
+          Full reset wipes every saved workout, setting, and cached file on this device. Use only if reload doesn't help.
+        </div>
       </div>
     );
   }
