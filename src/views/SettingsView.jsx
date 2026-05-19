@@ -68,7 +68,7 @@ export default function SettingsView({
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
               {[["male","Male"],["female","Female"],["","Other"]].map(([k,l]) => (
                 <button key={l} onClick={() => updateProfile("sex", k)}
-                  style={{ padding: "10px 6px", borderRadius: 8, border: `1px solid ${profile.sex === k ? accent : ui.border}`, background: profile.sex === k ? `${accent}22` : ui.control, color: profile.sex === k ? accent : ui.soft, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                  style={{ padding: "10px 4px", borderRadius: 8, border: `1px solid ${profile.sex === k ? accent : ui.border}`, background: profile.sex === k ? `${accent}22` : ui.control, color: profile.sex === k ? accent : ui.soft, fontSize: 13, fontWeight: 800, cursor: "pointer", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
                   {l}
                 </button>
               ))}

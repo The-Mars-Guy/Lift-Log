@@ -244,9 +244,12 @@ function FocusWorkoutMode({
 
         <div style={{fontSize:11,color:accent,letterSpacing:".16em",textTransform:"uppercase",marginBottom:6}}>Focus Mode</div>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:beginnerFormMode?46:38,color:"#f5f5f5",letterSpacing:".06em",lineHeight:.92,marginBottom:5}}>{next.ex.name}</div>
-        <div style={{fontSize:beginnerFormMode?15:13,color:"#aaa",lineHeight:1.35,marginBottom:8}}>
+        <div style={{fontSize:beginnerFormMode?15:13,color:"#aaa",lineHeight:1.35,marginBottom:science.enabled&&science.targetRepReason?4:8}}>
           Set {Math.min(currentDone+1,plannedSets)} of {plannedSets} · {weightText} · target {repText}{next.ex.repSuffix||""}
         </div>
+        {science.enabled&&science.targetRepReason&&(
+          <div style={{fontSize:11,color:"#a78bfa",lineHeight:1.35,marginBottom:8,opacity:.9}}>{science.targetRepReason}</div>
+        )}
 
         {previous&&(
           <div style={{marginBottom:8,padding:"9px 11px",background:"#0d0d0d",border:`1px solid ${accent}33`,borderRadius:10}}>
@@ -713,28 +716,28 @@ function LogbookPanel({ accent, onClose, onSave }) {
             {/* Inline set logger */}
             {addingSet === entry.name && (
               <div style={{borderTop:"1px solid #1a1a1a",padding:"13px"}}>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                <div style={{display:"grid",gap:10,marginBottom:10}}>
                   <div>
                     <div style={{fontSize:10,color:"#888",letterSpacing:".1em",marginBottom:5}}>WEIGHT (lbs)</div>
                     <div style={{display:"flex",alignItems:"center",background:"#141414",borderRadius:9,border:`1px solid ${accent}33`,overflow:"hidden"}}>
-                      <button onClick={() => setSetDraft(p => ({...p,weight:Math.max(p.weight-5,0)}))} style={{width:36,height:40,background:"transparent",border:"none",color:"#ccc",fontSize:18,cursor:"pointer"}}>−</button>
-                      <input value={setDraft.weight} onChange={e=>setSetDraft(p=>({...p,weight:Math.max(Number(e.target.value)||0,0)}))} inputMode="decimal" type="number" min="0"
-                        style={{flex:1,minWidth:0,textAlign:"center",fontSize:16,fontWeight:700,color:"#fff",background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono,monospace"}}/>
-                      <button onClick={() => setSetDraft(p => ({...p,weight:p.weight+5}))} style={{width:36,height:40,background:"transparent",border:"none",color:"#ccc",fontSize:18,cursor:"pointer"}}>+</button>
+                      <button onClick={() => setSetDraft(p => ({...p,weight:Math.max(p.weight-5,0)}))} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20,cursor:"pointer",flexShrink:0}}>−</button>
+                      <input value={setDraft.weight} onChange={e=>setSetDraft(p=>({...p,weight:Math.max(Number(e.target.value)||0,0)}))} onFocus={e=>e.target.select()} inputMode="decimal" type="number" min="0"
+                        style={{flex:1,minWidth:0,width:"100%",textAlign:"center",fontSize:18,fontWeight:700,color:"#fff",background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono,monospace",padding:"0 4px"}}/>
+                      <button onClick={() => setSetDraft(p => ({...p,weight:p.weight+5}))} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20,cursor:"pointer",flexShrink:0}}>+</button>
                     </div>
                   </div>
                   <div>
                     <div style={{fontSize:10,color:"#888",letterSpacing:".1em",marginBottom:5}}>REPS</div>
                     <div style={{display:"flex",alignItems:"center",background:"#141414",borderRadius:9,border:`1px solid ${accent}33`,overflow:"hidden"}}>
-                      <button onClick={() => setSetDraft(p => ({...p,reps:Math.max(p.reps-1,0)}))} style={{width:36,height:40,background:"transparent",border:"none",color:"#ccc",fontSize:18,cursor:"pointer"}}>−</button>
-                      <input value={setDraft.reps} onChange={e=>setSetDraft(p=>({...p,reps:Math.max(Math.round(Number(e.target.value)||0),0)}))} inputMode="numeric" type="number" min="0"
-                        style={{flex:1,minWidth:0,textAlign:"center",fontSize:16,fontWeight:700,color:"#fff",background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono,monospace"}}/>
-                      <button onClick={() => setSetDraft(p => ({...p,reps:p.reps+1}))} style={{width:36,height:40,background:"transparent",border:"none",color:"#ccc",fontSize:18,cursor:"pointer"}}>+</button>
+                      <button onClick={() => setSetDraft(p => ({...p,reps:Math.max(p.reps-1,0)}))} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20,cursor:"pointer",flexShrink:0}}>−</button>
+                      <input value={setDraft.reps} onChange={e=>setSetDraft(p=>({...p,reps:Math.max(Math.round(Number(e.target.value)||0),0)}))} onFocus={e=>e.target.select()} inputMode="numeric" type="number" min="0"
+                        style={{flex:1,minWidth:0,width:"100%",textAlign:"center",fontSize:18,fontWeight:700,color:"#fff",background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono,monospace",padding:"0 4px"}}/>
+                      <button onClick={() => setSetDraft(p => ({...p,reps:p.reps+1}))} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20,cursor:"pointer",flexShrink:0}}>+</button>
                     </div>
                   </div>
                 </div>
                 <button onClick={() => logSet(entry.name)}
-                  style={{width:"100%",padding:"11px",background:accent,border:"none",borderRadius:9,color:"#050505",fontSize:13,fontWeight:800,letterSpacing:".08em",cursor:"pointer"}}>LOG SET</button>
+                  style={{width:"100%",padding:"13px",background:accent,border:"none",borderRadius:9,color:"#050505",fontSize:14,fontWeight:800,letterSpacing:".08em",cursor:"pointer"}}>LOG SET</button>
               </div>
             )}
           </div>
@@ -904,7 +907,7 @@ export default function WorkoutView({
   const exerciseKey = (exOrName) => typeof exOrName === "string" ? exOrName : (exOrName.configName || exOrName.name);
   const exerciseIdFor = (ex) => ex.id || exerciseKey(ex).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
   const getBaseTargetReps = (ex) => exConfig[exerciseKey(ex)]?.targetReps ?? (ex.baseReps + (progression[exerciseKey(ex)]?.repBonus||0));
-  const getScience = (ex) => sciencePrescription({ exercise:ex, history, checkIns, settings, readiness:effectiveReadiness, baseTarget:getBaseTargetReps(ex) });
+  const getScience = (ex) => sciencePrescription({ exercise:ex, history, checkIns, settings, readiness:effectiveReadiness, baseTarget:getBaseTargetReps(ex), exConfig });
   const getTargetReps = (ex) => {
     const science = getScience(ex);
     return science.enabled ? science.targetReps : coachTargetReps(getBaseTargetReps(ex), effectiveReadiness);
@@ -966,6 +969,24 @@ export default function WorkoutView({
     let r=1; for(let i=1;i<s.length;i++){if((s[i-1].timestamp-s[i].timestamp)/86400000<=4.5)r++;else break;}
     return r;
   }, [history]);
+
+  const muscleReadiness = useMemo(() => {
+    const muscles = [...new Set(workoutPlan.exercises.flatMap(ex => ex.primary || []))];
+    if (!muscles.length) return [];
+    const soreness = {};
+    [...checkIns].filter(ci => ci.kind === "muscle_soreness" && ci.muscle && ci.level)
+      .sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))
+      .forEach(ci => { if (!soreness[ci.muscle]) soreness[ci.muscle] = ci.level; });
+    const now = Date.now();
+    return muscles.slice(0,6).map(m => {
+      const last = [...history].sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))
+        .find(h => h.exercises?.some(ex => (ex.primary||[]).includes(m) || (ex.secondary||[]).includes(m)));
+      const hoursSince = last ? (now - (last.timestamp||0)) / 3600000 : 999;
+      const sore = soreness[m];
+      const state = sore === "sore" ? "sore" : (sore === "mild" || hoursSince < 36) ? "recovering" : "ready";
+      return { muscle: m, state };
+    });
+  }, [workoutPlan, history, checkIns]);
 
   const saveReadiness = (nextReadiness) => {
     const entry = {
@@ -1357,6 +1378,18 @@ export default function WorkoutView({
           <div style={{height:7,background:"#1a1a1a",borderRadius:4,overflow:"hidden"}}>
             <div style={{height:"100%",width:`${(doneSets/totalSets)*100}%`,background:`linear-gradient(90deg,${accent}bb,${accent})`,transition:"width .4s ease",boxShadow:doneSets>0?`0 0 14px ${accent}bb`:"none"}}/>
           </div>
+          {doneSets===0&&!isCompleted&&muscleReadiness.length>0&&(
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:10}}>
+              {muscleReadiness.map(({muscle,state})=>{
+                const col = state==="sore"?"#fb7185":state==="recovering"?"#fbbf24":"#4ade80";
+                return (
+                  <span key={muscle} style={{fontSize:11,color:col,border:`1px solid ${col}44`,borderRadius:20,padding:"3px 9px",background:`${col}10`,letterSpacing:".08em",textTransform:"uppercase"}}>
+                    {MUSCLE_LABELS[muscle]||muscle}{state==="ready"?" ✓":state==="recovering"?" ~":" ✗"}
+                  </span>
+                );
+              })}
+            </div>
+          )}
           {doneSets===0&&!isCompleted&&<ProgressionPreview items={progressionPreview} accent={accent}/>}
           {!isCompleted&&(
             <NoteField value={workoutNote} onChange={setWorkoutNote} />

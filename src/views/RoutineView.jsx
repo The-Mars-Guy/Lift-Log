@@ -9,7 +9,7 @@ const DIFFICULTIES = [
   ["intermediate", "All"],
 ];
 
-export default function RoutineView({ customRoutine, setCustomRoutine, userProfile, setUserProfile, history = [], accent, setActiveView, checkIns = [], settings = {} }) {
+export default function RoutineView({ customRoutine, setCustomRoutine, userProfile, setUserProfile, history = [], accent, setActiveView, checkIns = [], settings = {}, goals = [], exConfig = {} }) {
   const routine = normalizeCustomRoutine(customRoutine);
   const profile = normalizeUserProfile(userProfile);
   const [category, setCategory] = useState("all");
@@ -70,7 +70,7 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
     save({ activeRoutineId:id, routines:[...routine.routines, { id, name:routine.name || "Custom Routine", exerciseIds:routine.exerciseIds }] });
   };
   const buildWithCoach = () => {
-    const result = generateCoachRoutine({ userProfile:profile, settings, history, checkIns });
+    const result = generateCoachRoutine({ userProfile:profile, settings, history, checkIns, goals, exConfig });
     save({ name:result.name, exerciseIds:result.exerciseIds, difficulty:result.difficulty });
     setCoachGenerated(result.rationale);
     setTemplatesOpen(false);

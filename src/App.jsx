@@ -385,7 +385,7 @@ export default function App() {
           />
         )}
         {activeView === "routine" && (
-          <RoutineView customRoutine={safeCustomRoutine} setCustomRoutine={setCustomRoutine} userProfile={safeUserProfile} setUserProfile={setUserProfile} history={normalized.history} accent={accent} setActiveView={setActiveView} checkIns={normalized.checkIns} settings={safeSettings} />
+          <RoutineView customRoutine={safeCustomRoutine} setCustomRoutine={setCustomRoutine} userProfile={safeUserProfile} setUserProfile={setUserProfile} history={normalized.history} accent={accent} setActiveView={setActiveView} checkIns={normalized.checkIns} settings={safeSettings} goals={Array.isArray(goals) ? goals : DEFAULT_GOALS} exConfig={normalized.exConfig} />
         )}
         {activeView === "stats" && (
           <StatsView history={normalized.history} progression={normalized.progression} settings={safeSettings}

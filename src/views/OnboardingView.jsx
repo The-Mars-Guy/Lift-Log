@@ -248,20 +248,24 @@ export default function OnboardingView({ onComplete }) {
           <ProfileRow label="Weight (lbs)">
             <NumberInput value={weight} onChange={setWeight} placeholder="140" />
           </ProfileRow>
-          <ProfileRow label="Sex" last>
-            {[["male","Male"],["female","Female"],["","Skip"]].map(([val, lbl]) => (
-              <button key={lbl} onClick={() => setSex(val)} style={{
-                padding: "12px 14px",
-                borderRadius: 999,
-                border: `2px solid ${sex === val ? onboardingTokens.accent : "#dedee0"}`,
-                background: sex === val ? onboardingTokens.accent : "#fff",
-                color: sex === val ? "#fff" : onboardingTokens.text,
-                fontWeight: 900,
-                fontSize: 14,
-                cursor: "pointer",
-              }}>{lbl}</button>
-            ))}
-          </ProfileRow>
+          <div style={{padding:"14px 16px"}}>
+            <div style={{fontSize:18,fontWeight:900,color:onboardingTokens.text,marginBottom:10}}>Sex</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+              {[["male","Male"],["female","Female"],["","Skip"]].map(([val, lbl]) => (
+                <button key={lbl} onClick={() => setSex(val)} style={{
+                  padding: "12px 6px",
+                  borderRadius: 999,
+                  border: `2px solid ${sex === val ? onboardingTokens.accent : "#dedee0"}`,
+                  background: sex === val ? onboardingTokens.accent : "#fff",
+                  color: sex === val ? "#fff" : onboardingTokens.text,
+                  fontWeight: 900,
+                  fontSize: 14,
+                  cursor: "pointer",
+                  minWidth: 0,
+                }}>{lbl}</button>
+              ))}
+            </div>
+          </div>
         </div>
         <HelperText>
           Age, height, and weight help calibrate starting targets. You can edit this later.

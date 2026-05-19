@@ -486,7 +486,6 @@ EXERCISE_GUIDES["Barbell Row"] = {
   mistakes: ["Standing up on each rep", "Shrugging into the pull", "Jerking the torso for momentum"],
   pain: "If lower back fatigues, use a chest-supported row or single-arm dumbbell row instead.",
 };
-EXERCISE_GUIDES["Conventional Deadlift"] = EXERCISE_GUIDES["Conventional Deadlift"]; // already set
 EXERCISE_GUIDES["KB Swing"] = {
   setup: ["Bell 12 inches in front of you", "Hinge to grip handle, tilt bell back", "Pack lats, brace core"],
   movement: ["Hike bell back between legs — this is a HINGE not a squat", "Snap hips forward explosively, let bell float to chest height", "Hinge back immediately on the descent, guide bell between legs"],

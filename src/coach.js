@@ -199,13 +199,21 @@ export function estimated1RM(weight, reps) {
   return Math.round(weight * (1 + reps / 30));
 }
 
-export function bestEstimated1RM(history = [], exerciseName) {
+export function bestEstimated1RM(history = [], exerciseName, exConfig = {}) {
   const estimates = history.flatMap(h => h.exercises || [])
     .filter(ex => ex.name === exerciseName || ex.originalName === exerciseName || ex.substitutedFor === exerciseName)
     .flatMap(ex => ex.setLog || [])
     .map(log => estimated1RM(log.weight, log.reps))
     .filter(Boolean);
-  return estimates.length ? Math.max(...estimates) : null;
+  if (estimates.length >= 2) return Math.max(...estimates);
+  // Seed from onboarding assessment when history is sparse
+  const cfg = exConfig[exerciseName];
+  const assessed1RM = cfg?.maxRepsTest && cfg?.weight
+    ? estimated1RM(cfg.weight, cfg.maxRepsTest)
+    : null;
+  if (assessed1RM && estimates.length) return Math.max(...estimates, assessed1RM);
+  if (assessed1RM) return assessed1RM;
+  return estimates.length ? estimates[0] : null;
 }
 
 export function exerciseFeedbackSignal(checkIns = [], exerciseName) {
@@ -294,14 +302,14 @@ export function variationPrescription({ exerciseName, fixedLoad = false, targetR
   };
 }
 
-export function sciencePrescription({ exercise, history = [], checkIns = [], settings = {}, readiness = DEFAULT_READINESS, baseTarget = exercise.baseReps }) {
+export function sciencePrescription({ exercise, history = [], checkIns = [], settings = {}, readiness = DEFAULT_READINESS, baseTarget = exercise.baseReps, exConfig = {} }) {
   const enabled = settings.scienceCoach === true;
   const goal = settings.trainingGoal || "general";
   const equipment = EQUIPMENT_PROFILES[settings.equipmentProfile || "fixed_dumbbells"] || EQUIPMENT_PROFILES.fixed_dumbbells;
   const fixedLoad = !equipment.canLoad;
   const score = readinessScore(readiness);
   const exerciseName = exercise.configName || exercise.originalName || exercise.name;
-  const est1RM = bestEstimated1RM(history, exerciseName);
+  const est1RM = bestEstimated1RM(history, exerciseName, exConfig);
   const trend = exerciseTrend(history, { ...exercise, name: exerciseName }, baseTarget);
   const feedback = exerciseFeedbackSignal(checkIns, exerciseName);
   const workoutFeedback = [...checkIns].filter(ci => ci.kind === "workout_feedback").sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))[0];
@@ -574,6 +582,7 @@ export function buildCoachPlan({ workout, history, checkIns = [], exConfig, sett
     settings,
     readiness,
     baseTarget: exConfig[ex.name]?.targetReps ?? ex.baseReps,
+    exConfig,
   })).find(item => item.enabled && item.note) : null);
 
   cards.push({
@@ -1371,6 +1380,8 @@ export function generateCoachRoutine({
   settings = {},
   history = [],
   checkIns = [],
+  goals = [],
+  exConfig = {},
   targetCount = null,
 }) {
   const profile     = normalizeUserProfile(userProfile);
@@ -1382,6 +1393,24 @@ export function generateCoachRoutine({
   const mobility    = profile.mobilityLevel    || "normal";
   const sessionCount = history.length;
   const isNewUser   = sessionCount < 5;
+
+  // ── Active user goals → boost matching exercises ───────────────────────────
+  const activeGoals = (goals || []).filter(g => !g.achieved && g.exerciseName);
+  const goalExerciseNames = new Set(activeGoals.map(g => g.exerciseName));
+  const goalExerciseIds = new Set(activeGoals.map(g => exerciseId(g.exerciseName)));
+
+  // ── Cumulative fatigue from last 7 days (replaces 18h binary flag) ─────────
+  const load = recentTrainingLoad(history);
+  const weeklySessions = load.sessions;
+  const overreaching = weeklySessions >= 5;
+  const undertrained_user = weeklySessions === 0 && sessionCount > 0;
+
+  // ── Rest behavior signal ───────────────────────────────────────────────────
+  const behavior = behaviorMemory(checkIns);
+  const shortRester = behavior.avgRestSeconds > 0 && behavior.avgRestSeconds < 40;
+
+  // ── Assessment-driven readiness (uses maxRepsTest from onboarding) ─────────
+  const hasAssessment = Object.values(exConfig || {}).some(c => c?.maxRepsTest > 0);
 
   // ── History-aware analysis ─────────────────────────────────────────────────
   // Muscles trained in last 5 days
@@ -1407,10 +1436,10 @@ export function generateCoachRoutine({
 
   const blocked = new Set([...painBlockedExercises(checkIns), ...painFlagged]);
 
-  // Recent fatigue: last session < 18h ago → trim volume
+  // Recent fatigue: last session < 18h ago OR overreaching → trim volume
   const lastSession  = history[0];
   const hoursSinceLast = lastSession ? (Date.now() - (lastSession.timestamp || 0)) / 3600000 : 999;
-  const fatigued = hoursSinceLast < 18;
+  const fatigued = hoursSinceLast < 18 || overreaching;
 
   // Undertrained muscles — not hit in last 5 days
   const allLibMuscles = [...new Set(EXERCISE_LIBRARY.flatMap(ex => ex.primary || []))];
@@ -1451,6 +1480,8 @@ export function generateCoachRoutine({
     if (ex.primary?.some(m => undertrained.includes(m)))    score -= 4;   // undertrained bonus
     if (isNewUser && ex.difficulty === "beginner")          score -= 1;
     if (mobility === "limited" && ex.ageFriendly)           score -= 1;
+    if (goalExerciseIds.has(ex.id) || goalExerciseNames.has(ex.name)) score -= 6; // active goal boost
+    if (shortRester && ex.difficulty === "intermediate")    score += 1;   // discourage demanding lifts for short-resters
     return score;
   };
 
@@ -1486,7 +1517,10 @@ export function generateCoachRoutine({
     if (pick) {
       const hitsUnder = pick.primary?.some(m => undertrained.includes(m));
       const isFresh   = !recentExIds.has(pick.id);
-      pickReasons[pick.id] = hitsUnder
+      const matchesGoal = goalExerciseIds.has(pick.id) || goalExerciseNames.has(pick.name);
+      pickReasons[pick.id] = matchesGoal
+        ? `direct match for your active goal`
+        : hitsUnder
         ? `targets ${(pick.primary || []).filter(m => undertrained.includes(m)).map(m => MUSCLE_LABELS[m] || m).slice(0,2).join("/")} — not trained in 5+ days`
         : isFresh ? "rotated in for variety"
         : `core ${goal} movement`;
@@ -1514,12 +1548,20 @@ export function generateCoachRoutine({
   const goalLabel  = { strength:"Strength", hypertrophy:"Muscle", fatigue_friendly:"Tone", general:"General" }[goal] || "General";
   const date       = new Date().toLocaleDateString("en-US", { month:"short", day:"numeric" });
 
+  const goalMatched = selected.filter(ex => goalExerciseIds.has(ex.id) || goalExerciseNames.has(ex.name));
   const rationale = [
     `${selected.length} exercises for ${goalLabel.toLowerCase()} (${experience}, ${equip.replace("_"," ")}).`,
+    activeGoals.length
+      ? `Active goals: ${activeGoals.slice(0,2).map(g => g.exerciseName).join(", ")}${goalMatched.length ? ` — ${goalMatched.length} prioritized.` : "."}`
+      : null,
     undertrained.length
       ? `Undertrained muscles targeted: ${undertrained.slice(0,3).map(m => MUSCLE_LABELS[m] || m).join(", ")}.`
       : "All major muscles hit recently — rotating for variety.",
-    fatigued         ? "Recent session detected — volume trimmed by 1 for recovery." : null,
+    overreaching     ? `${weeklySessions} sessions in last 7 days — overreaching risk, volume trimmed.` : null,
+    !overreaching && hoursSinceLast < 18 ? "Recent session detected — volume trimmed by 1 for recovery." : null,
+    undertrained_user ? "No sessions this week — consider easing back in." : null,
+    shortRester      ? `Average rest is ${behavior.avgRestSeconds}s — selection biased toward less demanding lifts.` : null,
+    hasAssessment    ? "Assessment data on file — rep targets seeded from your test results." : null,
     tier.ageFriendly ? `Age-safe selection (${tier.label}) — lower-impact movements preferred.` : null,
     blocked.size     ? `Skipped ${blocked.size} pain-flagged movement${blocked.size===1?"":"s"}.` : null,
     limitations.length ? `Avoided stress on: ${limitations.join(", ")}.` : null,
