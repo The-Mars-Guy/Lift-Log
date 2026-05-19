@@ -90,7 +90,6 @@ export default function OnboardingView({ onComplete }) {
   const [mode,       setMode]       = useState("");
   const [days,       setDays]       = useState(DEFAULT_DAYS);
   const [coachCard,  setCoachCard]  = useState(0);
-  useEffect(() => { if (key === "coach") setCoachCard(0); }, [key]);
 
   const heightIn = useMemo(() => (
     feet || inches ? (Number(feet) || 0) * 12 + (Number(inches) || 0) : ""
@@ -98,6 +97,7 @@ export default function OnboardingView({ onComplete }) {
 
   const total  = STEPS.length;
   const key    = STEPS[step];
+  useEffect(() => { if (key === "coach") setCoachCard(0); }, [key]);
 
   const canContinue = (() => {
     if (key === "location")   return !!location;
