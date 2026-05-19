@@ -2,6 +2,7 @@ import { useState } from "react";
 import { WORKOUTS, MUSCLE_LABELS, customRoutineWorkout } from "../data.js";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
 import { muscleRecoveryStats, latestMuscleSoreness } from "../coach.js";
+import { surface, text, status } from "../theme.js";
 
 // Research-backed per-muscle recovery baselines (hours)
 // Sources: NSCA JSCR 2011, PMC11057610, PubMed 30036284, 28965198
@@ -25,26 +26,26 @@ const MUSCLE_BASE_RECOVERY_HOURS = {
 
 // Recovery state legend (replaces strength-level legend on body map)
 const RECOVERY_LEGEND = [
-  { color:"#4ade80", label:"Ready" },
-  { color:"#60a5fa", label:"Recovering" },
-  { color:"#fbbf24", label:"Fatigued" },
-  { color:"#fb7185", label:"Sore" },
+  { color:status.good, label:"Ready" },
+  { color:status.info, label:"Recovering" },
+  { color:status.warn, label:"Fatigued" },
+  { color:status.caution, label:"Sore" },
   { color:"#333",    label:"No data" },
 ];
 
 // Strength-level lookup (still used in detail rows)
 const MUSCLE_LEVELS = [
   { key:"beginner", label:"Beginner", min:0, color:"#64748b" },
-  { key:"novice", label:"Novice", min:80, color:"#60a5fa" },
-  { key:"intermediate", label:"Intermediate", min:180, color:"#4ade80" },
-  { key:"advanced", label:"Advanced", min:360, color:"#fbbf24" },
+  { key:"novice", label:"Novice", min:80, color:status.info },
+  { key:"intermediate", label:"Intermediate", min:180, color:status.good },
+  { key:"advanced", label:"Advanced", min:360, color:status.warn },
   { key:"elite", label:"Elite", min:650, color:"#f472b6" },
 ];
 
 const SORE_LEVELS = [
-  { key:"fresh", label:"Fresh", color:"#4ade80" },
-  { key:"mild", label:"Mild", color:"#fbbf24" },
-  { key:"sore", label:"Sore", color:"#fb7185" },
+  { key:"fresh", label:"Fresh", color:status.good },
+  { key:"mild", label:"Mild", color:status.warn },
+  { key:"sore", label:"Sore", color:status.caution },
 ];
 
 export default function MuscleMapView({ history, accent, checkIns = [], setCheckIns, customRoutine }) {
@@ -57,10 +58,10 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
   const fatigued = status.rows.filter(row => row.fatigue >= 55 || row.soreness === "sore");
   const levelColors = Object.fromEntries(status.rows.map(row => {
     if (!row.lastHit) return [row.muscle, "#333"];          // no data
-    if (row.soreness === "sore") return [row.muscle, "#fb7185"]; // self-reported sore
-    if (row.recoveredPct >= 90) return [row.muscle, "#4ade80"]; // ready
-    if (row.recoveredPct >= 60) return [row.muscle, "#60a5fa"]; // recovering
-    if (row.recoveredPct >= 30) return [row.muscle, "#fbbf24"]; // fatigued
+    if (row.soreness === "sore") return [row.muscle, status.caution]; // self-reported sore
+    if (row.recoveredPct >= 90) return [row.muscle, status.good]; // ready
+    if (row.recoveredPct >= 60) return [row.muscle, status.info]; // recovering
+    if (row.recoveredPct >= 30) return [row.muscle, status.warn]; // fatigued
     return [row.muscle, "#fb923c"];                         // very fatigued
   }));
   const recovery = muscleRecoveryStats(checkIns);
@@ -88,10 +89,10 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
     <div style={{overflowX:"hidden"}}>
       <div style={{padding:"34px 16px 18px"}}>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:52,letterSpacing:".06em",lineHeight:.88,color:"#fafafa"}}>MUSCLE MAP</div>
-        <div style={{fontSize:13,color:"#999",marginTop:7,letterSpacing:".1em",textTransform:"uppercase"}}>readiness, recovery, balance</div>
+        <div style={{fontSize:13,color:"#999",marginTop:7,fontWeight:600}}>readiness, recovery, balance</div>
       </div>
 
-      <div style={{margin:"0 16px 14px",padding:"16px",background:"#0d0d0d",border:`1.5px solid ${accent}33`,borderRadius:12,boxShadow:`0 0 24px ${accent}12`}}>
+      <div style={{margin:"0 16px 14px",padding:"16px",background:surface.bg0,border:`1.5px solid ${accent}33`,borderRadius:12,boxShadow:`0 0 24px ${accent}12`}}>
         <MuscleDiagram activation={status.activation} levelColors={levelColors} accent={accent}/>
         <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center",marginTop:12}}>
           {RECOVERY_LEGEND.map(item=>(
@@ -104,21 +105,21 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
       </div>
 
       <div style={{padding:"0 16px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
-        <Mini label="Most Fatigued" value={fatigued[0]?.label || "None"} color="#fb7185"/>
-        <Mini label="Most Ready" value={status.rows.find(row => row.readiness === "Ready")?.label || "Learning"} color="#4ade80"/>
-        <Mini label="Ahead" value={ahead[0]?.label || "Balanced"} color="#60a5fa"/>
-        <Mini label="Needs Touch" value={behind[0]?.label || "None"} color="#fbbf24"/>
+        <Mini label="Most Fatigued" value={fatigued[0]?.label || "None"} color={status.caution}/>
+        <Mini label="Most Ready" value={status.rows.find(row => row.readiness === "Ready")?.label || "Learning"} color={status.good}/>
+        <Mini label="Ahead" value={ahead[0]?.label || "Balanced"} color={status.info}/>
+        <Mini label="Needs Touch" value={behind[0]?.label || "None"} color={status.warn}/>
       </div>
 
       <Section title="Coach Focus" sub="what the muscle map thinks you should do next">
         <div style={{display:"grid",gap:8}}>
           {focusItems.map(item => (
-            <div key={item.title} style={{padding:"12px 13px",background:"#0d0d0d",border:`1px solid ${item.color}55`,borderRadius:10,boxShadow:`0 0 20px ${item.color}12`}}>
+            <div key={item.title} style={{padding:"12px 13px",background:surface.bg0,border:`1px solid ${item.color}55`,borderRadius:10,boxShadow:`0 0 20px ${item.color}12`}}>
               <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
                 <div style={{fontSize:14,color:item.color,fontWeight:800}}>{item.title}</div>
-                <div style={{fontSize:10,color:"#777",letterSpacing:".12em",textTransform:"uppercase"}}>{item.tag}</div>
+                <div style={{fontSize:10,color:"#777",fontWeight:600}}>{item.tag}</div>
               </div>
-              <div style={{fontSize:12,color:"#bbb",lineHeight:1.45,marginTop:5}}>{item.detail}</div>
+              <div style={{fontSize:12,color:text.secondary,lineHeight:1.45,marginTop:5}}>{item.detail}</div>
             </div>
           ))}
         </div>
@@ -130,20 +131,20 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
             <Mini
               label="Slowest to Heal"
               value={recovery.slowest ? `${MUSCLE_LABELS[recovery.slowest.muscle] || recovery.slowest.muscle} · ${formatHours(recovery.slowest.avgHours)}` : "Learning"}
-              color="#fb7185"
+              color={status.caution}
             />
             <Mini
               label="Fastest to Heal"
               value={recovery.fastest ? `${MUSCLE_LABELS[recovery.fastest.muscle] || recovery.fastest.muscle} · ${formatHours(recovery.fastest.avgHours)}` : "Learning"}
-              color="#4ade80"
+              color={status.good}
             />
           </div>
           {recovery.entries.length > 0 && (
             <div style={{display:"grid",gap:6,marginTop:10}}>
               {recovery.entries.slice(0,6).map(item => (
-                <div key={item.muscle} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 12px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:8,fontSize:12,color:"#ccc"}}>
+                <div key={item.muscle} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 12px",background:surface.bg0,border:"1px solid #1f1f1f",borderRadius:8,fontSize:12,color:"#ccc"}}>
                   <span>{MUSCLE_LABELS[item.muscle] || item.muscle}</span>
-                  <span style={{color:"#888"}}>{formatHours(item.avgHours)} avg · {item.samples} log{item.samples===1?"":"s"}</span>
+                  <span style={{color:text.tertiary}}>{formatHours(item.avgHours)} avg · {item.samples} log{item.samples===1?"":"s"}</span>
                 </div>
               ))}
             </div>
@@ -161,7 +162,7 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
             ["needs","Needs"],
           ].map(([key,label]) => (
             <button key={key} onClick={()=>setFilter(key)}
-              style={{padding:"8px 5px",borderRadius:7,border:`1px solid ${filter===key?accent:"#272727"}`,background:filter===key?`${accent}20`:"#0d0d0d",color:filter===key?accent:"#888",fontSize:10,fontWeight:700,letterSpacing:".08em",textTransform:"uppercase"}}>
+              style={{padding:"8px 5px",borderRadius:7,border:`1px solid ${filter===key?accent:"#272727"}`,background:filter===key?`${accent}20`:"#0d0d0d",color:filter===key?accent:"#888",fontSize:10,fontWeight:700}}>
               {label}
             </button>
           ))}
@@ -169,13 +170,13 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
         <div style={{display:"grid",gap:8}}>
           {filteredRows.map(row=><MuscleRow key={row.muscle} row={row} avg={status.avg} currentSoreness={currentSoreness[row.muscle]||null} onSoreness={logSoreness}/>)}
           {!filteredRows.length&&(
-            <div style={{padding:"14px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10,fontSize:13,color:"#888",textAlign:"center"}}>Nothing in this group yet.</div>
+            <div style={{padding:"14px",background:surface.bg0,border:"1px solid #1f1f1f",borderRadius:10,fontSize:13,color:text.tertiary,textAlign:"center"}}>Nothing in this group yet.</div>
           )}
         </div>
       </Section>
 
       <Section title="Reference" sub="anatomy model">
-        <div style={{padding:"13px 14px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10,fontSize:12,color:"#888",lineHeight:1.5}}>
+        <div style={{padding:"13px 14px",background:surface.bg0,border:"1px solid #1f1f1f",borderRadius:10,fontSize:12,color:text.tertiary,lineHeight:1.5}}>
           The simplified body map is maintained in-app. Anatomy proportions are checked against the Wikimedia/OpenStax reference credited in CREDITS.md.
         </div>
       </Section>
@@ -269,31 +270,31 @@ function buildMuscleFocus({ rows, avg }) {
   if (sore) items.push({
     title:`Ease ${sore.label}`,
     tag:"protect",
-    color:"#fb7185",
+    color:status.caution,
     detail:`Marked sore right now. Bias swaps, lighter tempo, or fewer sets for ${sore.exercises.slice(0,2).join(" / ")}.`,
   });
   if (needs) items.push({
     title:`Bring Up ${needs.label}`,
     tag:"balance",
-    color:"#fbbf24",
+    color:status.warn,
     detail:`Recent work is below your other trained muscles. Add clean volume when it is not sore.`,
   });
   if (ready) items.push({
     title:`Push ${ready.label}`,
     tag:"ready",
-    color:"#4ade80",
+    color:status.good,
     detail:`Recovery looks good. This is a strong candidate for normal or slightly harder work today.`,
   });
   if (recovering && items.length < 3) items.push({
     title:`Watch ${recovering.label}`,
     tag:"recover",
-    color:"#60a5fa",
+    color:status.info,
     detail:`Not fully fresh yet. Keep reps clean and avoid chasing failure on related lifts.`,
   });
   return items.slice(0, 3).length ? items.slice(0, 3) : [{
     title:"Keep Logging",
     tag:"learning",
-    color:"#60a5fa",
+    color:status.info,
     detail:"More workouts and soreness check-ins will make these recommendations sharper.",
   }];
 }
@@ -304,9 +305,9 @@ function MuscleRow({ row, avg, currentSoreness, onSoreness }) {
   const recovery = row.recoveryHours
     ? row.recoveredPct >= 100 ? "Recovered" : `~${Math.max(1, Math.ceil(row.recoveryHours - (row.hoursSince || 0)))}h left`
     : "No recent work";
-  const readinessColor = row.readiness === "Fatigued" ? "#fb7185" : row.readiness === "Recovering" ? "#fbbf24" : "#4ade80";
+  const readinessColor = row.readiness === "Fatigued" ? status.caution : row.readiness === "Recovering" ? status.warn : status.good;
   return (
-    <div style={{padding:"12px 13px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10}}>
+    <div style={{padding:"12px 13px",background:surface.bg0,border:"1px solid #1f1f1f",borderRadius:10}}>
       <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center",marginBottom:8}}>
         <div style={{minWidth:0}}>
           <div style={{fontSize:15,color:"#f0f0f0",fontWeight:700}}>{row.label}</div>
@@ -319,11 +320,11 @@ function MuscleRow({ row, avg, currentSoreness, onSoreness }) {
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
         <SmallMeter label="Fatigue" value={row.fatigue} color={readinessColor}/>
-        <SmallMeter label="Recovery" value={row.recoveredPct} color={row.recoveredPct>=100?"#4ade80":"#60a5fa"}/>
+        <SmallMeter label="Recovery" value={row.recoveredPct} color={row.recoveredPct>=100?status.good:status.info}/>
       </div>
       {/* Bottom row: stats left, soreness chips right */}
       <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",overflow:"hidden"}}>
-        <span style={{fontSize:11,color:"#666",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>
+        <span style={{fontSize:11,color:text.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>
           {ahead ? "ahead" : behind ? "behind" : "even"} · {row.recentPoints} pts · {recovery}
         </span>
         <div style={{display:"flex",gap:3,flexShrink:0}}>
@@ -331,7 +332,7 @@ function MuscleRow({ row, avg, currentSoreness, onSoreness }) {
             const active = currentSoreness === level.key;
             return (
               <button key={level.key} onClick={() => onSoreness?.(row.muscle, active ? null : level.key)}
-                style={{padding:"4px 7px",borderRadius:6,border:`1px solid ${active?level.color:"#232323"}`,background:active?`${level.color}28`:"#101010",color:active?level.color:"#444",fontSize:10,fontWeight:800,cursor:"pointer",letterSpacing:".03em",lineHeight:1.2}}>
+                style={{padding:"4px 7px",borderRadius:6,border:`1px solid ${active?level.color:"#232323"}`,background:active?`${level.color}28`:"#101010",color:active?level.color:text.ghost,fontSize:10,fontWeight:800,cursor:"pointer",letterSpacing:".03em",lineHeight:1.2}}>
                 {level.label}
               </button>
             );
@@ -345,7 +346,7 @@ function MuscleRow({ row, avg, currentSoreness, onSoreness }) {
 function SmallMeter({ label, value, color }) {
   return (
     <div style={{minWidth:0,overflow:"hidden"}}>
-      <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#777",letterSpacing:".08em",textTransform:"uppercase",marginBottom:4}}>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#777",fontWeight:600,marginBottom:4}}>
         <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</span>
         <span style={{flexShrink:0,marginLeft:4}}>{Math.round(value)}%</span>
       </div>
@@ -358,8 +359,8 @@ function SmallMeter({ label, value, color }) {
 
 function Mini({ label, value, color }) {
   return (
-    <div style={{padding:"12px 13px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10,minWidth:0,overflow:"hidden"}}>
-      <div style={{fontSize:10,color:"#888",letterSpacing:".1em",textTransform:"uppercase",marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{label}</div>
+    <div style={{padding:"12px 13px",background:surface.bg0,border:"1px solid #1f1f1f",borderRadius:10,minWidth:0,overflow:"hidden"}}>
+      <div style={{fontSize:10,color:text.tertiary,fontWeight:600,marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{label}</div>
       <div style={{fontSize:13,color,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{value}</div>
     </div>
   );
@@ -368,8 +369,8 @@ function Mini({ label, value, color }) {
 function Section({ title, sub, children }) {
   return (
     <div style={{padding:"24px 16px 8px"}}>
-      <div style={{fontSize:13,color:"#ddd",letterSpacing:".14em",textTransform:"uppercase",fontWeight:500}}>{title}</div>
-      {sub&&<div style={{fontSize:12,color:"#888",marginTop:3,letterSpacing:".04em"}}>{sub}</div>}
+      <div style={{fontSize:13,color:"#ddd",fontWeight:500}}>{title}</div>
+      {sub&&<div style={{fontSize:12,color:text.tertiary,marginTop:3,letterSpacing:".04em"}}>{sub}</div>}
       <div style={{marginTop:14}}>{children}</div>
     </div>
   );

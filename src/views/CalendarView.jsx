@@ -2,6 +2,7 @@ import { useState } from "react";
 import { WORKOUTS, SCHEDULE, DAYS, computeStats, dateStr, todayName } from "../data.js";
 import { Heatmap } from "../components/shared.jsx";
 import { fmtDuration } from "../hooks.js";
+import { surface, text, status } from "../theme.js";
 
 export default function CalendarView({ history, progression, settings, accent, theme = "dark" }) {
   const stats = computeStats({ history, progression, settings });
@@ -27,7 +28,7 @@ export default function CalendarView({ history, progression, settings, accent, t
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 44, letterSpacing: "0.06em", lineHeight: 0.9, color: ui.title }}>
           CALENDAR
         </div>
-        <div style={{ fontSize: 15, color: ui.muted, marginTop: 6, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+        <div style={{ fontSize: 15, color: ui.muted, marginTop: 6, fontWeight: 600 }}>
           your consistency, at a glance
         </div>
       </div>
@@ -47,7 +48,7 @@ export default function CalendarView({ history, progression, settings, accent, t
 
       {/* HEATMAP */}
       <div style={{ padding: "0 20px" }}>
-        <div style={{ fontSize: 15, color: ui.section, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 500, marginBottom: 14 }}>
+        <div style={{ fontSize: 15, color: ui.section, fontWeight: 500, marginBottom: 14 }}>
           Last 12 Weeks
         </div>
         {history.length===0&&(
@@ -71,7 +72,7 @@ export default function CalendarView({ history, progression, settings, accent, t
 
       {/* FULL HISTORY */}
       <div style={{ padding: "32px 20px 0" }}>
-        <div style={{ fontSize: 15, color: ui.section, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 500, marginBottom: 14 }}>
+        <div style={{ fontSize: 15, color: ui.section, fontWeight: 500, marginBottom: 14 }}>
           Session History
         </div>
         {history.length === 0 ? (
@@ -90,8 +91,8 @@ export default function CalendarView({ history, progression, settings, accent, t
                   <div style={{ display: "flex", gap: 10, alignItems: "center", flex: 1, minWidth: 0 }}>
                     <span style={{
                       fontSize: 14, padding: "3px 9px", borderRadius: 5,
-                      background: `${WORKOUTS[h.workout]?.color || "#fbbf24"}22`,
-                      color: WORKOUTS[h.workout]?.color || "#fbbf24",
+                      background: `${WORKOUTS[h.workout]?.color || status.warn}22`,
+                      color: WORKOUTS[h.workout]?.color || status.warn,
                       letterSpacing: "0.06em", fontWeight: 500, flexShrink: 0,
                     }}>{h.workout}</span>
                     <span style={{ fontSize: 15, color: ui.text }}>{h.day}</span>
@@ -187,14 +188,14 @@ function NextSessionCard({ insights, accent, ui }) {
       <div style={{ padding:16, background:`linear-gradient(180deg,${accent}1f,${ui.card})`, border:`1.5px solid ${accent}44`, borderRadius:14, boxShadow:ui.shadow }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12 }}>
           <div>
-            <div style={{ fontSize:11, color:accent, letterSpacing:".14em", textTransform:"uppercase", fontWeight:700, marginBottom:6 }}>Next Best Move</div>
+            <div style={{ fontSize:11, color:accent, fontWeight:700, marginBottom:6 }}>Next Best Move</div>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:32, color:ui.title, letterSpacing:".06em", lineHeight:.95 }}>
               {insights.nextDay}<br/>WORKOUT {insights.nextWorkout}
             </div>
           </div>
           <div style={{ textAlign:"right", flexShrink:0 }}>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:34, color:accent, letterSpacing:".04em", lineHeight:1 }}>{insights.adherence}%</div>
-            <div style={{ fontSize:10, color:ui.muted, letterSpacing:".12em", textTransform:"uppercase" }}>4 week hit rate</div>
+            <div style={{ fontSize:10, color:ui.muted }}>4 week hit rate</div>
           </div>
         </div>
         <div style={{ fontSize:14, color:ui.soft, lineHeight:1.5, marginTop:12 }}>{insights.guidance}</div>
@@ -212,7 +213,7 @@ function Metric({ label, value, unit, ui, compact = false }) {
   return (
     <div style={{ padding: compact ? "10px 9px" : "12px 10px", background: ui.card, borderRadius: 9, border: `1px solid ${ui.border}`, textAlign: "center", boxShadow:ui.shadow }}>
       <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: compact ? 24 : 28, color: ui.title, letterSpacing: "0.04em" }}>{value}</div>
-      <div style={{ fontSize: compact ? 12 : 15, color: ui.soft, letterSpacing: "0.14em", textTransform: "uppercase", marginTop: 2 }}>{label} {unit}</div>
+      <div style={{ fontSize: compact ? 12 : 15, color: ui.soft, fontWeight: 600, marginTop: 2 }}>{label} {unit}</div>
     </div>
   );
 }
@@ -227,14 +228,14 @@ function Swatch({ color, label }) {
 }
 
 function SessionDetail({ session, onClose, theme = "dark" }) {
-  const color = WORKOUTS[session.workout]?.color || "#4ade80";
+  const color = WORKOUTS[session.workout]?.color || status.good;
   const ui = makeCalendarTheme(theme, color);
   const totalReps = (session.exercises||[]).reduce((sum, ex)=>sum+(ex.setLog||[]).reduce((s,l)=>s+(l.reps||0),0),0);
   return (
     <div style={{position:"fixed",inset:0,zIndex:240,background:ui.light?"#f8fffb":"#050505",overflowY:"auto",padding:"calc(28px + env(safe-area-inset-top)) 20px 30px"}}>
       <div className="mobile-shell">
         <button onClick={onClose} style={{background:"transparent",border:`1px solid ${ui.border}`,borderRadius:9,color:ui.soft,padding:"10px 13px",fontSize:12,letterSpacing:".08em",marginBottom:22}}>CLOSE</button>
-        <div style={{fontSize:12,color,letterSpacing:".16em",textTransform:"uppercase",marginBottom:8}}>{session.date}</div>
+        <div style={{fontSize:12,color,fontWeight:600,marginBottom:8}}>{session.date}</div>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:44,color:ui.title,letterSpacing:".06em",lineHeight:.95,marginBottom:8}}>WORKOUT {session.workout}</div>
         <div style={{fontSize:14,color:ui.muted,marginBottom:18}}>{session.day} · {fmtDuration(session.duration||0)} · {totalReps} reps</div>
         {session.note&&(

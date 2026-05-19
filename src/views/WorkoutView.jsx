@@ -14,6 +14,7 @@ import { Confetti, XpFloat } from "./workout/Effects.jsx";
 import { FirstRunSetup, AssessmentFlow, ASSESSMENT_EXERCISES } from "./workout/Assessment.jsx";
 import PostWorkoutFeedback from "./workout/PostWorkoutFeedback.jsx";
 import { buildSuggestions, CoachDrawer, CoachFab, CoachCard } from "./workout/Coach.jsx";
+import { surface, text, status } from "../theme.js";
 
 const SET_FEELINGS = [
   { key:"easy", label:"EASY" },
@@ -36,12 +37,12 @@ function ReadinessCheckIn({ value, onSave, accent }) {
   const summary = `${ENERGY_ICON[draft.energy]||""} ${draft.energy} · ${BODY_ICON[draft.soreness]||""} ${draft.soreness} · ${TIME_ICON[draft.time]||""} ${draft.time}`;
 
   return (
-    <div style={{margin:"0 16px 14px",background:"#0d0d0d",border:`1px solid ${accent}33`,borderRadius:12}}>
+    <div style={{margin:"0 16px 14px",background:surface.bg0,border:`1px solid ${accent}33`,borderRadius:12}}>
       {/* Compact row */}
       <div style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px"}}>
         <button onClick={()=>setOpen(v=>!v)}
           style={{flex:1,background:"transparent",border:"none",padding:0,textAlign:"left",cursor:"pointer"}}>
-          <div style={{fontSize:10,color:accent,letterSpacing:".12em",textTransform:"uppercase",fontWeight:700,marginBottom:3}}>Check-In</div>
+          <div style={{fontSize:11,color:accent,fontWeight:700,marginBottom:3}}>Check-In</div>
           <div style={{fontSize:12,color:"#aaa"}}>{summary} <span style={{fontSize:14,display:"inline-block",transform:open?"rotate(180deg)":"none",transition:"transform .2s",verticalAlign:"middle"}}>⌄</span></div>
         </button>
         <button onClick={()=>onSave(draft)}
@@ -54,7 +55,7 @@ function ReadinessCheckIn({ value, onSave, accent }) {
         <div style={{padding:"0 14px 14px",display:"grid",gap:10,borderTop:"1px solid #1a1a1a",paddingTop:12}}>
           {groups.map(group=>(
             <div key={group.key}>
-              <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:6}}>{group.label}</div>
+              <div style={{fontSize:10,color:"#777",fontWeight:600,marginBottom:6}}>{group.label}</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
                 {group.options.map(([key,label])=>{
                   const active = draft[group.key] === key;
@@ -80,12 +81,12 @@ function NoteField({ value, onChange }) {
     <div style={{marginTop:10}}>
       {!open ? (
         <button onClick={()=>setOpen(true)}
-          style={{background:"transparent",border:"none",padding:0,color:"#555",fontSize:12,letterSpacing:".06em",cursor:"pointer"}}>
+          style={{background:"transparent",border:"none",padding:0,color:text.faint,fontSize:12,letterSpacing:".06em",cursor:"pointer"}}>
           + add session note
         </button>
       ) : (
         <textarea value={value} onChange={e=>onChange(e.target.value)} placeholder="Sleep, joints, mood, anything worth remembering..." autoFocus
-          style={{width:"100%",minHeight:54,resize:"vertical",boxSizing:"border-box",padding:"11px 12px",background:"#0d0d0d",border:"1px solid #242424",borderRadius:10,color:"#ddd",fontSize:13,lineHeight:1.45,outline:"none"}}/>
+          style={{width:"100%",minHeight:54,resize:"vertical",boxSizing:"border-box",padding:"11px 12px",background:surface.bg0,border:"1px solid #242424",borderRadius:10,color:"#ddd",fontSize:13,lineHeight:1.45,outline:"none"}}/>
       )}
     </div>
   );
@@ -98,22 +99,22 @@ function TodayPlan({ plan, readiness, accent, substitutions, onApplySubstitution
     <div style={{margin:"0 16px 12px",padding:"14px 15px",background:`linear-gradient(180deg,${accent}13,#0d0d0d)`,border:`1.5px solid ${accent}44`,borderRadius:14,boxShadow:`0 0 24px ${accent}12`}}>
       <button onClick={()=>setOpen(o=>!o)} style={{width:"100%",background:"transparent",border:"none",padding:0,textAlign:"left",display:"flex",alignItems:"center",gap:12}}>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:500,marginBottom:5}}>Today's Coach</div>
+          <div style={{fontSize:11,color:accent,fontWeight:600,marginBottom:5}}>Today's Coach</div>
           <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:27,color:"#f5f5f5",letterSpacing:".06em",lineHeight:1}}>{plan.headline}</div>
-          <div style={{fontSize:12,color:"#888",marginTop:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{plan.focus}</div>
+          <div style={{fontSize:12,color:text.tertiary,marginTop:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{plan.focus}</div>
         </div>
-        <div style={{fontSize:20,color:"#bbb",transform:open?"rotate(180deg)":"none",transition:"transform .2s"}}>⌄</div>
+        <div style={{fontSize:20,color:text.secondary,transform:open?"rotate(180deg)":"none",transition:"transform .2s"}}>⌄</div>
       </button>
       {open&&(
         <div style={{animation:"slideDown .2s ease-out"}}>
-      <div style={{fontSize:13,color:"#888",marginTop:12}}>{readiness ? readinessLabel(readiness) : "Default readiness"}</div>
+      <div style={{fontSize:13,color:text.tertiary,marginTop:12}}>{readiness ? readinessLabel(readiness) : "Default readiness"}</div>
       <div style={{fontSize:14,color:"#ddd",lineHeight:1.55,marginTop:8}}>{plan.focus}</div>
       {plan.science&&(
         <div style={{marginTop:12,padding:"10px 11px",background:"#101010",borderRadius:8,border:`1px solid ${accent}33`}}>
-          <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:5}}>Science Coach</div>
+          <div style={{fontSize:11,color:accent,fontWeight:600,marginBottom:5}}>Science Coach</div>
           <div style={{fontSize:12,color:"#ddd",lineHeight:1.5}}>
             {plan.science.label}: {plan.science.note}
-            {plan.science.est1RM&&<span style={{color:"#888"}}> Est. 1RM {plan.science.est1RM}lbs.</span>}
+            {plan.science.est1RM&&<span style={{color:text.tertiary}}> Est. 1RM {plan.science.est1RM}lbs.</span>}
           </div>
         </div>
       )}
@@ -148,7 +149,7 @@ function TodayPlan({ plan, readiness, accent, substitutions, onApplySubstitution
       {plan.adjustments?.length>0&&(
         <div style={{display:"grid",gap:7,marginTop:12}}>
           {plan.adjustments.slice(0,2).map((item,i)=>(
-            <div key={i} style={{fontSize:12,color:"#bbb",padding:"9px 11px",background:"#080808",borderRadius:8,border:"1px solid #202020"}}>{item}</div>
+            <div key={i} style={{fontSize:12,color:text.secondary,padding:"9px 11px",background:"#080808",borderRadius:8,border:"1px solid #202020"}}>{item}</div>
           ))}
         </div>
       )}
@@ -224,7 +225,7 @@ function FocusWorkoutMode({
     <div style={{position:"fixed",inset:0,zIndex:150,background:"#050505",overflowY:"auto",padding:"calc(10px + env(safe-area-inset-top)) 16px 18px"}}>
       <div className="mobile-shell">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12}}>
-          <button onClick={onExit} style={{background:"transparent",border:"none",color:"#555",padding:"8px 12px",fontSize:12}}>Pause</button>
+          <button onClick={onExit} style={{background:"transparent",border:"none",color:text.faint,padding:"8px 12px",fontSize:12}}>Pause</button>
           {tempoPattern.length > 0&&(
             <button
               aria-label={tempoOn ? "Stop tempo metronome" : "Start tempo metronome"}
@@ -236,24 +237,24 @@ function FocusWorkoutMode({
             </button>
           )}
           <div style={{textAlign:"right"}}>
-            <div style={{fontSize:11,color:"#777",letterSpacing:".14em",textTransform:"uppercase"}}>{activeTab}</div>
+            <div style={{fontSize:11,color:"#777",fontWeight:600}}>{activeTab}</div>
             <div style={{fontSize:13,color:accent}}>{doneSets}/{totalSets} sets</div>
             <div style={{fontSize:11,color:"#777",marginTop:2}}>{fmtDuration(estimatedRemaining)} left</div>
           </div>
         </div>
 
-        <div style={{fontSize:11,color:accent,letterSpacing:".16em",textTransform:"uppercase",marginBottom:6}}>Focus Mode</div>
+        <div style={{fontSize:11,color:accent,fontWeight:600,marginBottom:6}}>Focus Mode</div>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:beginnerFormMode?46:38,color:"#f5f5f5",letterSpacing:".06em",lineHeight:.92,marginBottom:5}}>{next.ex.name}</div>
         <div style={{fontSize:beginnerFormMode?15:13,color:"#aaa",lineHeight:1.35,marginBottom:science.enabled&&science.targetRepReason?4:8}}>
           Set {Math.min(currentDone+1,plannedSets)} of {plannedSets} · {weightText} · target {repText}{next.ex.repSuffix||""}
         </div>
         {science.enabled&&science.targetRepReason&&(
-          <div style={{fontSize:11,color:"#a78bfa",lineHeight:1.35,marginBottom:8,opacity:.9}}>{science.targetRepReason}</div>
+          <div style={{fontSize:11,color:status.science,lineHeight:1.35,marginBottom:8,opacity:.9}}>{science.targetRepReason}</div>
         )}
 
         {previous&&(
-          <div style={{marginBottom:8,padding:"9px 11px",background:"#0d0d0d",border:`1px solid ${accent}33`,borderRadius:10}}>
-            <div style={{fontSize:10,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:3}}>Last Time</div>
+          <div style={{marginBottom:8,padding:"9px 11px",background:surface.bg0,border:`1px solid ${accent}33`,borderRadius:10}}>
+            <div style={{fontSize:10,color:accent,fontWeight:600,marginBottom:3}}>Last Time</div>
             <div style={{fontSize:13,color:"#ddd",lineHeight:1.4}}>{previous.sets} sets · {previous.totalReps} reps · best {previous.bestReps} reps{previous.bestWeight > 0 ? ` @ ${previous.bestWeight}lbs` : " bodyweight"}</div>
           </div>
         )}
@@ -273,8 +274,8 @@ function FocusWorkoutMode({
           })}
         </div>
 
-        <div style={{marginTop:10,padding:"10px 12px",background:"#0d0d0d",border:"1px solid #202020",borderRadius:11}}>
-          <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:4}}>Cue</div>
+        <div style={{marginTop:10,padding:"10px 12px",background:surface.bg0,border:"1px solid #202020",borderRadius:11}}>
+          <div style={{fontSize:10,color:"#777",fontWeight:600,marginBottom:4}}>Cue</div>
           <div style={{fontSize:beginnerFormMode?17:13,color:"#ddd",lineHeight:1.38}}>{beginnerFormMode && guide ? guide.movement[0] : next.ex.tip}</div>
           {science.enabled&&science.tempo&&(
             <div style={{fontSize:12,color:accent,lineHeight:1.4,marginTop:7}}>
@@ -284,12 +285,12 @@ function FocusWorkoutMode({
         </div>
 
         {tempoPattern.length > 0&&tempoOn&&(
-          <div style={{marginTop:10,padding:"10px 12px",background:"#0d0d0d",border:`1px solid ${accent}`,borderRadius:11,boxShadow:`0 0 22px ${accent}22`}}>
-            <div style={{fontSize:10,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:7}}>Tempo Beat · {tempoPhase?.label || "Beat"} {tempoPosition + 1}/{tempoCycle}</div>
+          <div style={{marginTop:10,padding:"10px 12px",background:surface.bg0,border:`1px solid ${accent}`,borderRadius:11,boxShadow:`0 0 22px ${accent}22`}}>
+            <div style={{fontSize:10,color:accent,fontWeight:600,marginBottom:7}}>Tempo Beat · {tempoPhase?.label || "Beat"} {tempoPosition + 1}/{tempoCycle}</div>
             <div style={{display:"grid",gridTemplateColumns:`repeat(${tempoPattern.length},1fr)`,gap:7}}>
               {tempoPattern.map((part, idx)=>(
                 <div key={part.label} style={{padding:"8px 6px",borderRadius:8,border:`1px solid ${tempoPhase?.label===part.label?accent:"#242424"}`,background:tempoPhase?.label===part.label?`${accent}24`:"#090909",textAlign:"center"}}>
-                  <div style={{fontSize:10,color:tempoPhase?.label===part.label?accent:"#777",letterSpacing:".1em",textTransform:"uppercase"}}>{part.label}</div>
+                  <div style={{fontSize:10,color:tempoPhase?.label===part.label?accent:"#777",fontWeight:600}}>{part.label}</div>
                   <div style={{fontSize:15,color:"#eee",fontFamily:"DM Mono,monospace",marginTop:2}}>{part.seconds}s</div>
                 </div>
               ))}
@@ -298,23 +299,23 @@ function FocusWorkoutMode({
         )}
 
         {focusSwap&&(
-          <div style={{marginTop:10,padding:"10px 12px",background:"#0d0d0d",border:`1px solid ${accent}44`,borderRadius:11}}>
-            <div style={{fontSize:10,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:4}}>Safer Option</div>
+          <div style={{marginTop:10,padding:"10px 12px",background:surface.bg0,border:`1px solid ${accent}44`,borderRadius:11}}>
+            <div style={{fontSize:10,color:accent,fontWeight:600,marginBottom:4}}>Safer Option</div>
             <div style={{fontSize:13,color:"#ddd",lineHeight:1.4}}>If this feels rough today, swap to {focusSwap.substitute}. {focusSwap.reason}</div>
             <div style={{display:"flex",gap:7,flexWrap:"wrap",marginTop:8}}>
               <button onClick={()=>onApplySubstitution?.(focusSwap)}
                 style={{background:accent,border:"none",borderRadius:8,color:"#050505",padding:"8px 10px",fontSize:11,letterSpacing:".08em",fontWeight:700}}>USE SWAP</button>
               {next.ex.substitutedFor&&<button onClick={()=>onRemoveSubstitution?.(next.ex.substitutedFor)}
-                style={{background:"transparent",border:"none",color:"#666",padding:"8px 10px",fontSize:12}}>Original</button>}
+                style={{background:"transparent",border:"none",color:text.muted,padding:"8px 10px",fontSize:12}}>Original</button>}
             </div>
           </div>
         )}
 
         {guide&&!beginnerFormMode&&(
-          <div style={{marginTop:10,padding:"10px 12px",background:"#0d0d0d",border:"1px solid #202020",borderRadius:11}}>
-            <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:5}}>Quick Form</div>
+          <div style={{marginTop:10,padding:"10px 12px",background:surface.bg0,border:"1px solid #202020",borderRadius:11}}>
+            <div style={{fontSize:10,color:"#777",fontWeight:600,marginBottom:5}}>Quick Form</div>
             <div style={{fontSize:13,color:"#ddd",lineHeight:1.45}}>{guide.movement[0]}</div>
-            <div style={{fontSize:12,color:"#888",lineHeight:1.45,marginTop:4}}>Avoid: {guide.mistakes.slice(0,2).join(", ")}.</div>
+            <div style={{fontSize:12,color:text.tertiary,lineHeight:1.45,marginTop:4}}>Avoid: {guide.mistakes.slice(0,2).join(", ")}.</div>
           </div>
         )}
 
@@ -337,7 +338,7 @@ function RestReady({ label, accent, onNext }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:185,background:"#050505",display:"flex",alignItems:"center",justifyContent:"center",padding:"28px 22px"}}>
       <div className="mobile-shell" style={{textAlign:"center"}}>
-        <div style={{fontSize:12,color:accent,letterSpacing:".16em",textTransform:"uppercase",marginBottom:14}}>Rest Complete</div>
+        <div style={{fontSize:12,color:accent,fontWeight:600,marginBottom:14}}>Rest Complete</div>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:54,color:"#f5f5f5",letterSpacing:".06em",lineHeight:.92,marginBottom:14}}>READY</div>
         <div style={{fontSize:15,color:"#aaa",lineHeight:1.5,marginBottom:30}}>{label}</div>
         <button onClick={onNext}
@@ -354,7 +355,7 @@ function WorkoutSummary({ summary, accent, onClose }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:230,background:"#050505",overflowY:"auto",padding:"calc(28px + env(safe-area-inset-top)) 20px 30px"}}>
       <div className="mobile-shell">
-        <div style={{fontSize:12,color:accent,letterSpacing:".16em",textTransform:"uppercase",marginBottom:10}}>Workout Complete</div>
+        <div style={{fontSize:12,color:accent,fontWeight:600,marginBottom:10}}>Workout Complete</div>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:48,color:"#f5f5f5",letterSpacing:".06em",lineHeight:.92,marginBottom:18}}>SESSION<br/>SUMMARY</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
           <SummaryStat label="Sets" value={summary.sets} accent={accent}/>
@@ -364,26 +365,26 @@ function WorkoutSummary({ summary, accent, onClose }) {
         </div>
         {summary.prs?.length>0&&(
           <div style={{padding:16,background:"#101008",border:"1px solid #fbbf2455",borderRadius:12,marginBottom:12}}>
-            <div style={{fontSize:11,color:"#fbbf24",letterSpacing:".14em",textTransform:"uppercase",marginBottom:8}}>PRs</div>
+            <div style={{fontSize:11,color:status.warn,fontWeight:600,marginBottom:8}}>PRs</div>
             <div style={{fontSize:14,color:"#eee",lineHeight:1.5}}>{summary.prs.map(p=>`${p.name}: ${p.val}lbs`).join(" · ")}</div>
           </div>
         )}
         <div style={{display:"grid",gap:10,marginBottom:14}}>
           {summary.bestSet&&(
-            <div style={{padding:14,background:"#0d0d0d",border:"1px solid #202020",borderRadius:12}}>
-              <div style={{fontSize:11,color:"#888",letterSpacing:".14em",textTransform:"uppercase",marginBottom:6}}>Best Set</div>
+            <div style={{padding:14,background:surface.bg0,border:"1px solid #202020",borderRadius:12}}>
+              <div style={{fontSize:11,color:text.tertiary,fontWeight:600,marginBottom:6}}>Best Set</div>
               <div style={{fontSize:15,color:"#eee",lineHeight:1.45}}>{summary.bestSet.name}: {summary.bestSet.weight > 0 ? `${summary.bestSet.weight}lbs` : "bodyweight"} x {summary.bestSet.reps}</div>
             </div>
           )}
           {summary.hardest&&(
-            <div style={{padding:14,background:"#0d0d0d",border:"1px solid #202020",borderRadius:12}}>
-              <div style={{fontSize:11,color:"#888",letterSpacing:".14em",textTransform:"uppercase",marginBottom:6}}>Limiter</div>
+            <div style={{padding:14,background:surface.bg0,border:"1px solid #202020",borderRadius:12}}>
+              <div style={{fontSize:11,color:text.tertiary,fontWeight:600,marginBottom:6}}>Limiter</div>
               <div style={{fontSize:15,color:"#eee",lineHeight:1.45}}>{summary.hardest.name} was the main limiter today.</div>
             </div>
           )}
         </div>
-        <div style={{padding:16,background:"#0d0d0d",border:"1px solid #202020",borderRadius:12,marginBottom:14}}>
-          <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:8}}>Coach Note</div>
+        <div style={{padding:16,background:surface.bg0,border:"1px solid #202020",borderRadius:12,marginBottom:14}}>
+          <div style={{fontSize:11,color:accent,fontWeight:600,marginBottom:8}}>Coach Note</div>
           <div style={{fontSize:15,color:"#ddd",lineHeight:1.55}}>{summary.coachNote}</div>
           {summary.nextChange&&<div style={{fontSize:13,color:accent,marginTop:10,lineHeight:1.45}}>{summary.nextChange}</div>}
           {summary.reasoning?.length>0&&(
@@ -393,7 +394,7 @@ function WorkoutSummary({ summary, accent, onClose }) {
               ))}
             </div>
           )}
-          {summary.nextWorkout&&<div style={{fontSize:13,color:"#888",marginTop:10}}>Next up: Workout {summary.nextWorkout}</div>}
+          {summary.nextWorkout&&<div style={{fontSize:13,color:text.tertiary,marginTop:10}}>Next up: Workout {summary.nextWorkout}</div>}
         </div>
         <button onClick={onClose}
           style={{width:"100%",padding:19,background:accent,border:"none",borderRadius:14,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:26,letterSpacing:".12em",boxShadow:`0 0 42px ${accent}66`}}>
@@ -412,7 +413,7 @@ function ExerciseGuide({ guide, accent }) {
       <GuideLine title="Setup" items={guide.setup} color={accent}/>
       <GuideLine title="Move" items={guide.movement} color={accent}/>
       <GuideLine title="Avoid" items={guide.mistakes} color="#fb923c"/>
-      {guide.pain&&<div style={{fontSize:12,color:"#fb7185",lineHeight:1.45,marginTop:12}}>{guide.pain}</div>}
+      {guide.pain&&<div style={{fontSize:12,color:status.caution,lineHeight:1.45,marginTop:12}}>{guide.pain}</div>}
     </div>
   );
 }
@@ -433,7 +434,7 @@ function SetFeelingButtons({ onPick }) {
     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginTop:10}}>
       {SET_FEELINGS.map(({ key, label })=>(
         <button key={key} onClick={()=>onPick(key)}
-          style={{padding:"8px 4px",background:key==="pain"?"#2a1014":"#0c0c0c",border:`1px solid ${key==="pain"?"#fb718555":"#2a2a2a"}`,borderRadius:8,color:key==="pain"?"#fb7185":"#bbb",fontSize:10,letterSpacing:".08em"}}>
+          style={{padding:"8px 4px",background:key==="pain"?"#2a1014":"#0c0c0c",border:`1px solid ${key==="pain"?"#fb718555":"#2a2a2a"}`,borderRadius:8,color:key==="pain"?status.caution:"#bbb",fontSize:10,letterSpacing:".08em"}}>
           {label}
         </button>
       ))}
@@ -443,8 +444,8 @@ function SetFeelingButtons({ onPick }) {
 
 function SummaryStat({ label, value, sub, accent }) {
   return (
-    <div style={{padding:"15px 14px",background:"#0d0d0d",border:"1px solid #202020",borderRadius:12}}>
-      <div style={{fontSize:10,color:"#888",letterSpacing:".14em",textTransform:"uppercase",marginBottom:4}}>{label}</div>
+    <div style={{padding:"15px 14px",background:surface.bg0,border:"1px solid #202020",borderRadius:12}}>
+      <div style={{fontSize:10,color:text.tertiary,fontWeight:600,marginBottom:4}}>{label}</div>
       <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:32,color:accent,letterSpacing:".04em",lineHeight:1}}>{value}</div>
       {sub&&<div style={{fontSize:11,color:"#777",marginTop:2}}>{sub}</div>}
     </div>
@@ -465,11 +466,11 @@ function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, o
   return (
     <div style={{position:"fixed",bottom:82,left:0,right:0,zIndex:220,background:"#0a0a0a",borderTop:`1.5px solid ${accent}99`,padding:"14px 18px 12px",boxShadow:`0 -8px 32px ${accent}44`,animation:"slideUp .22s ease-out"}}>
       <div className="mobile-shell">
-        <div style={{fontSize:12,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:12,fontWeight:500}}>Log Set {setNum} · {exerciseName}</div>
+        <div style={{fontSize:12,color:accent,fontWeight:600,marginBottom:12}}>Log Set {setNum} · {exerciseName}</div>
         <div style={{display:"grid",gap:10}}>
           <div>
-            <div style={{fontSize:11,color:"#888",letterSpacing:".1em",marginBottom:5}}>WEIGHT (lbs)</div>
-            <div style={{display:"flex",alignItems:"center",background:"#141414",borderRadius:10,border:`1px solid ${accent}33`,overflow:"hidden"}}>
+            <div style={{fontSize:11,color:text.tertiary,letterSpacing:".1em",marginBottom:5}}>WEIGHT (lbs)</div>
+            <div style={{display:"flex",alignItems:"center",background:surface.bg2,borderRadius:10,border:`1px solid ${accent}33`,overflow:"hidden"}}>
               <button onClick={()=>setWeight(w=>Math.max((Number(w)||0)-step,0))} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>−</button>
               <input value={weight} onChange={e=>setWeight(e.target.value)} inputMode="decimal" type="number" min="0" step="any" aria-label="Weight used in pounds"
                 style={{flex:1,minWidth:0,textAlign:"center",fontSize:18,fontWeight:500,color:"#fff",background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono, monospace"}}/>
@@ -477,8 +478,8 @@ function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, o
             </div>
           </div>
           <div>
-            <div style={{fontSize:11,color:"#888",letterSpacing:".1em",marginBottom:5}}>REPS DONE</div>
-            <div style={{display:"flex",alignItems:"center",background:"#141414",borderRadius:10,border:`1px solid ${accent}33`,overflow:"hidden"}}>
+            <div style={{fontSize:11,color:text.tertiary,letterSpacing:".1em",marginBottom:5}}>REPS DONE</div>
+            <div style={{display:"flex",alignItems:"center",background:surface.bg2,borderRadius:10,border:`1px solid ${accent}33`,overflow:"hidden"}}>
               <button onClick={()=>setReps(r=>Math.max((Number(r)||0)-1,0))} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20}}>−</button>
               <input value={reps} onChange={e=>setReps(e.target.value)} inputMode="numeric" type="number" min="0" step="1" aria-label="Reps completed"
                 style={{flex:1,minWidth:0,textAlign:"center",fontSize:18,fontWeight:500,color:"#fff",background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono, monospace"}}/>
@@ -488,7 +489,7 @@ function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, o
           <button onClick={()=>onSave({weight:cleanWeight,reps:cleanReps})}
             style={{width:"100%",height:48,background:accent,border:"none",borderRadius:10,color:"#0a0a0a",fontSize:13,fontWeight:700,boxShadow:`0 0 16px ${accent}66`,letterSpacing:".08em"}}>LOG SET</button>
         </div>
-        <button onClick={onSkip} style={{background:"none",border:"none",color:"#555",fontSize:12,letterSpacing:".08em",marginTop:10,width:"100%",textAlign:"center",padding:4}}>{editing ? "keep current log" : "use planned numbers"}</button>
+        <button onClick={onSkip} style={{background:"none",border:"none",color:text.faint,fontSize:12,letterSpacing:".08em",marginTop:10,width:"100%",textAlign:"center",padding:4}}>{editing ? "keep current log" : "use planned numbers"}</button>
       </div>
     </div>
   );
@@ -498,12 +499,12 @@ function CoachWhyPanel({ lines, accent }) {
   if (!lines?.length) return null;
   return (
     <details style={{marginTop:20}}>
-      <summary style={{fontSize:12,color:"#555",fontWeight:600,cursor:"pointer",listStyle:"none",display:"flex",alignItems:"center",gap:6}}>
-        <span style={{fontSize:10,color:"#444"}}>▶</span> Why this plan
+      <summary style={{fontSize:12,color:text.faint,fontWeight:600,cursor:"pointer",listStyle:"none",display:"flex",alignItems:"center",gap:6}}>
+        <span style={{fontSize:10,color:text.ghost}}>▶</span> Why this plan
       </summary>
       <div style={{display:"grid",gap:6,marginTop:10,paddingLeft:16}}>
         {lines.map(line=>(
-          <div key={line} style={{fontSize:13,color:"#888",lineHeight:1.5}}>{line}</div>
+          <div key={line} style={{fontSize:13,color:text.tertiary,lineHeight:1.5}}>{line}</div>
         ))}
       </div>
     </details>
@@ -515,14 +516,14 @@ function ThisWeek({ completed, setActiveTab }) {
   const today = todayName();
   return (
     <div style={{padding:"24px 16px 16px"}}>
-      <div style={{fontSize:13,color:"#888",letterSpacing:".14em",textTransform:"uppercase",marginBottom:13,fontWeight:500}}>This Week</div>
+      <div style={{fontSize:13,color:text.tertiary,fontWeight:600,marginBottom:14}}>This Week</div>
       <div style={{display:"flex",gap:10}}>
         {DAYS.map(day=>{
           const wk=WORKOUTS[SCHEDULE[day]]; const isDone=!!completed[completionKey(day)],isToday=day===today;
           return(
             <button key={day} onClick={()=>setActiveTab(day)}
               style={{flex:1,padding:"16px 8px",borderRadius:13,border:"none",background:isDone?`${wk.color}25`:isToday?"#161616":"#0d0d0d",outline:isToday?`2px solid ${wk.color}99`:isDone?`1px solid ${wk.color}55`:"1px solid #1e1e1e",cursor:"pointer",textAlign:"center"}}>
-              <div style={{fontSize:12,color:isToday?wk.color:isDone?wk.color:"#666",letterSpacing:".1em",fontWeight:600,textTransform:"uppercase",marginBottom:6}}>{day.slice(0,3)}</div>
+              <div style={{fontSize:12,color:isToday?wk.color:isDone?wk.color:text.muted,letterSpacing:".1em",fontWeight:600,textTransform:"uppercase",marginBottom:6}}>{day.slice(0,3)}</div>
               <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:isDone?wk.color:isToday?"#fff":"#777",letterSpacing:".06em"}}>{wk.label.split(" ")[1]}</div>
               <div style={{fontSize:20,marginTop:5}}>{isDone?<span style={{color:wk.color}}>✓</span>:isToday?<span style={{color:wk.color}}>→</span>:<span style={{color:"#333"}}>·</span>}</div>
             </button>
@@ -543,7 +544,7 @@ function WeeklyMusclePlan({ completed, accent }) {
     <div style={{padding:"0 16px 20px"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div>
-          <div style={{fontSize:13,color:"#999",letterSpacing:".14em",textTransform:"uppercase",fontWeight:500}}>Muscle Coverage</div>
+          <div style={{fontSize:13,color:"#999",fontWeight:600}}>Muscle Coverage</div>
           <div style={{fontSize:12,color:"#777",marginTop:3}}>planned for this week</div>
         </div>
         <div style={{fontSize:12,color:accent}}>{rows.filter(r=>r.done>0).length}/{rows.length} active</div>
@@ -552,19 +553,19 @@ function WeeklyMusclePlan({ completed, accent }) {
         {rows.slice(0,12).map(row=>{
           const pct = Math.min(100, Math.round((row.done / Math.max(row.planned, 1)) * 100));
           return (
-            <div key={row.muscle} style={{padding:"10px 11px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10}}>
+            <div key={row.muscle} style={{padding:"10px 11px",background:surface.bg0,border:"1px solid #1f1f1f",borderRadius:10}}>
               <div style={{display:"flex",justifyContent:"space-between",gap:8,marginBottom:7}}>
                 <span style={{fontSize:12,color:"#ddd",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{row.label}</span>
                 <span style={{fontSize:11,color:pct>0?accent:"#666"}}>{pct}%</span>
               </div>
-              <div style={{height:5,background:"#1a1a1a",borderRadius:4,overflow:"hidden"}}>
+              <div style={{height:5,background:surface.bg4,borderRadius:4,overflow:"hidden"}}>
                 <div style={{height:"100%",width:`${pct}%`,background:accent,boxShadow:pct?`0 0 8px ${accent}88`:"none"}}/>
               </div>
             </div>
           );
         })}
       </div>
-      <div style={{fontSize:12,color:"#888",lineHeight:1.45,marginTop:10}}>
+      <div style={{fontSize:12,color:text.tertiary,lineHeight:1.45,marginTop:10}}>
         {undertrained.length ? `Watch next: ${undertrained.slice(0,3).join(", ")}.` : "Every listed muscle has at least one planned touch this week."}
       </div>
     </div>
@@ -574,8 +575,8 @@ function WeeklyMusclePlan({ completed, accent }) {
 function ProgressionPreview({ items, accent }) {
   if (!items.length) return null;
   return (
-    <div style={{marginTop:12,padding:"12px 13px",background:"#0d0d0d",border:`1px solid ${accent}33`,borderRadius:12}}>
-      <div style={{fontSize:10,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,marginBottom:8}}>Today's Plan</div>
+    <div style={{marginTop:12,padding:"12px 13px",background:surface.bg0,border:`1px solid ${accent}33`,borderRadius:12}}>
+      <div style={{fontSize:10,color:accent,fontWeight:700,marginBottom:8}}>Today's Plan</div>
       <div style={{display:"grid",gap:7}}>
         {items.slice(0,4).map((item,i)=>(
           <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start",fontSize:12,color:"#ddd",lineHeight:1.4}}>
@@ -620,7 +621,7 @@ function PlateauFixPanel({ fixes, accent }) {
           <div key={fix} style={{fontSize:13,color:"#c9a84c",lineHeight:1.5}}>{i+1}. {fix}</div>
         ))}
       </div>
-      <div style={{fontSize:12,color:"#555",lineHeight:1.45,marginTop:8}}>Shown when recent reps are fading or targets are being missed.</div>
+      <div style={{fontSize:12,color:text.faint,lineHeight:1.45,marginTop:8}}>Shown when recent reps are fading or targets are being missed.</div>
     </div>
   );
 }
@@ -679,30 +680,30 @@ function LogbookPanel({ accent, onClose, onSave }) {
         {/* Header */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <div>
-            <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,marginBottom:2}}>Free Log</div>
+            <div style={{fontSize:11,color:accent,fontWeight:700,marginBottom:2}}>Free Log</div>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:"#fafafa",letterSpacing:".06em",lineHeight:.9}}>LOGBOOK</div>
           </div>
           <div style={{textAlign:"right"}}>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:accent}}>{fmtDuration(timer)}</div>
             <div style={{fontSize:11,color:"#777",marginTop:2}}>{totalSets} set{totalSets!==1?"s":""} logged</div>
-            <button onClick={onClose} style={{marginTop:6,background:"transparent",border:"1px solid #2c2c2c",borderRadius:8,color:"#888",padding:"6px 12px",fontSize:11,letterSpacing:".08em",cursor:"pointer"}}>EXIT</button>
+            <button onClick={onClose} style={{marginTop:6,background:"transparent",border:"1px solid #2c2c2c",borderRadius:8,color:text.tertiary,padding:"6px 12px",fontSize:11,letterSpacing:".08em",cursor:"pointer"}}>EXIT</button>
           </div>
         </div>
 
         {/* Exercise entries */}
         {entries.map(entry => (
-          <div key={entry.name} style={{marginBottom:12,background:"#0d0d0d",border:`1.5px solid ${addingSet===entry.name?accent:"#1f1f1f"}`,borderRadius:12,overflow:"hidden"}}>
+          <div key={entry.name} style={{marginBottom:12,background:surface.bg0,border:`1.5px solid ${addingSet===entry.name?accent:"#1f1f1f"}`,borderRadius:12,overflow:"hidden"}}>
             <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 13px"}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:15,fontWeight:800,color:"#f0f0f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{entry.name}</div>
-                <div style={{fontSize:12,color:"#666",marginTop:2}}>{entry.sets.length} set{entry.sets.length!==1?"s":""}</div>
+                <div style={{fontSize:12,color:text.muted,marginTop:2}}>{entry.sets.length} set{entry.sets.length!==1?"s":""}</div>
               </div>
               <button onClick={() => { setAddingSet(addingSet===entry.name?null:entry.name); setSetDraft({ weight:0, reps:10 }); }}
                 style={{padding:"8px 12px",background:addingSet===entry.name?`${accent}22`:"#161616",border:`1px solid ${addingSet===entry.name?accent:"#2a2a2a"}`,borderRadius:8,color:addingSet===entry.name?accent:"#aaa",fontSize:12,fontWeight:800,letterSpacing:".06em",cursor:"pointer"}}>
                 + SET
               </button>
               <button onClick={() => removeExercise(entry.name)}
-                style={{padding:"6px 10px",background:"transparent",border:"none",color:"#555",fontSize:18,cursor:"pointer",lineHeight:1}}>×</button>
+                style={{padding:"6px 10px",background:"transparent",border:"none",color:text.faint,fontSize:18,cursor:"pointer",lineHeight:1}}>×</button>
             </div>
             {/* Logged sets */}
             {entry.sets.length > 0 && (
@@ -720,8 +721,8 @@ function LogbookPanel({ accent, onClose, onSave }) {
               <div style={{borderTop:"1px solid #1a1a1a",padding:"13px"}}>
                 <div style={{display:"grid",gap:10,marginBottom:10}}>
                   <div>
-                    <div style={{fontSize:10,color:"#888",letterSpacing:".1em",marginBottom:5}}>WEIGHT (lbs)</div>
-                    <div style={{display:"flex",alignItems:"center",background:"#141414",borderRadius:9,border:`1px solid ${accent}33`,overflow:"hidden"}}>
+                    <div style={{fontSize:10,color:text.tertiary,letterSpacing:".1em",marginBottom:5}}>WEIGHT (lbs)</div>
+                    <div style={{display:"flex",alignItems:"center",background:surface.bg2,borderRadius:9,border:`1px solid ${accent}33`,overflow:"hidden"}}>
                       <button onClick={() => setSetDraft(p => ({...p,weight:Math.max(p.weight-5,0)}))} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20,cursor:"pointer",flexShrink:0}}>−</button>
                       <input value={setDraft.weight} onChange={e=>setSetDraft(p=>({...p,weight:Math.max(Number(e.target.value)||0,0)}))} onFocus={e=>e.target.select()} inputMode="decimal" type="number" min="0"
                         style={{flex:1,minWidth:0,width:"100%",textAlign:"center",fontSize:18,fontWeight:700,color:"#fff",background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono,monospace",padding:"0 4px"}}/>
@@ -729,8 +730,8 @@ function LogbookPanel({ accent, onClose, onSave }) {
                     </div>
                   </div>
                   <div>
-                    <div style={{fontSize:10,color:"#888",letterSpacing:".1em",marginBottom:5}}>REPS</div>
-                    <div style={{display:"flex",alignItems:"center",background:"#141414",borderRadius:9,border:`1px solid ${accent}33`,overflow:"hidden"}}>
+                    <div style={{fontSize:10,color:text.tertiary,letterSpacing:".1em",marginBottom:5}}>REPS</div>
+                    <div style={{display:"flex",alignItems:"center",background:surface.bg2,borderRadius:9,border:`1px solid ${accent}33`,overflow:"hidden"}}>
                       <button onClick={() => setSetDraft(p => ({...p,reps:Math.max(p.reps-1,0)}))} style={{width:44,height:46,background:"transparent",border:"none",color:"#ccc",fontSize:20,cursor:"pointer",flexShrink:0}}>−</button>
                       <input value={setDraft.reps} onChange={e=>setSetDraft(p=>({...p,reps:Math.max(Math.round(Number(e.target.value)||0),0)}))} onFocus={e=>e.target.select()} inputMode="numeric" type="number" min="0"
                         style={{flex:1,minWidth:0,width:"100%",textAlign:"center",fontSize:18,fontWeight:700,color:"#fff",background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono,monospace",padding:"0 4px"}}/>
@@ -753,7 +754,7 @@ function LogbookPanel({ accent, onClose, onSave }) {
               onChange={e => setQuery(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter" && query.trim() && !libMatches.length) addExercise(query.trim()); }}
               placeholder="Search or type exercise name…"
-              style={{width:"100%",boxSizing:"border-box",padding:"13px 54px 13px 14px",background:"#0d0d0d",border:`1px solid ${accent}44`,borderRadius:10,color:"#f0f0f0",fontSize:14,outline:"none"}}
+              style={{width:"100%",boxSizing:"border-box",padding:"13px 54px 13px 14px",background:surface.bg0,border:`1px solid ${accent}44`,borderRadius:10,color:"#f0f0f0",fontSize:14,outline:"none"}}
             />
             {query.trim() && (
               <button onClick={() => addExercise(query.trim())}
@@ -761,7 +762,7 @@ function LogbookPanel({ accent, onClose, onSave }) {
             )}
           </div>
           {libMatches.length > 0 && (
-            <div style={{marginTop:4,background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10,overflow:"hidden"}}>
+            <div style={{marginTop:4,background:surface.bg0,border:"1px solid #1f1f1f",borderRadius:10,overflow:"hidden"}}>
               {libMatches.map(ex => (
                 <button key={ex.id} onClick={() => addExercise(ex.name)}
                   style={{width:"100%",display:"flex",justifyContent:"space-between",padding:"11px 14px",background:"transparent",border:"none",borderBottom:"1px solid #141414",color:"#f0f0f0",textAlign:"left",cursor:"pointer"}}>
@@ -781,7 +782,7 @@ function LogbookPanel({ accent, onClose, onSave }) {
 
         {hasEntries && (
           <button onClick={onClose}
-            style={{display:"block",margin:"12px auto 0",background:"transparent",border:"none",color:"#555",fontSize:12,letterSpacing:".06em",cursor:"pointer"}}>discard &amp; exit</button>
+            style={{display:"block",margin:"12px auto 0",background:"transparent",border:"none",color:text.faint,fontSize:12,letterSpacing:".06em",cursor:"pointer"}}>discard &amp; exit</button>
         )}
       </div>
     </div>
@@ -1176,7 +1177,7 @@ export default function WorkoutView({
       icon:feeling==="pain"?"🛑":"🧠",
       title:"COACH NOTE SAVED",
       msg:feeling==="pain" ? `${ex.name} flagged for discomfort.` : `${ex.name} set ${undoSet.setIdx+1}: ${feeling}.`,
-      accent:feeling==="pain"?"#fb7185":accent,
+      accent:feeling==="pain"?status.caution:accent,
       duration:2000,
     });
     setUndoSet(null);
@@ -1272,7 +1273,7 @@ export default function WorkoutView({
     setConfetti(true);
     spawnXp(XP_VALUES.workout);
 
-    if(prs.length) setTimeout(()=>{playSound("achievement");setToast({icon:"🏆",title:"PERSONAL RECORD",msg:prs.map(p=>`${p.name}: ${p.val}lbs`).join(", "),accent:"#fbbf24"});},600);
+    if(prs.length) setTimeout(()=>{playSound("achievement");setToast({icon:"🏆",title:"PERSONAL RECORD",msg:prs.map(p=>`${p.name}: ${p.val}lbs`).join(", "),accent:status.warn});},600);
   };
 
   const handleFeedback = (feedbackPayload) => {
@@ -1384,19 +1385,19 @@ export default function WorkoutView({
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{display:"flex",alignItems:"baseline",gap:10}}>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:32,letterSpacing:".06em",lineHeight:1,color:"#fafafa"}}>LIFT LOG</div>
-            <div style={{fontSize:11,color:"#888",letterSpacing:".08em"}}>{level.badge} {level.name} · LV.{level.idx+1}</div>
+            <div style={{fontSize:11,color:text.tertiary,letterSpacing:".08em"}}>{level.badge} {level.name} · LV.{level.idx+1}</div>
           </div>
           <div style={{textAlign:"right"}}>
             {sessionRunning?(<>
               <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:accent,filter:`drop-shadow(0 0 6px ${accent}99)`}}>{fmtDuration(sessionElapsed)}</div>
-              <div style={{fontSize:10,color:"#888"}}>~{fmtDuration(estimatedRemaining)} left</div>
+              <div style={{fontSize:10,color:text.tertiary}}>~{fmtDuration(estimatedRemaining)} left</div>
             </>):streak>0?(
               <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#fb923c",filter:"drop-shadow(0 0 6px #fb923c88)"}}>{streak} 🔥</div>
             ):null}
           </div>
         </div>
         {/* Slim XP bar — no labels */}
-        <div style={{marginTop:8,height:3,background:"#1a1a1a",borderRadius:2,overflow:"hidden"}}>
+        <div style={{marginTop:8,height:3,background:surface.bg4,borderRadius:2,overflow:"hidden"}}>
           <div style={{height:"100%",width:`${level.pct*100}%`,background:`linear-gradient(90deg,${level.color}88,${level.color})`,transition:"width .5s ease"}}/>
         </div>
       </div>
@@ -1406,14 +1407,14 @@ export default function WorkoutView({
       )}
       {/* BENCHMARK SUGGESTION — dismissable, shown until assessment done */}
       {!assessmentDone && !benchmarkDismissed && history.length < 3 && (
-        <div style={{margin:"0 16px 8px",padding:"13px 14px",background:"#0d0d0d",border:`1px solid ${accent}44`,borderRadius:11,display:"flex",alignItems:"flex-start",gap:12}}>
+        <div style={{margin:"0 16px 8px",padding:"13px 14px",background:surface.bg0,border:`1px solid ${accent}44`,borderRadius:11,display:"flex",alignItems:"flex-start",gap:12}}>
           <span style={{fontSize:20,flexShrink:0}}>🧠</span>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:13,color:accent,fontWeight:800,marginBottom:3}}>Help the coach learn your baseline</div>
-            <div style={{fontSize:12,color:"#888",lineHeight:1.45}}>A quick 3-exercise test (plank, push-ups, squats) lets the coach calibrate your starting reps and targets. Optional — skip anytime.</div>
+            <div style={{fontSize:12,color:text.tertiary,lineHeight:1.45}}>A quick 3-exercise test (plank, push-ups, squats) lets the coach calibrate your starting reps and targets. Optional — skip anytime.</div>
             <div style={{display:"flex",gap:8,marginTop:10}}>
               <button onClick={()=>setBenchmarkEditorOpen?.(true)} style={{padding:"8px 14px",background:accent,border:"none",borderRadius:8,color:"#050505",fontSize:12,fontWeight:800,cursor:"pointer",letterSpacing:".06em"}}>TAKE TEST</button>
-              <button onClick={()=>setBenchmarkDismissed(true)} style={{padding:"8px 10px",background:"transparent",border:"none",color:"#555",fontSize:12,cursor:"pointer"}}>Skip for now</button>
+              <button onClick={()=>setBenchmarkDismissed(true)} style={{padding:"8px 10px",background:"transparent",border:"none",color:text.faint,fontSize:12,cursor:"pointer"}}>Skip for now</button>
             </div>
           </div>
         </div>
@@ -1442,20 +1443,20 @@ export default function WorkoutView({
               <div style={{marginTop:2}}>
                 <span style={{
                   fontSize:12,fontWeight:600,
-                  color: sessionIntent.tone==="boost"?accent : sessionIntent.tone==="caution"?"#fbbf24" : sessionIntent.tone==="deload"?"#60a5fa" : "#666"
+                  color: sessionIntent.tone==="boost"?accent : sessionIntent.tone==="caution"?status.warn : sessionIntent.tone==="deload"?status.info : "#666"
                 }}>{sessionIntent.label}</span>
               </div>
             )}
           </div>
           <button onClick={()=>{if(!confirm("Reset today's sets?"))return;const n={...sets};workoutPlan.exercises.forEach((ex,i)=>Array.from({length:getSetCount(ex)},(_,j)=>{delete n[setKey(i,j)];}));setSets(n);setCompleted(p=>{const n2={...p};delete n2[sessionKey];return n2;});setExpanded(null);setRestState(null);setLoggerState(null);setSessionLogs({});setXpAwards({});setFocusMode(false);setWorkoutSummary(null);setUndoSet(null);}}
-            style={{background:"none",border:"none",color:"#444",fontSize:12,padding:"8px 10px"}}>Reset</button>
+            style={{background:"none",border:"none",color:text.ghost,fontSize:12,padding:"8px 10px"}}>Reset</button>
         </div>
         <div style={{marginTop:14}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
             <span style={{fontSize:13,color:"#777",fontWeight:500}}>Progress</span>
             <span style={{fontSize:13,color:doneSets>0?accent:"#aaa"}}>{doneSets}/{totalSets} sets · ~{fmtDuration(estimatedRemaining)} left</span>
           </div>
-          <div style={{height:7,background:"#1a1a1a",borderRadius:4,overflow:"hidden"}}>
+          <div style={{height:7,background:surface.bg4,borderRadius:4,overflow:"hidden"}}>
             <div style={{height:"100%",width:`${(doneSets/totalSets)*100}%`,background:`linear-gradient(90deg,${accent}bb,${accent})`,transition:"width .4s ease",boxShadow:doneSets>0?`0 0 14px ${accent}bb`:"none"}}/>
           </div>
           {doneSets===0&&!isCompleted&&sessionIntent?.note&&(
@@ -1466,12 +1467,12 @@ export default function WorkoutView({
           {doneSets===0&&!isCompleted&&muscleReadiness.length>0&&(
             <div style={{marginTop:20}}>
               <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:8}}>
-                <div style={{fontSize:12,color:"#555",fontWeight:600}}>Muscle readiness</div>
+                <div style={{fontSize:12,color:text.faint,fontWeight:600}}>Muscle readiness</div>
                 <div style={{fontSize:11,color:"#3a3a3a"}}>Adapts around recovery.</div>
               </div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 {muscleReadiness.map(({muscle,state})=>{
-                  const col = state==="sore"?"#fb7185":state==="recovering"?"#fbbf24":"#4ade80";
+                  const col = state==="sore"?status.caution:state==="recovering"?status.warn:status.good;
                   return (
                     <span key={muscle} style={{fontSize:11,color:col,borderRadius:999,padding:"3px 10px",background:`${col}18`,fontWeight:500}}>
                       {MUSCLE_LABELS[muscle]||muscle}{state==="ready"?" ✓":state==="recovering"?" ~":" ✗"}
@@ -1492,7 +1493,7 @@ export default function WorkoutView({
                 START WORKOUT
               </button>
               <button onClick={() => setLogbookMode(true)}
-                style={{padding:"14px 16px",background:"#161616",border:"none",borderRadius:13,color:"#666",fontSize:11,fontWeight:500,lineHeight:1.3,textAlign:"center"}}>
+                style={{padding:"14px 16px",background:surface.bg3,border:"none",borderRadius:13,color:text.muted,fontSize:11,fontWeight:500,lineHeight:1.3,textAlign:"center"}}>
                 📓{"\n"}Free{"\n"}log
               </button>
             </div>
@@ -1536,16 +1537,16 @@ export default function WorkoutView({
                     {ex.substitutedFor&&<span style={{fontSize:11,color:accent,fontWeight:600}}>swap</span>}
                     <span style={{fontSize:14,color:open?accent:"#aaa",transform:open?"rotate(180deg)":"none",transition:"all .2s",display:"inline-block"}}>⌄</span>
                   </div>
-                  <div style={{fontSize:14,color:"#bbb",marginTop:5,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                  <div style={{fontSize:14,color:text.secondary,marginTop:5,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                     <span>{getSetCount(ex)} × {reps}{ex.repSuffix||""}</span>
-                    <span style={{color:"#555"}}>{curW > 0 ? `@ ${curW}lbs` : "bodyweight"}</span>
+                    <span style={{color:text.faint}}>{curW > 0 ? `@ ${curW}lbs` : "bodyweight"}</span>
                     {hasNxtW&&<span style={{color:accent,fontSize:12,fontWeight:500}}>→ {nextW}lbs</span>}
-                    {maxTest&&<span style={{color:"#888",fontSize:11}}>max: {maxTest}</span>}
+                    {maxTest&&<span style={{color:text.tertiary,fontSize:11}}>max: {maxTest}</span>}
                   </div>
                   {!isCompleted&&doneSets===0&&(
                     <div style={{display:"flex",gap:6,marginTop:8}}>
-                      <button onClick={(e)=>{e.stopPropagation();setExerciseOrder(order=>moveExerciseOrder(order, workoutPlan.exercises, i, -1, exerciseKey));}} style={{background:"none",border:"none",color:"#444",padding:"4px 6px",fontSize:13}}>↑</button>
-                      <button onClick={(e)=>{e.stopPropagation();setExerciseOrder(order=>moveExerciseOrder(order, workoutPlan.exercises, i, 1, exerciseKey));}} style={{background:"none",border:"none",color:"#444",padding:"4px 6px",fontSize:13}}>↓</button>
+                      <button onClick={(e)=>{e.stopPropagation();setExerciseOrder(order=>moveExerciseOrder(order, workoutPlan.exercises, i, -1, exerciseKey));}} style={{background:"none",border:"none",color:text.ghost,padding:"4px 6px",fontSize:13}}>↑</button>
+                      <button onClick={(e)=>{e.stopPropagation();setExerciseOrder(order=>moveExerciseOrder(order, workoutPlan.exercises, i, 1, exerciseKey));}} style={{background:"none",border:"none",color:text.ghost,padding:"4px 6px",fontSize:13}}>↓</button>
                     </div>
                   )}
                 </div>
@@ -1563,7 +1564,7 @@ export default function WorkoutView({
               </div>
 
               {open&&(
-                <div style={{marginTop:18,padding:18,background:"#111",borderRadius:18,animation:"slideDown .25s ease-out"}}>
+                <div style={{marginTop:18,padding:18,background:surface.bg1,borderRadius:18,animation:"slideDown .25s ease-out"}}>
                   <SLabel>Animation</SLabel>
                   <ExerciseAnimation folder={exerciseFolder(ex)} video={ex.video} accent={accent}/>
 
@@ -1581,7 +1582,7 @@ export default function WorkoutView({
                   <div style={{marginTop:20}}>
                     <SLabel small>Form cue</SLabel>
                     <div style={{fontSize:15,color:"#e0e0e0",lineHeight:1.6}}>{ex.tip}</div>
-                    {ex.substitutedFor&&<div style={{fontSize:12,color:"#555",marginTop:6}}>Original: {ex.substitutedFor}</div>}
+                    {ex.substitutedFor&&<div style={{fontSize:12,color:text.faint,marginTop:6}}>Original: {ex.substitutedFor}</div>}
                   </div>
 
                   <ExerciseGuide guide={guide} accent={accent}/>
@@ -1600,15 +1601,15 @@ export default function WorkoutView({
                   {science.enabled&&(
                     <div style={{marginTop:20}}>
                       <SLabel small>Science coach</SLabel>
-                      <div style={{fontSize:14,color:"#bbb",lineHeight:1.6}}>{science.note}</div>
+                      <div style={{fontSize:14,color:text.secondary,lineHeight:1.6}}>{science.note}</div>
                       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:12}}>
-                        {science.targetRepReason&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",borderRadius:999,padding:"4px 10px"}}>target {science.targetReps} reps</span>}
-                        {science.tempo&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",borderRadius:999,padding:"4px 10px"}}>tempo {science.tempo.code}</span>}
-                        {science.est1RM&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",borderRadius:999,padding:"4px 10px"}}>est. 1RM {science.est1RM}lbs</span>}
-                        {science.percent&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",borderRadius:999,padding:"4px 10px"}}>{Math.round(science.percent*100)}% target</span>}
+                        {science.targetRepReason&&<span style={{fontSize:12,color:status.science,background:"#a78bfa18",borderRadius:999,padding:"4px 10px"}}>target {science.targetReps} reps</span>}
+                        {science.tempo&&<span style={{fontSize:12,color:status.science,background:"#a78bfa18",borderRadius:999,padding:"4px 10px"}}>tempo {science.tempo.code}</span>}
+                        {science.est1RM&&<span style={{fontSize:12,color:status.science,background:"#a78bfa18",borderRadius:999,padding:"4px 10px"}}>est. 1RM {science.est1RM}lbs</span>}
+                        {science.percent&&<span style={{fontSize:12,color:status.science,background:"#a78bfa18",borderRadius:999,padding:"4px 10px"}}>{Math.round(science.percent*100)}% target</span>}
                       </div>
                       {science.tempo&&<div style={{fontSize:13,color:"#777",lineHeight:1.45,marginTop:10}}>{science.tempo.note}</div>}
-                      {science.variation&&<div style={{fontSize:13,color:"#777",lineHeight:1.45,marginTop:8}}>Variation: <span style={{color:"#d8b4fe"}}>{science.variation.name}</span>. {science.variation.note}</div>}
+                      {science.variation&&<div style={{fontSize:13,color:"#777",lineHeight:1.45,marginTop:8}}>Variation: <span style={{color:status.scienceSoft}}>{science.variation.name}</span>. {science.variation.note}</div>}
                     </div>
                   )}
 
@@ -1617,7 +1618,7 @@ export default function WorkoutView({
                     <MuscleDiagram primary={ex.primary} secondary={ex.secondary} accent={accent}/>
                     <div style={{display:"flex",flexWrap:"wrap",gap:10,marginTop:12}}>
                       {ex.primary.map(m=><span key={m} style={{fontSize:13,color:accent,fontWeight:600}}>{MUSCLE_LABELS[m]}</span>)}
-                      {ex.secondary.map(m=><span key={m} style={{fontSize:13,color:"#555"}}>{MUSCLE_LABELS[m]}</span>)}
+                      {ex.secondary.map(m=><span key={m} style={{fontSize:13,color:text.faint}}>{MUSCLE_LABELS[m]}</span>)}
                     </div>
                   </div>
 
@@ -1627,7 +1628,7 @@ export default function WorkoutView({
                       <SLabel small>Working weight</SLabel>
                       {hasNxtW&&<span style={{fontSize:12,color:accent,fontWeight:500}}>→ Try {nextW}lbs</span>}
                     </div>
-                    <div style={{display:"flex",alignItems:"center",background:"#161616",borderRadius:12,overflow:"hidden"}}>
+                    <div style={{display:"flex",alignItems:"center",background:surface.bg3,borderRadius:12,overflow:"hidden"}}>
                       <button onClick={()=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:Math.max((p[exKey]?.weight||curW)-(settings.weightIncrement||1),0)}}))} style={{width:52,height:52,background:"transparent",border:"none",color:"#ccc",fontSize:24}}>−</button>
                       <input value={curW} onChange={e=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:Math.max(Number(e.target.value)||0,0)}}))} type="number" inputMode="decimal" min="0" step="any" aria-label={`${ex.name} working weight`}
                         style={{flex:1,minWidth:0,textAlign:"center",fontSize:20,fontWeight:500,color:"#fff",background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono, monospace"}}/>
@@ -1660,7 +1661,7 @@ export default function WorkoutView({
           <div style={{textAlign:"center",padding:"24px 20px",background:`${accent}12`,borderRadius:15,border:`1.5px solid ${accent}55`,boxShadow:`0 0 44px ${accent}22`,animation:"completePulse 1s ease-out","--glow":`${accent}55`}}>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:32,color:accent,letterSpacing:".1em"}}>✓ DONE · {completed[sessionKey]}</div>
             <div style={{fontSize:14,color:"#ccc",marginTop:7,lineHeight:1.5}}>Solid work. Rest, eat, sleep. Come back strong.</div>
-            {completedSession?.duration&&<div style={{fontSize:13,color:"#888",marginTop:4}}>{fmtDuration(completedSession.duration)}</div>}
+            {completedSession?.duration&&<div style={{fontSize:13,color:text.tertiary,marginTop:4}}>{fmtDuration(completedSession.duration)}</div>}
           </div>
         ):(
           <button onClick={finishWorkout} disabled={!allDone}
@@ -1671,10 +1672,10 @@ export default function WorkoutView({
       </div>
 
       {isCompleted && debrief && (
-        <div style={{margin:"16px 16px 0",padding:"18px",background:"#141414",borderRadius:16}}>
-          <div style={{fontSize:12,color:"#555",fontWeight:600,marginBottom:14}}>Session debrief</div>
+        <div style={{margin:"16px 16px 0",padding:"18px",background:surface.bg2,borderRadius:16}}>
+          <div style={{fontSize:12,color:text.faint,fontWeight:600,marginBottom:14}}>Session debrief</div>
           {debrief.map((b,i)=>{
-            const col = b.icon==="↑"?accent : b.icon==="↓"?"#fbbf24" : b.icon==="~"?"#fb7185" : "#4ade80";
+            const col = b.icon==="↑"?accent : b.icon==="↓"?status.warn : b.icon==="~"?status.caution : status.good;
             return (
               <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:i<debrief.length-1?10:0}}>
                 <span style={{fontSize:12,color:col,fontWeight:700,minWidth:14,lineHeight:1.55}}>{b.icon}</span>
@@ -1690,21 +1691,21 @@ export default function WorkoutView({
 
       {history.length>0&&(
         <div style={{padding:"0 16px"}}>
-          <div style={{fontSize:13,color:"#999",letterSpacing:".14em",marginBottom:12,textTransform:"uppercase",fontWeight:500}}>Recent</div>
+          <div style={{fontSize:13,color:"#999",fontWeight:600,marginBottom:12}}>Recent</div>
           {history.slice(0,4).map((h,i)=>(
             <div key={i} style={{padding:"13px 0",borderBottom:"1px solid #161616"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div style={{display:"flex",gap:10,alignItems:"center"}}>
                   <span style={{fontSize:12,padding:"4px 10px",borderRadius:6,background:WORKOUTS[h.workout]?.color+"22",color:WORKOUTS[h.workout]?.color,letterSpacing:".06em",fontWeight:500}}>{h.workout}</span>
                   <span style={{fontSize:15,color:"#e0e0e0"}}>{h.day}</span>
-                  {h.duration&&<span style={{fontSize:12,color:"#888"}}>{fmtDuration(h.duration)}</span>}
+                  {h.duration&&<span style={{fontSize:12,color:text.tertiary}}>{fmtDuration(h.duration)}</span>}
                 </div>
                 <span style={{fontSize:13,color:"#aaa"}}>{h.date}</span>
               </div>
               {h.note&&<div style={{fontSize:12,color:"#777",lineHeight:1.4,marginTop:6}}>Note: {h.note}</div>}
             </div>
           ))}
-          {history.length>4&&<button onClick={()=>setActiveView("calendar")} style={{background:"none",border:"1px solid #2c2c2c",borderRadius:9,color:"#bbb",padding:"12px 18px",fontSize:13,letterSpacing:".04em",marginTop:14}}>View all → Calendar</button>}
+          {history.length>4&&<button onClick={()=>setActiveView("calendar")} style={{background:"none",border:"1px solid #2c2c2c",borderRadius:9,color:text.secondary,padding:"12px 18px",fontSize:13,letterSpacing:".04em",marginTop:14}}>View all → Calendar</button>}
         </div>
       )}
       <div style={{height:32}}/>
@@ -1713,14 +1714,14 @@ export default function WorkoutView({
       {loggerState&&<SetLogger exerciseName={workoutPlan.exercises[loggerState.exIdx].name} setNum={loggerState.setIdx+1} defaultWeight={loggerState.weight} defaultReps={loggerState.reps} accent={accent} editing={loggerState.editing} increment={settings.weightIncrement || 1} onSave={saveLog} onSkip={skipLog}/>}
       {undoSet&&(
         <div style={{position:"fixed",left:16,right:16,bottom:restState&&!restState.done&&!loggerState&&!focusMode?"calc(166px + env(safe-area-inset-bottom))":"calc(82px + env(safe-area-inset-bottom))",zIndex:260,pointerEvents:"none"}}>
-          <div className="mobile-shell" style={{background:"#111",border:`1.5px solid ${accent}66`,borderRadius:12,padding:"13px 14px",boxShadow:`0 0 28px ${accent}33`,pointerEvents:"auto"}}>
+          <div className="mobile-shell" style={{background:surface.bg1,border:`1.5px solid ${accent}66`,borderRadius:12,padding:"13px 14px",boxShadow:`0 0 28px ${accent}33`,pointerEvents:"auto"}}>
             <div style={{display:"flex",alignItems:"center",gap:12}}>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:12,color:accent,letterSpacing:".12em",textTransform:"uppercase"}}>Set Logged</div>
+                <div style={{fontSize:12,color:accent,fontWeight:600}}>Set Logged</div>
                 <div style={{fontSize:13,color:"#ddd",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{undoSet.label}</div>
               </div>
               <button onClick={undoLastSet} style={{background:"transparent",border:`1px solid ${accent}77`,color:accent,borderRadius:8,padding:"9px 12px",fontSize:12,letterSpacing:".1em"}}>UNDO</button>
-              <button onClick={()=>setUndoSet(null)} style={{background:"transparent",border:"none",color:"#666",fontSize:18,padding:"4px 2px"}}>×</button>
+              <button onClick={()=>setUndoSet(null)} style={{background:"transparent",border:"none",color:text.muted,fontSize:18,padding:"4px 2px"}}>×</button>
             </div>
             <SetFeelingButtons onPick={saveSetFeedback}/>
           </div>
@@ -1759,7 +1760,7 @@ export default function WorkoutView({
       {coachAlerts.length > 0 && (
         <div style={{position:"fixed",bottom:"calc(88px + env(safe-area-inset-bottom))",left:16,right:16,zIndex:270,pointerEvents:"none"}}>
           <div className="mobile-shell" style={{background:"#0a0a0a",border:`1px solid ${accent}55`,borderRadius:12,padding:"11px 14px",boxShadow:`0 0 24px ${accent}22`,animation:"slideDown .2s ease-out"}}>
-            <div style={{fontSize:10,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:4}}>Coach</div>
+            <div style={{fontSize:10,color:accent,fontWeight:600,marginBottom:4}}>Coach</div>
             <div style={{fontSize:13,color:"#ddd",lineHeight:1.45}}>{coachAlerts[coachAlerts.length-1].msg}</div>
           </div>
         </div>
@@ -1774,8 +1775,8 @@ export default function WorkoutView({
   );
 }
 
-function StatCard({label,value,accent}){return(<div style={{flex:1,padding:"16px",background:"#161616",borderRadius:14}}><div style={{fontSize:11,color:"#555",letterSpacing:".02em",fontWeight:600}}>{label}</div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:accent||"#fafafa",marginTop:4,letterSpacing:".04em"}}>{value}</div></div>);}
-function SLabel({children,small}){return(<div style={{fontSize:small?11:12,color:"#666",letterSpacing:".02em",fontWeight:600,marginBottom:small?6:10}}>{children}</div>);}
+function StatCard({label,value,accent}){return(<div style={{flex:1,padding:"16px",background:surface.bg3,borderRadius:14}}><div style={{fontSize:11,color:text.faint,letterSpacing:".02em",fontWeight:600}}>{label}</div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:accent||"#fafafa",marginTop:4,letterSpacing:".04em"}}>{value}</div></div>);}
+function SLabel({children,small}){return(<div style={{fontSize:small?11:12,color:text.muted,letterSpacing:".02em",fontWeight:600,marginBottom:small?6:10}}>{children}</div>);}
 
 function moveExerciseOrder(order, exercises, index, delta, keyFn) {
   const keys = order.length ? [...order] : exercises.map(keyFn);

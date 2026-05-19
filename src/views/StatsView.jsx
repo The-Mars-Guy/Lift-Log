@@ -4,6 +4,7 @@ import { BarChart, Heatmap, MiniGraph } from "../components/shared.jsx";
 import { fmtDuration } from "../hooks.js";
 import { exerciseVolume } from "../session.js";
 import { buildCoachMemory, buildWeeklyReview, computePersonalRecords, detectWeakPoints } from "../coach.js";
+import { surface, text, status } from "../theme.js";
 
 export default function StatsView({ history, progression, settings, achievements, accent, xp, level, exConfig, checkIns, bodyMetrics = [], setBodyMetrics, customRoutine, userProfile = null, goals = [] }) {
   const [tab, setTab] = useState("overview");
@@ -23,7 +24,7 @@ export default function StatsView({ history, progression, settings, achievements
     for(let i=7;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i*7);weeks.push(isoWeek(d));}
     return weeks.map((w,i)=>{
       const count=(stats.weekDays[w]||new Set()).size;
-      return{label:i===7?"now":`−${7-i}w`,value:count,color:count>=3?"#4ade80":count>=2?"#60a5fa":"#2a2a2a"};
+      return{label:i===7?"now":`−${7-i}w`,value:count,color:count>=3?status.good:count>=2?status.info:"#2a2a2a"};
     });
   })();
 
@@ -46,7 +47,7 @@ export default function StatsView({ history, progression, settings, achievements
           return s + (reps * ex.sets * settings.dumbbellWeight * (ex.name === "Goblet Squat" ? 1 : 2));
         }, 0);
       }, 0);
-      const color = vol > 5000 ? "#4ade80" : vol > 1000 ? accent : vol > 0 ? "#60a5fa" : "#2a2a2a";
+      const color = vol > 5000 ? status.good : vol > 1000 ? accent : vol > 0 ? status.info : "#2a2a2a";
       return { label: i === 7 ? "now" : `-${7 - i}w`, value: vol, color };
     });
   })();
@@ -112,36 +113,36 @@ export default function StatsView({ history, progression, settings, achievements
           {/* HEADER */}
           <div style={{padding:"34px 16px 18px"}}>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:52,letterSpacing:".06em",lineHeight:.88,color:"#fafafa"}}>STATS</div>
-            <div style={{fontSize:13,color:"#999",marginTop:7,letterSpacing:".1em",textTransform:"uppercase"}}>your numbers</div>
+            <div style={{fontSize:13,color:"#999",marginTop:7,fontWeight:600}}>your numbers</div>
           </div>
 
           {/* KEY STAT GRID */}
           <div style={{padding:"0 16px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:4}}>
-            <BigStat label="Total Sessions" value={stats.totalSessions} accent="#4ade80"/>
+            <BigStat label="Total Sessions" value={stats.totalSessions} accent={status.good}/>
             <BigStat label="Current Streak" value={stats.streak} suffix={stats.streak>1?"🔥":""} accent="#fb923c"/>
-            <BigStat label="Volume Lifted"  value={`${(totalVolume/1000).toFixed(1)}K`} unit="LBS" accent="#60a5fa"/>
-            <BigStat label="Time Lifting"   value={fmtDuration(totalDuration)} accent="#a78bfa"/>
+            <BigStat label="Volume Lifted"  value={`${(totalVolume/1000).toFixed(1)}K`} unit="LBS" accent={status.info}/>
+            <BigStat label="Time Lifting"   value={fmtDuration(totalDuration)} accent={status.science}/>
           </div>
 
           {/* LEVEL CARD */}
-          <div style={{margin:"16px 16px 4px",padding:"20px 18px",background:"#0d0d0d",borderRadius:15,border:`1.5px solid ${level.color}44`,boxShadow:`0 0 32px ${level.color}18`}}>
+          <div style={{margin:"16px 16px 4px",padding:"20px 18px",background:surface.bg0,borderRadius:15,border:`1.5px solid ${level.color}44`,boxShadow:`0 0 32px ${level.color}18`}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
               <div>
-                <div style={{fontSize:13,color:"#888",letterSpacing:".12em",textTransform:"uppercase",marginBottom:4}}>Current Level</div>
+                <div style={{fontSize:13,color:text.tertiary,fontWeight:600,marginBottom:4}}>Current Level</div>
                 <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:level.color,letterSpacing:".06em",filter:`drop-shadow(0 0 10px ${level.color}66)`}}>
                   {level.badge} {level.name}
                 </div>
               </div>
               <div style={{textAlign:"right"}}>
                 <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:44,color:"#fff",letterSpacing:".04em",lineHeight:1}}>{xp}</div>
-                <div style={{fontSize:12,color:"#888",letterSpacing:".1em"}}>TOTAL XP</div>
+                <div style={{fontSize:12,color:text.tertiary,letterSpacing:".1em"}}>TOTAL XP</div>
               </div>
             </div>
-            <div style={{height:8,background:"#1a1a1a",borderRadius:4,overflow:"hidden",marginBottom:8}}>
+            <div style={{height:8,background:surface.bg4,borderRadius:4,overflow:"hidden",marginBottom:8}}>
               <div style={{height:"100%",width:`${level.pct*100}%`,background:`linear-gradient(90deg,${level.color}aa,${level.color})`,boxShadow:`0 0 12px ${level.color}88`,transition:"width .5s"}}/>
             </div>
             {nextLevel?(
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#888"}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:text.tertiary}}>
                 <span>{level.name}</span>
                 <span style={{color:level.color}}>{xpToNext} XP to {nextLevel.name}</span>
               </div>
@@ -150,19 +151,19 @@ export default function StatsView({ history, progression, settings, achievements
 
           {/* TRAINING CALENDAR */}
           <Section title="Training Calendar" sub="last 12 weeks">
-            <div style={{padding:"14px",background:"#0d0d0d",borderRadius:12,border:"1px solid #1c1c1c"}}>
+            <div style={{padding:"14px",background:surface.bg0,borderRadius:12,border:"1px solid #1c1c1c"}}>
               <Heatmap history={history} />
             </div>
           </Section>
 
           {/* WEEKLY REVIEW */}
           <Section title="Weekly Review" sub="last 7 days">
-            <div style={{padding:"16px",background:"#0d0d0d",borderRadius:12,border:"1px solid #1f1f1f"}}>
+            <div style={{padding:"16px",background:surface.bg0,borderRadius:12,border:"1px solid #1f1f1f"}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-                <MemoryPill label="Sessions" value={weeklyReview.sessions} color="#4ade80"/>
-                <MemoryPill label="Consistency" value={`${weeklyReview.consistency}%`} color="#fbbf24"/>
-                <MemoryPill label="Volume" value={`${Math.round(weeklyReview.volume/100)/10}K`} color="#60a5fa"/>
-                <MemoryPill label="Best Lift" value={weeklyReview.best?.name || "learning"} color="#a78bfa"/>
+                <MemoryPill label="Sessions" value={weeklyReview.sessions} color={status.good}/>
+                <MemoryPill label="Consistency" value={`${weeklyReview.consistency}%`} color={status.warn}/>
+                <MemoryPill label="Volume" value={`${Math.round(weeklyReview.volume/100)/10}K`} color={status.info}/>
+                <MemoryPill label="Best Lift" value={weeklyReview.best?.name || "learning"} color={status.science}/>
               </div>
               <div style={{fontSize:14,color:"#ddd",lineHeight:1.55}}>{weeklyReview.focus}</div>
             </div>
@@ -172,8 +173,8 @@ export default function StatsView({ history, progression, settings, achievements
           <Section title="Sessions Per Week" sub="last 8 weeks · target 3/wk">
             <BarChart data={weekData} height={150}/>
             <div style={{display:"flex",gap:14,marginTop:10,fontSize:12,color:"#aaa",flexWrap:"wrap"}}>
-              <Leg color="#4ade80" label="3+ (target)"/>
-              <Leg color="#60a5fa" label="2"/>
+              <Leg color={status.good} label="3+ (target)"/>
+              <Leg color={status.info} label="2"/>
               <Leg color="#2a2a2a" label="0–1"/>
             </div>
           </Section>
@@ -186,8 +187,8 @@ export default function StatsView({ history, progression, settings, achievements
                 return(
                   <div key={a.id} style={{padding:"16px 12px",borderRadius:10,background:ul?"#101010":"#0a0a0a",border:`1px solid ${ul?"#fbbf2455":"#1a1a1a"}`,textAlign:"center",opacity:ul?1:.45,boxShadow:ul?"0 0 18px #fbbf2422":"none"}}>
                     <div style={{fontSize:28,marginBottom:8,filter:ul?"none":"grayscale(1) brightness(.4)"}}>{a.icon}</div>
-                    <div style={{fontSize:12,color:ul?"#fbbf24":"#666",letterSpacing:".06em",fontWeight:500,marginBottom:5}}>{a.name}</div>
-                    <div style={{fontSize:11,color:"#888",lineHeight:1.4}}>{a.desc}</div>
+                    <div style={{fontSize:12,color:ul?status.warn:"#666",letterSpacing:".06em",fontWeight:500,marginBottom:5}}>{a.name}</div>
+                    <div style={{fontSize:11,color:text.tertiary,lineHeight:1.4}}>{a.desc}</div>
                   </div>
                 );
               })}
@@ -223,17 +224,17 @@ export default function StatsView({ history, progression, settings, achievements
               const latestTotal = data.length ? data[data.length-1].totalReps : null;
               const trend = data.length>=2 ? data[data.length-1].totalReps - data[0].totalReps : null;
               return(
-                <div key={ex.name} style={{background:"#0d0d0d",borderRadius:11,border:"1px solid #1c1c1c",marginBottom:10,padding:"13px 14px"}}>
+                <div key={ex.name} style={{background:surface.bg0,borderRadius:11,border:"1px solid #1c1c1c",marginBottom:10,padding:"13px 14px"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                     <div style={{fontSize:15,color:"#f0f0f0",fontWeight:500}}>{ex.name}</div>
                     <div style={{textAlign:"right"}}>
                       {latestTotal!=null&&<div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:exColor,letterSpacing:".04em"}}>{latestTotal}</div>}
-                      {trend!=null&&data.length>=2&&<div style={{fontSize:11,color:trend>=0?"#4ade80":"#fb923c"}}>{trend>=0?"+":""}{trend} since start</div>}
+                      {trend!=null&&data.length>=2&&<div style={{fontSize:11,color:trend>=0?status.good:"#fb923c"}}>{trend>=0?"+":""}{trend} since start</div>}
                     </div>
                   </div>
                   {data.length>=2
                     ?<MiniGraph data={data} color={exColor} height={72}/>
-                    :<div style={{fontSize:12,color:"#555",padding:"8px 0"}}>Log 2+ sessions to see progress</div>}
+                    :<div style={{fontSize:12,color:text.faint,padding:"8px 0"}}>Log 2+ sessions to see progress</div>}
                 </div>
               );
             })}
@@ -247,12 +248,12 @@ export default function StatsView({ history, progression, settings, achievements
               const atMax = bonus>=settings.maxRepBonus;
               const col   = WORKOUTS.A.exercises.some(e=>e.name===ex.name)?WORKOUTS.A.color:WORKOUTS.B.color;
               return(
-                <div key={ex.name} style={{padding:"13px 14px",background:"#0d0d0d",borderRadius:10,border:"1px solid #1c1c1c",marginBottom:8}}>
+                <div key={ex.name} style={{padding:"13px 14px",background:surface.bg0,borderRadius:10,border:"1px solid #1c1c1c",marginBottom:8}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
                     <span style={{fontSize:15,color:"#f0f0f0"}}>{ex.name}</span>
                     <span style={{fontSize:13,color:col,fontWeight:500}}>×{ex.baseReps} → ×{ex.baseReps+bonus}{atMax?" 🏆":""}</span>
                   </div>
-                  <div style={{height:5,background:"#1a1a1a",borderRadius:3,overflow:"hidden"}}>
+                  <div style={{height:5,background:surface.bg4,borderRadius:3,overflow:"hidden"}}>
                     <div style={{height:"100%",width:`${(sess/settings.sessionsPerProgression)*100}%`,background:col,boxShadow:`0 0 7px ${col}88`,transition:"width .4s"}}/>
                   </div>
                 </div>
@@ -264,23 +265,23 @@ export default function StatsView({ history, progression, settings, achievements
           <Section title="Weak Points" sub="coverage and performance signals">
             <div style={{display:"grid",gap:8}}>
               {weakPoints.length ? weakPoints.map((item,i)=>(
-                <div key={i} style={{padding:"13px 14px",background:"#0d0d0d",borderRadius:10,border:`1px solid ${item.type==="coverage"?"#fbbf2444":"#60a5fa44"}`}}>
-                  <div style={{fontSize:14,color:item.type==="coverage"?"#fbbf24":"#60a5fa",fontWeight:700,marginBottom:4}}>{item.title}</div>
+                <div key={i} style={{padding:"13px 14px",background:surface.bg0,borderRadius:10,border:`1px solid ${item.type==="coverage"?"#fbbf2444":"#60a5fa44"}`}}>
+                  <div style={{fontSize:14,color:item.type==="coverage"?status.warn:status.info,fontWeight:700,marginBottom:4}}>{item.title}</div>
                   <div style={{fontSize:13,color:"#aaa",lineHeight:1.45}}>{item.detail}</div>
                 </div>
               )) : (
-                <div style={{padding:"14px 16px",background:"#0d0d0d",borderRadius:10,border:"1px solid #1c1c1c",fontSize:14,color:"#aaa"}}>No clear weak points yet. A few more sessions will make this sharper.</div>
+                <div style={{padding:"14px 16px",background:surface.bg0,borderRadius:10,border:"1px solid #1c1c1c",fontSize:14,color:"#aaa"}}>No clear weak points yet. A few more sessions will make this sharper.</div>
               )}
             </div>
           </Section>
 
           {customWorkout&&(
             <Section title="Routine Balance" sub="custom routine coverage">
-              <div style={{padding:"16px",background:"#0d0d0d",borderRadius:12,border:"1px solid #1f1f1f"}}>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:38,color:balance>=90?"#4ade80":balance>=70?"#fbbf24":"#fb7185",letterSpacing:".06em"}}>{balance}%</div>
+              <div style={{padding:"16px",background:surface.bg0,borderRadius:12,border:"1px solid #1f1f1f"}}>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:38,color:balance>=90?status.good:balance>=70?status.warn:status.caution,letterSpacing:".06em"}}>{balance}%</div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginTop:10}}>
                   {routineCoverage(customWorkout.exercises).map(item=>(
-                    <div key={item.key} style={{padding:"8px 5px",borderRadius:8,border:`1px solid ${item.ok?"#4ade8066":"#fb718555"}`,background:item.ok?"#4ade8011":"#fb718511",textAlign:"center",fontSize:10,color:item.ok?"#4ade80":"#fb7185",fontWeight:900,textTransform:"uppercase"}}>{item.label}</div>
+                    <div key={item.key} style={{padding:"8px 5px",borderRadius:8,border:`1px solid ${item.ok?"#4ade8066":"#fb718555"}`,background:item.ok?"#4ade8011":"#fb718511",textAlign:"center",fontSize:10,color:item.ok?status.good:status.caution,fontWeight:900,textTransform:"uppercase"}}>{item.label}</div>
                   ))}
                 </div>
               </div>
@@ -302,13 +303,13 @@ export default function StatsView({ history, progression, settings, achievements
               const maxW = cfg.maxWeight || curW;
               const wColor = WORKOUTS.A.exercises.some(e=>e.name===ex.name)?WORKOUTS.A.color:WORKOUTS.B.color;
               return(
-                <div key={ex.name} style={{padding:"13px 14px",background:"#0d0d0d",borderRadius:10,border:"1px solid #1c1c1c",marginBottom:8}}>
+                <div key={ex.name} style={{padding:"13px 14px",background:surface.bg0,borderRadius:10,border:"1px solid #1c1c1c",marginBottom:8}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                     <span style={{fontSize:15,color:"#f0f0f0"}}>{ex.name}</span>
                     <span style={{fontSize:14,color:wColor,fontWeight:500}}>{maxW} lbs</span>
                   </div>
                   {cfg.nextWeight&&cfg.nextWeight>curW&&(
-                    <div style={{fontSize:12,color:"#888"}}>Next target: <span style={{color:wColor}}>{cfg.nextWeight}lbs</span> · {cfg.lastRec==="increase"?"🏋️ Ready to progress!":"Keep grinding"}</div>
+                    <div style={{fontSize:12,color:text.tertiary}}>Next target: <span style={{color:wColor}}>{cfg.nextWeight}lbs</span> · {cfg.lastRec==="increase"?"🏋️ Ready to progress!":"Keep grinding"}</div>
                   )}
                 </div>
               );
@@ -318,19 +319,19 @@ export default function StatsView({ history, progression, settings, achievements
           {strengthCheckIns.length>0&&(
             <Section title="Strength Check-Ins" sub="bi-weekly 1RM estimates">
               {Object.entries(checkInsByEx).map(([exName,cis])=>(
-                <div key={exName} style={{padding:"13px 14px",background:"#0d0d0d",borderRadius:10,border:"1px solid #1c1c1c",marginBottom:10}}>
+                <div key={exName} style={{padding:"13px 14px",background:surface.bg0,borderRadius:10,border:"1px solid #1c1c1c",marginBottom:10}}>
                   <div style={{fontSize:14,color:"#e0e0e0",marginBottom:10,fontWeight:500}}>{exName}</div>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                     {cis.map((ci,i)=>(
-                      <div key={i} style={{padding:"8px 12px",background:"#141414",borderRadius:8,border:"1px solid #2a2a2a",textAlign:"center"}}>
+                      <div key={i} style={{padding:"8px 12px",background:surface.bg2,borderRadius:8,border:"1px solid #2a2a2a",textAlign:"center"}}>
                         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:accent,letterSpacing:".04em"}}>{ci.est1RM}</div>
-                        <div style={{fontSize:10,color:"#888",letterSpacing:".08em"}}>LBS 1RM</div>
-                        <div style={{fontSize:10,color:"#666",marginTop:2}}>{ci.date}</div>
+                        <div style={{fontSize:10,color:text.tertiary,letterSpacing:".08em"}}>LBS 1RM</div>
+                        <div style={{fontSize:10,color:text.muted,marginTop:2}}>{ci.date}</div>
                       </div>
                     ))}
                   </div>
                   {cis.length>=2&&(
-                    <div style={{marginTop:10,fontSize:13,color:cis[cis.length-1].est1RM>cis[0].est1RM?"#4ade80":"#fb923c"}}>
+                    <div style={{marginTop:10,fontSize:13,color:cis[cis.length-1].est1RM>cis[0].est1RM?status.good:"#fb923c"}}>
                       {cis[cis.length-1].est1RM>cis[0].est1RM?"↑":"↓"} {Math.abs(cis[cis.length-1].est1RM-cis[0].est1RM)}lbs since first check-in
                     </div>
                   )}
@@ -348,19 +349,19 @@ export default function StatsView({ history, progression, settings, achievements
 
           {/* COACH MEMORY */}
           <Section title="Coach Memory" sub="what the coach has learned">
-            <div style={{padding:"16px",background:"#0d0d0d",borderRadius:12,border:`1.5px solid ${accent}33`,boxShadow:`0 0 24px ${accent}12`}}>
+            <div style={{padding:"16px",background:surface.bg0,borderRadius:12,border:`1.5px solid ${accent}33`,boxShadow:`0 0 24px ${accent}12`}}>
               <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:accent,letterSpacing:".06em",lineHeight:1}}>FOCUS: {coachMemory.focus}</div>
               <div style={{fontSize:14,color:"#ddd",lineHeight:1.55,marginTop:8}}>{coachMemory.summary}</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:14}}>
-                <MemoryPill label="Readiness" value={coachMemory.readinessCount ? coachMemory.commonEnergy : "learning"} color="#a78bfa"/>
-                <MemoryPill label="Strongest" value={coachMemory.strongest?.maxWeight ? coachMemory.strongest.name : "learning"} color="#4ade80"/>
-                <MemoryPill label="Set Notes" value={coachMemory.setFeedbackCount || 0} color="#60a5fa"/>
-                <MemoryPill label="Pain Flags" value={coachMemory.painFlags?.length || 0} color="#fb7185"/>
+                <MemoryPill label="Readiness" value={coachMemory.readinessCount ? coachMemory.commonEnergy : "learning"} color={status.science}/>
+                <MemoryPill label="Strongest" value={coachMemory.strongest?.maxWeight ? coachMemory.strongest.name : "learning"} color={status.good}/>
+                <MemoryPill label="Set Notes" value={coachMemory.setFeedbackCount || 0} color={status.info}/>
+                <MemoryPill label="Pain Flags" value={coachMemory.painFlags?.length || 0} color={status.caution}/>
               </div>
               <div style={{display:"grid",gap:8,marginTop:10}}>
                 <MemoryLine label="Hardest lately" value={coachMemory.hardest?.hardCount ? `${coachMemory.hardest.name} (${coachMemory.hardest.hardCount})` : "learning"} color="#fb923c"/>
-                <MemoryLine label="Easiest lately" value={coachMemory.easiest?.easyCount ? `${coachMemory.easiest.name} (${coachMemory.easiest.easyCount})` : "learning"} color="#4ade80"/>
-                <MemoryLine label="Favorite swap" value={coachMemory.favoriteSwap ? `${coachMemory.favoriteSwap.label} (${coachMemory.favoriteSwap.count})` : "learning"} color="#a78bfa"/>
+                <MemoryLine label="Easiest lately" value={coachMemory.easiest?.easyCount ? `${coachMemory.easiest.name} (${coachMemory.easiest.easyCount})` : "learning"} color={status.good}/>
+                <MemoryLine label="Favorite swap" value={coachMemory.favoriteSwap ? `${coachMemory.favoriteSwap.label} (${coachMemory.favoriteSwap.count})` : "learning"} color={status.science}/>
               </div>
             </div>
           </Section>
@@ -401,7 +402,7 @@ function BodyMetricsSection({ metrics = [], setMetrics, accent }) {
 
   return (
     <Section title="Body Check-Ins" sub="optional and stored only on this device">
-      <div style={{padding:"15px",background:"#0d0d0d",borderRadius:12,border:`1px solid ${accent}33`,marginBottom:10}}>
+      <div style={{padding:"15px",background:surface.bg0,borderRadius:12,border:`1px solid ${accent}33`,marginBottom:10}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           <MetricInput label="Body Weight" value={weight} onChange={setWeight} suffix="lb"/>
           <MetricInput label="Waist" value={waist} onChange={setWaist} suffix="in"/>
@@ -416,20 +417,20 @@ function BodyMetricsSection({ metrics = [], setMetrics, accent }) {
         </button>
       </div>
       {latest&&(
-        <div style={{padding:"14px",background:"#0d0d0d",borderRadius:12,border:"1px solid #1c1c1c",marginBottom:10}}>
+        <div style={{padding:"14px",background:surface.bg0,borderRadius:12,border:"1px solid #1c1c1c",marginBottom:10}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-            <MemoryPill label="Latest Weight" value={latest.weight ? `${latest.weight}lb` : "—"} color="#4ade80"/>
-            <MemoryPill label="Change" value={weightDelta == null ? "—" : `${weightDelta>0?"+":""}${weightDelta}lb`} color="#60a5fa"/>
+            <MemoryPill label="Latest Weight" value={latest.weight ? `${latest.weight}lb` : "—"} color={status.good}/>
+            <MemoryPill label="Change" value={weightDelta == null ? "—" : `${weightDelta>0?"+":""}${weightDelta}lb`} color={status.info}/>
           </div>
         </div>
       )}
       <div style={{display:"grid",gap:8}}>
         {metrics.slice(0,4).map(item=>(
-          <div key={item.timestamp} style={{display:"flex",gap:10,alignItems:"center",padding:"10px 12px",background:"#0d0d0d",borderRadius:10,border:"1px solid #1c1c1c"}}>
+          <div key={item.timestamp} style={{display:"flex",gap:10,alignItems:"center",padding:"10px 12px",background:surface.bg0,borderRadius:10,border:"1px solid #1c1c1c"}}>
             {item.photo&&<img src={item.photo} alt="" style={{width:48,height:48,objectFit:"cover",borderRadius:8,border:"1px solid #333"}}/>}
             <div style={{flex:1}}>
               <div style={{fontSize:13,color:"#ddd"}}>{item.date}</div>
-              <div style={{fontSize:12,color:"#888",marginTop:2}}>{item.weight ? `${item.weight}lb` : "no weight"} · {item.waist ? `${item.waist}in waist` : "no waist"}</div>
+              <div style={{fontSize:12,color:text.tertiary,marginTop:2}}>{item.weight ? `${item.weight}lb` : "no weight"} · {item.waist ? `${item.waist}in waist` : "no waist"}</div>
             </div>
           </div>
         ))}
@@ -443,14 +444,14 @@ function RecordsSection({ records, accent }) {
   return (
     <Section title="Personal Records" sub="best logged performances">
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-        <MemoryPill label="Best Volume" value={records.bestSessionVolume ? `${Math.round(records.bestSessionVolume.value).toLocaleString()}lb` : "—"} color="#4ade80"/>
-        <MemoryPill label="Fastest" value={records.fastestSession ? fmtDuration(records.fastestSession.value) : "—"} color="#60a5fa"/>
-        <MemoryPill label="Longest" value={records.longestSession ? fmtDuration(records.longestSession.value) : "—"} color="#a78bfa"/>
-        <MemoryPill label="Tracked Lifts" value={exerciseRecords.length} color="#fbbf24"/>
+        <MemoryPill label="Best Volume" value={records.bestSessionVolume ? `${Math.round(records.bestSessionVolume.value).toLocaleString()}lb` : "—"} color={status.good}/>
+        <MemoryPill label="Fastest" value={records.fastestSession ? fmtDuration(records.fastestSession.value) : "—"} color={status.info}/>
+        <MemoryPill label="Longest" value={records.longestSession ? fmtDuration(records.longestSession.value) : "—"} color={status.science}/>
+        <MemoryPill label="Tracked Lifts" value={exerciseRecords.length} color={status.warn}/>
       </div>
       <div style={{display:"grid",gap:8}}>
         {exerciseRecords.length ? exerciseRecords.map(([name, rec])=>(
-          <div key={name} style={{padding:"13px 14px",background:"#0d0d0d",borderRadius:10,border:"1px solid #1c1c1c"}}>
+          <div key={name} style={{padding:"13px 14px",background:surface.bg0,borderRadius:10,border:"1px solid #1c1c1c"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:8}}>
               <div style={{fontSize:15,color:"#f0f0f0",fontWeight:700}}>{name}</div>
               <div style={{fontSize:12,color:accent}}>{rec.maxVolume?.date || rec.maxWeight?.date || rec.maxReps?.date || ""}</div>
@@ -462,7 +463,7 @@ function RecordsSection({ records, accent }) {
             </div>
           </div>
         )) : (
-          <div style={{padding:"14px 16px",background:"#0d0d0d",borderRadius:10,border:"1px solid #1c1c1c",fontSize:14,color:"#aaa"}}>Finish a workout with logged sets and records will appear here.</div>
+          <div style={{padding:"14px 16px",background:surface.bg0,borderRadius:10,border:"1px solid #1c1c1c",fontSize:14,color:"#aaa"}}>Finish a workout with logged sets and records will appear here.</div>
         )}
       </div>
     </Section>
@@ -472,7 +473,7 @@ function RecordsSection({ records, accent }) {
 function RecordMini({ label, value, sub }) {
   return (
     <div style={{padding:"9px 8px",background:"#101010",border:"1px solid #222",borderRadius:8,textAlign:"center"}}>
-      <div style={{fontSize:10,color:"#777",letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>{label}</div>
+      <div style={{fontSize:10,color:"#777",fontWeight:600,marginBottom:4}}>{label}</div>
       <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:23,color:"#fff",letterSpacing:".04em",lineHeight:1}}>{value}</div>
       {sub&&<div style={{fontSize:10,color:"#777",marginTop:2}}>{sub}</div>}
     </div>
@@ -482,7 +483,7 @@ function RecordMini({ label, value, sub }) {
 function MetricInput({ label, value, onChange, suffix }) {
   return (
     <label style={{display:"block"}}>
-      <div style={{fontSize:10,color:"#777",letterSpacing:".12em",textTransform:"uppercase",marginBottom:5}}>{label}</div>
+      <div style={{fontSize:10,color:"#777",fontWeight:600,marginBottom:5}}>{label}</div>
       <div style={{display:"flex",alignItems:"center",background:"#101010",border:"1px solid #242424",borderRadius:9,overflow:"hidden"}}>
         <input value={value} onChange={e=>onChange(e.target.value)} type="number" inputMode="decimal"
           style={{flex:1,minWidth:0,padding:"11px 10px",background:"transparent",border:"none",outline:"none",color:"#fff",fontFamily:"DM Mono, monospace",fontSize:15}}/>
@@ -495,8 +496,8 @@ function MetricInput({ label, value, onChange, suffix }) {
 function Section({title,sub,children}){
   return(
     <div style={{padding:"24px 16px 8px"}}>
-      <div style={{fontSize:13,color:"#ddd",letterSpacing:".14em",textTransform:"uppercase",fontWeight:500}}>{title}</div>
-      {sub&&<div style={{fontSize:12,color:"#888",marginTop:3,letterSpacing:".04em"}}>{sub}</div>}
+      <div style={{fontSize:13,color:"#ddd",fontWeight:500}}>{title}</div>
+      {sub&&<div style={{fontSize:12,color:text.tertiary,marginTop:3,letterSpacing:".04em"}}>{sub}</div>}
       <div style={{marginTop:14}}>{children}</div>
     </div>
   );
@@ -504,9 +505,9 @@ function Section({title,sub,children}){
 
 function BigStat({label,value,unit,suffix,accent}){
   return(
-    <div style={{padding:"18px 16px",background:"#0d0d0d",border:"1px solid #1c1c1c",borderRadius:12,position:"relative",overflow:"hidden"}}>
+    <div style={{padding:"18px 16px",background:surface.bg0,border:"1px solid #1c1c1c",borderRadius:12,position:"relative",overflow:"hidden"}}>
       <div style={{position:"absolute",inset:0,background:`radial-gradient(circle at top right,${accent}12,transparent 70%)`,pointerEvents:"none"}}/>
-      <div style={{fontSize:11,color:"#aaa",letterSpacing:".14em",textTransform:"uppercase",position:"relative"}}>{label}</div>
+      <div style={{fontSize:11,color:"#aaa",fontWeight:600,position:"relative"}}>{label}</div>
       <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:accent||"#fafafa",marginTop:5,letterSpacing:".04em",filter:`drop-shadow(0 0 7px ${accent}55)`,position:"relative"}}>
         {value}
         {unit&&<span style={{fontSize:14,color:"#999",marginLeft:5,letterSpacing:".1em"}}>{unit}</span>}
@@ -519,7 +520,7 @@ function BigStat({label,value,unit,suffix,accent}){
 function MemoryPill({label,value,color}){
   return(
     <div style={{padding:"11px 12px",background:"#080808",border:"1px solid #202020",borderRadius:9}}>
-      <div style={{fontSize:10,color:"#888",letterSpacing:".12em",textTransform:"uppercase",marginBottom:4}}>{label}</div>
+      <div style={{fontSize:10,color:text.tertiary,fontWeight:600,marginBottom:4}}>{label}</div>
       <div style={{fontSize:13,color,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{value}</div>
     </div>
   );
@@ -528,7 +529,7 @@ function MemoryPill({label,value,color}){
 function MemoryLine({label,value,color}){
   return(
     <div style={{display:"flex",justifyContent:"space-between",gap:10,padding:"10px 12px",background:"#080808",border:"1px solid #202020",borderRadius:9}}>
-      <span style={{fontSize:11,color:"#888",letterSpacing:".12em",textTransform:"uppercase"}}>{label}</span>
+      <span style={{fontSize:11,color:text.tertiary,fontWeight:600}}>{label}</span>
       <span style={{fontSize:12,color,fontWeight:600,textAlign:"right",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{value}</span>
     </div>
   );
@@ -550,7 +551,7 @@ function EmptyState({ accent, title, body, items=[] }) {
       <div style={{fontSize:14,color:"#ddd",lineHeight:1.55,marginTop:8}}>{body}</div>
       <div style={{display:"grid",gap:7,marginTop:13}}>
         {items.map((item,i)=>(
-          <div key={item} style={{display:"flex",gap:10,padding:"9px 10px",background:"#080808",border:"1px solid #202020",borderRadius:8,fontSize:12,color:"#bbb",lineHeight:1.4}}>
+          <div key={item} style={{display:"flex",gap:10,padding:"9px 10px",background:"#080808",border:"1px solid #202020",borderRadius:8,fontSize:12,color:text.secondary,lineHeight:1.4}}>
             <span style={{color:accent,fontWeight:700}}>{String(i+1).padStart(2,"0")}</span>
             <span>{item}</span>
           </div>

@@ -551,7 +551,7 @@ function DarkPreview({ children }) {
 
 function PreviewLabel({ children }) {
   return (
-    <div style={{fontSize:10,color:"#444",letterSpacing:".14em",textTransform:"uppercase",marginBottom:8}}>
+    <div style={{fontSize:11,color:"#777",fontWeight:600,marginBottom:8}}>
       {children}
     </div>
   );

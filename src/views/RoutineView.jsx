@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { MusclePickerDiagram } from "../components/MuscleDiagram.jsx";
 import { BENCHMARK_TESTS_V2, EXERCISE_LIBRARY, MUSCLE_COVERAGE_GROUPS, MUSCLE_LABELS, ROUTINE_TEMPLATES, customRoutineWorkout, exerciseId, exerciseIsRisky, exerciseRiskJoints, getDefaultWeight, getExerciseMovement, isUnilateral, normalizeCustomRoutine, normalizeUserProfile, routineBalanceScore, routineCoverage } from "../data.js";
 import { generateCoachRoutine, routineEditSuggestions } from "../coach.js";
+import { surface, text, status } from "../theme.js";
 
 const DIFFICULTIES = [
   ["beginner", "Beginner"],
@@ -132,7 +133,7 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
     <div>
       <div style={{padding:"34px 16px 18px"}}>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:52,letterSpacing:".06em",lineHeight:.88,color:"#fafafa"}}>ROUTINE</div>
-        <div style={{fontSize:13,color:"#999",marginTop:7,letterSpacing:".1em",textTransform:"uppercase"}}>build balanced workouts</div>
+        <div style={{fontSize:13,color:"#999",marginTop:7,fontWeight:600}}>build balanced workouts</div>
       </div>
 
       {/* BUILD WITH COACH */}
@@ -142,22 +143,22 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
           <span style={{fontSize:20}}>🤖</span> BUILD ROUTINE WITH COACH
         </button>
         {coachGenerated && (
-          <div style={{marginTop:8,padding:"10px 12px",background:"#0d0d0d",border:`1px solid ${accent}33`,borderRadius:9}}>
-            <div style={{fontSize:11,color:accent,fontWeight:800,marginBottom:5,letterSpacing:".1em",textTransform:"uppercase"}}>Coach built your routine</div>
+          <div style={{marginTop:8,padding:"10px 12px",background:surface.bg0,border:`1px solid ${accent}33`,borderRadius:9}}>
+            <div style={{fontSize:11,color:accent,fontWeight:800,marginBottom:5}}>Coach built your routine</div>
             {coachGenerated.map((line, i) => (
-              <div key={i} style={{fontSize:12,color:"#888",lineHeight:1.45}}>· {line}</div>
+              <div key={i} style={{fontSize:12,color:text.tertiary,lineHeight:1.45}}>· {line}</div>
             ))}
-            <button onClick={()=>setCoachGenerated(null)} style={{marginTop:6,fontSize:11,color:"#555",background:"transparent",border:"none",cursor:"pointer",padding:0}}>dismiss</button>
+            <button onClick={()=>setCoachGenerated(null)} style={{marginTop:6,fontSize:11,color:text.faint,background:"transparent",border:"none",cursor:"pointer",padding:0}}>dismiss</button>
           </div>
         )}
       </div>
 
       <div style={{padding:"12px 16px 6px"}}>
         <button onClick={() => setTemplatesOpen(v => !v)}
-          style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 15px",background:"#0d0d0d",border:`1.5px solid ${templatesOpen?"#2a2a2a":"#1a1a1a"}`,borderRadius:10,cursor:"pointer",textAlign:"left",marginBottom:templatesOpen?10:0}}>
+          style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 15px",background:surface.bg0,border:`1.5px solid ${templatesOpen?"#2a2a2a":"#1a1a1a"}`,borderRadius:10,cursor:"pointer",textAlign:"left",marginBottom:templatesOpen?10:0}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <span style={{fontSize:13,color:"#e0e0e0",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700}}>Templates</span>
-            {!templatesOpen && routine.activeRoutineId && (() => { const t = ROUTINE_TEMPLATES.find(t => t.id === routine.activeRoutineId); return t ? <span style={{fontSize:11,color:"#666",background:"#161616",padding:"3px 8px",borderRadius:5}}>{t.name}</span> : null; })()}
+            <span style={{fontSize:13,color:"#e0e0e0",fontWeight:700}}>Templates</span>
+            {!templatesOpen && routine.activeRoutineId && (() => { const t = ROUTINE_TEMPLATES.find(t => t.id === routine.activeRoutineId); return t ? <span style={{fontSize:11,color:text.muted,background:surface.bg3,padding:"3px 8px",borderRadius:5}}>{t.name}</span> : null; })()}
           </div>
           <span style={{fontSize:16,color:"#aaa",transition:"transform .2s",display:"inline-block",transform:templatesOpen?"rotate(180deg)":"rotate(0deg)"}}>⌄</span>
         </button>
@@ -168,9 +169,9 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
                 style={{textAlign:"left",padding:"12px 13px",background:routine.activeRoutineId===template.id?`${accent}18`:"#0d0d0d",border:`1px solid ${routine.activeRoutineId===template.id?accent:"#1f1f1f"}`,borderRadius:10,color:"#eee",cursor:"pointer"}}>
                 <div style={{display:"flex",justifyContent:"space-between",gap:10}}>
                   <span style={{fontSize:14,fontWeight:900,color:routine.activeRoutineId===template.id?accent:"#eee"}}>{template.name}</span>
-                  <span style={{fontSize:11,color:"#888",textTransform:"uppercase"}}>{template.difficulty}</span>
+                  <span style={{fontSize:11,color:text.tertiary,textTransform:"uppercase"}}>{template.difficulty}</span>
                 </div>
-                <div style={{fontSize:12,color:"#888",marginTop:5}}>{template.exerciseIds.length} movements · balanced full body</div>
+                <div style={{fontSize:12,color:text.tertiary,marginTop:5}}>{template.exerciseIds.length} movements · balanced full body</div>
               </button>
             ))}
           </div>
@@ -195,12 +196,12 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
                           onBlur={()=>setRenamingId(null)}
                           onKeyDown={e=>e.key==="Enter"&&setRenamingId(null)}
                           onClick={e=>e.stopPropagation()}
-                          style={{width:"100%",background:"#1a1a1a",border:`1px solid ${accent}66`,borderRadius:6,color:"#f0f0f0",padding:"6px 8px",fontSize:13,fontWeight:800,outline:"none"}} />
+                          style={{width:"100%",background:surface.bg4,border:`1px solid ${accent}66`,borderRadius:6,color:"#f0f0f0",padding:"6px 8px",fontSize:13,fontWeight:800,outline:"none"}} />
                       ) : (
                         <span style={{fontSize:13,fontWeight:800}}>{item.name}</span>
                       )}
                     </button>
-                    <span style={{fontSize:11,color:"#888",flexShrink:0}}>{item.exerciseIds.length} moves</span>
+                    <span style={{fontSize:11,color:text.tertiary,flexShrink:0}}>{item.exerciseIds.length} moves</span>
                   </div>
                   {/* Action row */}
                   <div style={{display:"flex",borderTop:"1px solid #1a1a1a"}}>
@@ -209,7 +210,7 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
                       { label:"⧉", title:"Duplicate", action:()=>duplicateRoutine(item) },
                       { label:"↑", title:"Move up",   action:()=>moveRoutine(item.id, -1), disabled:idx===0 },
                       { label:"↓", title:"Move down", action:()=>moveRoutine(item.id,  1), disabled:idx===routine.routines.length-1 },
-                      { label:"✕", title:"Delete", action:()=>deleteRoutine(item.id), disabled:routine.routines.length<=1, color:"#fb7185" },
+                      { label:"✕", title:"Delete", action:()=>deleteRoutine(item.id), disabled:routine.routines.length<=1, color:status.caution },
                     ].map(btn => (
                       <button key={btn.label} onClick={btn.action} disabled={btn.disabled}
                         title={btn.title}
@@ -225,25 +226,25 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
         </Section>
       )}
 
-      <div style={{margin:"0 16px 14px",padding:"15px",background:"#0d0d0d",border:`1.5px solid ${complete ? "#4ade80" : accent}55`,borderRadius:12,boxShadow:`0 0 24px ${accent}12`}}>
+      <div style={{margin:"0 16px 14px",padding:"15px",background:surface.bg0,border:`1.5px solid ${complete ? status.good : accent}55`,borderRadius:12,boxShadow:`0 0 24px ${accent}12`}}>
         <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",marginBottom:12}}>
           <div style={{minWidth:0}}>
-            <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:800}}>Current Routine</div>
+            <div style={{fontSize:11,color:accent,fontWeight:700}}>Current Routine</div>
             <input value={routine.name} onChange={e=>save({name:e.target.value})}
               style={{width:"100%",boxSizing:"border-box",marginTop:6,background:"#101010",border:"1px solid #252525",borderRadius:8,color:"#f0f0f0",padding:"10px 11px",fontSize:16,fontWeight:700,outline:"none"}} />
           </div>
           <div style={{textAlign:"right",flexShrink:0}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:complete ? "#4ade80" : "#fbbf24",letterSpacing:".05em"}}>{selected.length}</div>
-            <div style={{fontSize:10,color:"#888",letterSpacing:".1em",textTransform:"uppercase"}}>Exercises</div>
-            <div style={{fontSize:10,color:balance >= 80 ? "#4ade80" : "#fbbf24",marginTop:3}}>Balance {balance}</div>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:complete ? status.good : status.warn,letterSpacing:".05em"}}>{selected.length}</div>
+            <div style={{fontSize:10,color:text.tertiary,fontWeight:600}}>Exercises</div>
+            <div style={{fontSize:10,color:balance >= 80 ? status.good : status.warn,marginTop:3}}>Balance {balance}</div>
           </div>
         </div>
 
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:12}}>
           {coverage.map(item => (
             <div key={item.key} style={{padding:"9px 6px",borderRadius:8,border:`1px solid ${item.ok ? "#4ade8066" : "#fb718555"}`,background:item.ok ? "#4ade8014" : "#fb718511",textAlign:"center"}}>
-              <div style={{fontSize:10,color:item.ok ? "#4ade80" : "#fb7185",fontWeight:900,letterSpacing:".08em",textTransform:"uppercase"}}>{item.label}</div>
-              <div style={{fontSize:10,color:"#888",marginTop:3}}>{item.hits.length || 0} hit</div>
+              <div style={{fontSize:10,color:item.ok ? status.good : status.caution,fontWeight:900}}>{item.label}</div>
+              <div style={{fontSize:10,color:text.tertiary,marginTop:3}}>{item.hits.length || 0} hit</div>
             </div>
           ))}
         </div>
@@ -262,7 +263,7 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
           style={{width:"100%",marginTop:8,padding:"11px 10px",border:"1px solid #2a2a2a",borderRadius:10,background:"#101010",color:"#aaa",fontWeight:800,letterSpacing:".08em"}}>
           SAVE AS NEW ROUTINE
         </button>
-        {!complete&&<div style={{fontSize:12,color:"#fbbf24",lineHeight:1.45,marginTop:10}}>Add at least one push, pull, legs, and core movement before using this routine.</div>}
+        {!complete&&<div style={{fontSize:12,color:status.warn,lineHeight:1.45,marginTop:10}}>Add at least one push, pull, legs, and core movement before using this routine.</div>}
       </div>
 
       <Section title="Exercises">
@@ -270,7 +271,7 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
           {[["selected",`Selected (${selected.length})`],["browse","Browse"]].map(([tab,label])=>(
             <button key={tab} onClick={()=>setBrowseTab(tab)}
-              style={{padding:"10px",borderRadius:9,border:`1.5px solid ${browseTab===tab?accent:"#1f1f1f"}`,background:browseTab===tab?`${accent}18`:"#0d0d0d",color:browseTab===tab?accent:"#777",fontSize:12,fontWeight:800,letterSpacing:".08em",textTransform:"uppercase",cursor:"pointer"}}>
+              style={{padding:"10px",borderRadius:9,border:`1.5px solid ${browseTab===tab?accent:"#1f1f1f"}`,background:browseTab===tab?`${accent}18`:"#0d0d0d",color:browseTab===tab?accent:"#777",fontSize:12,fontWeight:800,cursor:"pointer"}}>
               {label}
             </button>
           ))}
@@ -280,26 +281,26 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
         {browseTab === "selected" && (
           <div style={{display:"grid",gap:7}}>
             {selected.length === 0 && (
-              <div style={{padding:"20px",textAlign:"center",color:"#555",fontSize:13}}>No exercises selected yet. Use Browse or Build with Coach.</div>
+              <div style={{padding:"20px",textAlign:"center",color:text.faint,fontSize:13}}>No exercises selected yet. Use Browse or Build with Coach.</div>
             )}
             {selected.map((ex, idx) => (
-              <div key={ex.id || ex.name} style={{display:"flex",alignItems:"center",gap:8,padding:"11px 12px",background:"#0d0d0d",border:`1.5px solid ${accent}33`,borderRadius:10}}>
+              <div key={ex.id || ex.name} style={{display:"flex",alignItems:"center",gap:8,padding:"11px 12px",background:surface.bg0,border:`1.5px solid ${accent}33`,borderRadius:10}}>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:14,fontWeight:800,color:accent,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ex.name}</div>
                   <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:5}}>
                     {[...(ex.primary||[]),...(ex.secondary||[])].slice(0,3).map(m=>(
-                      <span key={m} style={{fontSize:10,color:"#888",border:"1px solid #2a2a2a",borderRadius:5,padding:"2px 6px"}}>{MUSCLE_LABELS[m]||m}</span>
+                      <span key={m} style={{fontSize:10,color:text.tertiary,border:"1px solid #2a2a2a",borderRadius:5,padding:"2px 6px"}}>{MUSCLE_LABELS[m]||m}</span>
                     ))}
-                    <span style={{fontSize:10,color:"#666",border:"1px solid #1f1f1f",borderRadius:5,padding:"2px 6px"}}>{ex.equipment}</span>
+                    <span style={{fontSize:10,color:text.muted,border:"1px solid #1f1f1f",borderRadius:5,padding:"2px 6px"}}>{ex.equipment}</span>
                   </div>
                 </div>
                 <div style={{display:"flex",gap:4,flexShrink:0}}>
                   <button onClick={()=>moveExerciseInRoutine(ex.id,-1)} disabled={idx===0}
-                    style={{width:30,height:30,background:"#161616",border:"1px solid #2a2a2a",borderRadius:7,color:idx===0?"#333":"#aaa",fontSize:13,cursor:idx===0?"default":"pointer"}}>↑</button>
+                    style={{width:30,height:30,background:surface.bg3,border:"1px solid #2a2a2a",borderRadius:7,color:idx===0?"#333":"#aaa",fontSize:13,cursor:idx===0?"default":"pointer"}}>↑</button>
                   <button onClick={()=>moveExerciseInRoutine(ex.id,1)} disabled={idx===selected.length-1}
-                    style={{width:30,height:30,background:"#161616",border:"1px solid #2a2a2a",borderRadius:7,color:idx===selected.length-1?"#333":"#aaa",fontSize:13,cursor:idx===selected.length-1?"default":"pointer"}}>↓</button>
+                    style={{width:30,height:30,background:surface.bg3,border:"1px solid #2a2a2a",borderRadius:7,color:idx===selected.length-1?"#333":"#aaa",fontSize:13,cursor:idx===selected.length-1?"default":"pointer"}}>↓</button>
                   <button onClick={()=>toggle(ex.id)}
-                    style={{width:30,height:30,background:"#161616",border:"1px solid #fb718544",borderRadius:7,color:"#fb7185",fontSize:14,cursor:"pointer"}}>×</button>
+                    style={{width:30,height:30,background:surface.bg3,border:"1px solid #fb718544",borderRadius:7,color:status.caution,fontSize:14,cursor:"pointer"}}>×</button>
                 </div>
               </div>
             ))}
@@ -329,7 +330,7 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
               <button onClick={() => setFiltersOpen(v => !v)}
                 style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 15px",marginBottom:filtersOpen?0:8,background:filtersActive?`${accent}14`:"#0d0d0d",border:`1.5px solid ${filtersActive?`${accent}66`:"#1f1f1f"}`,borderRadius:10,cursor:"pointer",textAlign:"left"}}>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:13,color:filtersActive?accent:"#bbb",fontWeight:800,letterSpacing:".1em",textTransform:"uppercase"}}>Filters</span>
+                  <span style={{fontSize:13,color:filtersActive?accent:"#bbb",fontWeight:800}}>Filters</span>
                   {filtersActive && (
                     <span style={{fontSize:10,color:accent,background:`${accent}22`,border:`1px solid ${accent}44`,borderRadius:10,padding:"2px 8px",fontWeight:800,letterSpacing:".06em"}}>ACTIVE</span>
                   )}
@@ -340,21 +341,21 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
                 <div style={{padding:"14px",background:"#070707",border:`1px solid #1f1f1f`,borderRadius:10,marginBottom:10,display:"grid",gap:12}}>
                   {/* Muscle map */}
                   <div>
-                    <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:8,fontWeight:700}}>Filter by Muscle</div>
+                    <div style={{fontSize:10,color:"#777",fontWeight:700,marginBottom:8}}>Filter by Muscle</div>
                     <MusclePickerDiagram
                       selectedMuscle={muscleFilter}
                       onSelect={m => { setMuscleFilter(prev => prev === m ? null : m); }}
                       accent={accent}
                     />
                     {muscleFilter && (
-                      <button onClick={() => setMuscleFilter(null)} style={{marginTop:6,fontSize:11,color:"#888",background:"transparent",border:"1px solid #2a2a2a",borderRadius:6,padding:"4px 10px",cursor:"pointer"}}>
+                      <button onClick={() => setMuscleFilter(null)} style={{marginTop:6,fontSize:11,color:text.tertiary,background:"transparent",border:"1px solid #2a2a2a",borderRadius:6,padding:"4px 10px",cursor:"pointer"}}>
                         Clear muscle filter
                       </button>
                     )}
                   </div>
                   {/* Category chips */}
                   <div>
-                    <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:8,fontWeight:700}}>Category</div>
+                    <div style={{fontSize:10,color:"#777",fontWeight:700,marginBottom:8}}>Category</div>
                     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                       {categories.map(([key, label]) => (
                         <button key={key} onClick={() => setCategory(key)}
@@ -366,7 +367,7 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
                   </div>
                   {/* Equipment */}
                   <div>
-                    <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:8,fontWeight:700}}>Equipment</div>
+                    <div style={{fontSize:10,color:"#777",fontWeight:700,marginBottom:8}}>Equipment</div>
                     <select value={equipment} onChange={e=>setEquipment(e.target.value)}
                       style={{width:"100%",background:"#101010",border:"1px solid #2a2a2a",borderRadius:9,color:"#f0f0f0",padding:"10px 12px",fontSize:13,outline:"none"}}>
                       {[["all","All Equipment"],["bodyweight","Bodyweight"],["dumbbells","Dumbbells"],["bands","Bands"],["machines","Machines"],["barbell","Barbell"],["kettlebell","Kettlebell"],["mobility","Mobility"]].map(([k,l])=>(<option key={k} value={k}>{l}</option>))}
@@ -374,7 +375,7 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
                   </div>
                   {/* Difficulty */}
                   <div>
-                    <div style={{fontSize:10,color:"#777",letterSpacing:".14em",textTransform:"uppercase",marginBottom:8,fontWeight:700}}>Difficulty</div>
+                    <div style={{fontSize:10,color:"#777",fontWeight:700,marginBottom:8}}>Difficulty</div>
                     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
                       {DIFFICULTIES.map(([key,label])=>(
                         <button key={key} onClick={()=>{setDifficulty(key);save({difficulty:key});}}
@@ -391,7 +392,7 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
         })()}
         {riskyHidden > 0 && (
           <button onClick={()=>setShowRisky(v=>!v)}
-            style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",marginBottom:8,background:"#fb718511",border:"1px solid #fb718555",borderRadius:9,color:"#fb7185",textAlign:"left"}}>
+            style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",marginBottom:8,background:"#fb718511",border:"1px solid #fb718555",borderRadius:9,color:status.caution,textAlign:"left"}}>
             <span style={{fontSize:12,fontWeight:800}}>⚠ {riskyHidden} exercise{riskyHidden===1?"":"s"} hidden for your limitations ({profile.limitations?.join(", ")})</span>
             <span style={{fontSize:11,fontWeight:900,opacity:.8}}>{showRisky ? "HIDE" : "SHOW"}</span>
           </button>
@@ -409,7 +410,7 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
               onAvoid={()=>toggleAvoid(ex.id)} />
           ))}
           {(routine.avoidedExerciseIds?.length > 0 || riskyHidden > 0) && (
-            <div style={{fontSize:12,color:"#888"}}>
+            <div style={{fontSize:12,color:text.tertiary}}>
               {routine.avoidedExerciseIds?.length > 0 && `${routine.avoidedExerciseIds.length} avoided hidden. `}
               {riskyHidden > 0 && !showRisky && `${riskyHidden} risky for your limitations hidden.`}
             </div>
@@ -437,24 +438,24 @@ function ExercisePick({ ex, active, favorite, risky, riskJoints, accent, onToggl
           <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
             <span style={{fontSize:15,fontWeight:800,color:active?accent:"#f0f0f0"}}>{ex.name}</span>
             {risky && riskJoints?.length > 0 && (
-              <span style={{fontSize:9,fontWeight:900,color:"#fb7185",background:"#fb718522",border:"1px solid #fb718544",borderRadius:10,padding:"2px 6px",textTransform:"uppercase"}}>⚠ {riskJoints.join("/")}</span>
+              <span style={{fontSize:9,fontWeight:900,color:status.caution,background:"#fb718522",border:"1px solid #fb718544",borderRadius:10,padding:"2px 6px",textTransform:"uppercase"}}>⚠ {riskJoints.join("/")}</span>
             )}
             {uni && <span style={{fontSize:9,color:"#94a3b8",background:"#94a3b822",border:"1px solid #94a3b844",borderRadius:10,padding:"2px 6px",fontWeight:700}}>UNI</span>}
           </div>
-          <div style={{fontSize:12,color:"#888",lineHeight:1.4,marginTop:4}}>{ex.tip}</div>
+          <div style={{fontSize:12,color:text.tertiary,lineHeight:1.4,marginTop:4}}>{ex.tip}</div>
           <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:8}}>
-            {mv && <span style={{fontSize:10,color:"#60a5fa",border:"1px solid #60a5fa44",borderRadius:5,padding:"3px 6px"}}>{_MOVEMENT_LABELS[mv]||mv}</span>}
+            {mv && <span style={{fontSize:10,color:status.info,border:"1px solid #60a5fa44",borderRadius:5,padding:"3px 6px"}}>{_MOVEMENT_LABELS[mv]||mv}</span>}
             {[...(ex.primary || []), ...(ex.secondary || [])].slice(0,3).map((m, i) => (
               <span key={`${m}_${i}`} style={{fontSize:10,color:"#aaa",border:"1px solid #2a2a2a",borderRadius:5,padding:"3px 6px"}}>{MUSCLE_LABELS[m] || m}</span>
             ))}
           </div>
         </div>
         <div style={{flexShrink:0,textAlign:"right"}}>
-          <div style={{fontSize:11,color:ex.ageFriendly?"#4ade80":"#fbbf24",fontWeight:800,textTransform:"uppercase"}}>{ex.difficulty}</div>
+          <div style={{fontSize:11,color:ex.ageFriendly?status.good:status.warn,fontWeight:800,textTransform:"uppercase"}}>{ex.difficulty}</div>
           <div style={{fontSize:11,color:"#777",marginTop:3}}>{ex.equipment}</div>
-          {defW > 0 && <div style={{fontSize:10,color:"#555",marginTop:2}}>~{defW}lb</div>}
-          <button onClick={(e)=>{ e.stopPropagation(); onFavorite(); }} style={{background:"transparent",border:"none",color:favorite?"#fbbf24":"#555",fontSize:17,padding:0,marginTop:4}}>★</button>
-          <button onClick={(e)=>{ e.stopPropagation(); onAvoid(); }} style={{display:"block",background:"transparent",border:"none",color:"#fb7185",fontSize:10,fontWeight:900,padding:0,marginTop:4}}>AVOID</button>
+          {defW > 0 && <div style={{fontSize:10,color:text.faint,marginTop:2}}>~{defW}lb</div>}
+          <button onClick={(e)=>{ e.stopPropagation(); onFavorite(); }} style={{background:"transparent",border:"none",color:favorite?status.warn:"#555",fontSize:17,padding:0,marginTop:4}}>★</button>
+          <button onClick={(e)=>{ e.stopPropagation(); onAvoid(); }} style={{display:"block",background:"transparent",border:"none",color:status.caution,fontSize:10,fontWeight:900,padding:0,marginTop:4}}>AVOID</button>
           <div style={{fontSize:20,color:active?accent:"#555",marginTop:4}}>{active ? "✓" : "+"}</div>
         </div>
       </div>
@@ -465,7 +466,7 @@ function ExercisePick({ ex, active, favorite, risky, riskJoints, accent, onToggl
 function ProfileInput({ label, value, onChange }) {
   return (
     <label style={{display:"grid",gap:5}}>
-      <span style={{fontSize:10,color:"#888",letterSpacing:".1em",textTransform:"uppercase",fontWeight:800}}>{label}</span>
+      <span style={{fontSize:10,color:text.tertiary,fontWeight:800}}>{label}</span>
       <input value={value} onChange={e=>onChange(e.target.value)} inputMode="numeric" type="number" min="0"
         style={{minWidth:0,background:"#101010",border:"1px solid #292929",borderRadius:8,color:"#f0f0f0",padding:"10px 8px",fontSize:14,fontWeight:800,outline:"none"}} />
     </label>
@@ -499,15 +500,15 @@ function CoachEditsSection({ suggestions, save, routine, accent }) {
       {actionable.length > 0 && (
         <div style={{marginBottom:10,padding:"13px 14px",background:"#fb923c12",border:"1px solid #fb923c55",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
           <div style={{minWidth:0}}>
-            <div style={{fontSize:12,color:"#fb923c",fontWeight:900,letterSpacing:".1em",textTransform:"uppercase"}}>
+            <div style={{fontSize:12,color:"#fb923c",fontWeight:900}}>
               {applied ? "✓ Applied!" : `Coach found ${actionable.length} fix${actionable.length===1?"":"es"}`}
             </div>
-            <div style={{fontSize:11,color:"#888",marginTop:3}}>
+            <div style={{fontSize:11,color:text.tertiary,marginTop:3}}>
               {applied ? "Routine updated." : highPriority.length > 0 ? `${highPriority.length} high-priority · gaps, swaps, risks` : "Balance and coverage improvements available"}
             </div>
           </div>
           <button onClick={applyAll} disabled={applied}
-            style={{flexShrink:0,padding:"9px 14px",background:applied?"#4ade8022":"#fb923c",border:"none",borderRadius:8,color:applied?"#4ade80":"#1a0a00",fontSize:12,fontWeight:900,letterSpacing:".06em",cursor:applied?"default":"pointer"}}>
+            style={{flexShrink:0,padding:"9px 14px",background:applied?"#4ade8022":"#fb923c",border:"none",borderRadius:8,color:applied?status.good:"#1a0a00",fontSize:12,fontWeight:900,letterSpacing:".06em",cursor:applied?"default":"pointer"}}>
             {applied ? "DONE ✓" : "LET COACH FIX THIS"}
           </button>
         </div>
@@ -515,20 +516,20 @@ function CoachEditsSection({ suggestions, save, routine, accent }) {
 
       {/* Collapsible detail list */}
       <button onClick={() => setOpen(v => !v)}
-        style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:10,cursor:"pointer",textAlign:"left",marginBottom:open?8:0}}>
-        <span style={{fontSize:13,color:"#ddd",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700}}>Coach Edits ({suggestions.length})</span>
-        <span style={{fontSize:12,color:"#888"}}>{open ? "▲" : "▼"}</span>
+        style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",background:surface.bg0,border:"1px solid #1f1f1f",borderRadius:10,cursor:"pointer",textAlign:"left",marginBottom:open?8:0}}>
+        <span style={{fontSize:13,color:"#ddd",fontWeight:700}}>Coach Edits ({suggestions.length})</span>
+        <span style={{fontSize:12,color:text.tertiary}}>{open ? "▲" : "▼"}</span>
       </button>
       {open && (
         <div style={{display:"grid",gap:8}}>
           {suggestions.map((item, index) => {
             const isHigh = item.priority >= 3;
             const borderCol = isHigh ? "#fb718566" : item.type === "risk" ? "#fbbf2455" : "#1f1f1f";
-            const titleCol  = isHigh ? "#fb7185"   : item.type === "risk" ? "#fbbf24"   : "#eee";
+            const titleCol  = isHigh ? status.caution   : item.type === "risk" ? status.warn   : "#eee";
             return (
-              <div key={`${item.type}_${index}`} style={{padding:"11px 12px",background:"#0d0d0d",border:`1px solid ${borderCol}`,borderRadius:9}}>
+              <div key={`${item.type}_${index}`} style={{padding:"11px 12px",background:surface.bg0,border:`1px solid ${borderCol}`,borderRadius:9}}>
                 <div style={{fontSize:13,color:titleCol,fontWeight:900}}>{item.title}</div>
-                <div style={{fontSize:12,color:"#888",lineHeight:1.4,marginTop:4}}>{item.detail}</div>
+                <div style={{fontSize:12,color:text.tertiary,lineHeight:1.4,marginTop:4}}>{item.detail}</div>
                 {item.actionId && item.actionLabel && (
                   <button onClick={()=>{
                     if (item.actionType === "add") {
@@ -555,8 +556,8 @@ function Section({ title, children, defaultOpen = true }) {
   return (
     <div style={{padding:"8px 16px 6px"}}>
       <button onClick={() => setOpen(v => !v)}
-        style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#0d0d0d",border:"1.5px solid #1f1f1f",borderRadius:10,padding:"13px 15px",cursor:"pointer",textAlign:"left",marginBottom:open?10:0}}>
-        <span style={{fontSize:13,color:"#e0e0e0",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700}}>{title}</span>
+        style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:surface.bg0,border:"1.5px solid #1f1f1f",borderRadius:10,padding:"13px 15px",cursor:"pointer",textAlign:"left",marginBottom:open?10:0}}>
+        <span style={{fontSize:13,color:"#e0e0e0",fontWeight:700}}>{title}</span>
         <span style={{fontSize:16,color:"#aaa",transition:"transform .2s",display:"inline-block",transform:open?"rotate(180deg)":"rotate(0deg)"}}>⌄</span>
       </button>
       {open && children}

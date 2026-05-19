@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { IMG_BASE, VIDEO_BASE, WORKOUTS, isoDate, isoWeek, dateStr } from "../data.js";
 import { remainingSeconds } from "../session.js";
+import { surface, text, status } from "../theme.js";
 
 // ── Exercise Animation ───────────────────────────────────────────────────────
 export function ExerciseAnimation({ folder, accent, video, compact=false, bare=false }) {
@@ -101,7 +102,7 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent, fullscre
         display:"flex", alignItems:"center", justifyContent:"center", padding:"28px 22px",
       }}>
         <div className="mobile-shell" style={{textAlign:"center"}}>
-          <div style={{fontSize:12,color:"#888",letterSpacing:".16em",textTransform:"uppercase",marginBottom:20}}>Rest</div>
+          <div style={{fontSize:12,color:text.tertiary,fontWeight:600,marginBottom:20}}>Rest</div>
           <div style={{position:"relative",width:168,height:168,margin:"0 auto 26px"}}>
             <svg width="168" height="168" viewBox="0 0 168 168" style={{transform:"rotate(-90deg)"}}>
               <circle cx="84" cy="84" r={bigR} fill="none" stroke="#171717" strokeWidth="8"/>
@@ -113,7 +114,7 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent, fullscre
             <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:72,color:accent,letterSpacing:".04em"}}>{remaining}</div>
           </div>
           <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:"#f5f5f5",letterSpacing:".06em",lineHeight:1.05,marginBottom:10}}>{label}</div>
-          <div style={{fontSize:13,color:"#888",lineHeight:1.5,marginBottom:30}}>Breathe, shake it out, then hit the next set clean.</div>
+          <div style={{fontSize:13,color:text.tertiary,lineHeight:1.5,marginBottom:30}}>Breathe, shake it out, then hit the next set clean.</div>
           <button onClick={onSkip}
             style={{width:"100%",padding:"18px",background:"transparent",border:`1.5px solid ${accent}77`,borderRadius:13,color:accent,fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:".12em"}}>
             SKIP REST
@@ -143,7 +144,7 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent, fullscre
           <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, color:accent, fontWeight:500 }}>{remaining}</div>
         </div>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:11, color:"#aaa", letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:3 }}>REST · {remaining}s</div>
+          <div style={{ fontSize:11, color:"#aaa", marginBottom:3 }}>REST · {remaining}s</div>
           <div style={{ fontSize:14, color:"#f0f0f0", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{label}</div>
         </div>
         <button onClick={onSkip}
@@ -307,7 +308,7 @@ export function BottomNav({ active, onSelect, accent, level, theme="dark" }) {
               <div style={{ filter: isActive ? `drop-shadow(0 0 7px ${accent}bb)` : "none", transition:"filter .2s" }}>
                 <Icon color={color} size={22} />
               </div>
-              <div style={{ fontSize:9, letterSpacing:"0.06em", textTransform:"uppercase", fontWeight:isActive?700:400, color, lineHeight:1 }}>
+              <div style={{ fontSize:9, fontWeight:isActive?700:400, color, lineHeight:1 }}>
                 {label}
               </div>
             </button>
@@ -319,15 +320,15 @@ export function BottomNav({ active, onSelect, accent, level, theme="dark" }) {
 }
 
 // ── Bar Chart ────────────────────────────────────────────────────────────────
-export function BarChart({ data, color="#4ade80", height=130, label }) {
+export function BarChart({ data, color=status.good, height=130, label }) {
   if (!data?.length) return (
-    <div style={{ padding:32, textAlign:"center", color:"#666", fontSize:12, letterSpacing:"0.1em" }}>NO DATA YET</div>
+    <div style={{ padding:32, textAlign:"center", color:text.muted, fontSize:12, letterSpacing:"0.1em" }}>NO DATA YET</div>
   );
   const max = Math.max(...data.map(d=>d.value), 1);
   const w   = 100/data.length;
   return (
     <div>
-      {label && <div style={{ fontSize:11, color:"#888", letterSpacing:"0.12em", textTransform:"uppercase", marginBottom:10 }}>{label}</div>}
+      {label && <div style={{ fontSize:11, color:text.tertiary, marginBottom:10 }}>{label}</div>}
       <svg viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{ width:"100%", height }}>
         {data.map((d,i) => {
           const bh = (d.value/max)*(height-26);
@@ -373,7 +374,7 @@ export function Heatmap({ history, theme = "dark" }) {
         {cells.map((week,ci) => (
           <div key={ci} style={{ display:"flex", flexDirection:"column", gap }}>
             {week.map((c,ri) => {
-              const workoutColor = WORKOUTS[c.workout]?.color || "#fbbf24";
+              const workoutColor = WORKOUTS[c.workout]?.color || status.warn;
               const color = c.workout ? workoutColor : c.isFuture ? (light ? "#edf4fb" : "#0a0a0a") : (light ? "#dce7f2" : "#161616");
               const isToday = c.iso === isoDate(today);
               return (
@@ -394,9 +395,9 @@ export function Heatmap({ history, theme = "dark" }) {
 }
 
 // ── MINI PROGRESS GRAPH ───────────────────────────────────────────────────────
-export function MiniGraph({ data, color = "#4ade80", height = 80 }) {
+export function MiniGraph({ data, color = status.good, height = 80 }) {
   if (!data || data.length < 2) return (
-    <div style={{ padding:"16px 0 8px", textAlign:"center", color:"#666", fontSize:13, letterSpacing:".06em" }}>
+    <div style={{ padding:"16px 0 8px", textAlign:"center", color:text.muted, fontSize:13, letterSpacing:".06em" }}>
       Complete 2+ sessions to see your progress graph
     </div>
   );
@@ -416,7 +417,7 @@ export function MiniGraph({ data, color = "#4ade80", height = 80 }) {
     <div>
       <div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontSize:12}}>
         <span style={{color:"#aaa"}}>{data[0].date}</span>
-        <span style={{color:trend>=0?"#4ade80":"#fb923c",fontWeight:500}}>{trend>=0?"+":""}{trend} reps {trend>=0?"↑":"↓"}</span>
+        <span style={{color:trend>=0?status.good:"#fb923c",fontWeight:500}}>{trend>=0?"+":""}{trend} reps {trend>=0?"↑":"↓"}</span>
         <span style={{color:"#aaa"}}>{data[data.length-1].date}</span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height,overflow:"visible"}}>

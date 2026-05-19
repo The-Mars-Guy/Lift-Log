@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { DEFAULT_SETTINGS, LIMITATION_OPTIONS, ageTier, normalizeUserProfile, profileFitnessEstimate, profileRisk } from "../data.js";
 import { EQUIPMENT_PROFILES, JOINT_AREAS, TRAINING_GOALS } from "../coach.js";
+import { surface, text, status } from "../theme.js";
 
 const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -56,7 +57,7 @@ export default function SettingsView({
       <Accordion title="Profile" ui={ui}>
         {/* Basic stats */}
         <div style={{ background: ui.card, borderRadius: 10, border: `1px solid ${ui.border}`, padding: "14px 16px", display: "grid", gap: 12, boxShadow: ui.shadow }}>
-          <div style={{ fontSize: 11, color: ui.muted, letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700 }}>Basic Info</div>
+          <div style={{ fontSize: 11, color: ui.muted, fontWeight: 700 }}>Basic Info</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
             <ProfileField label="Age"       value={profile.age || ""}      onChange={v => updateProfile("age", v)}      placeholder="34" ui={ui} />
             <ProfileField label="Height ft" value={profile.heightIn ? String(Math.floor(Number(profile.heightIn) / 12)) : ""} onChange={v => updateProfile("heightIn", String((Number(v) || 0) * 12 + (Number(profile.heightIn) % 12 || 0)))} placeholder="5" ui={ui} />
@@ -64,7 +65,7 @@ export default function SettingsView({
           </div>
           <ProfileField label="Weight (lb)" value={profile.weightLb || ""} onChange={v => updateProfile("weightLb", v)} placeholder="185" ui={ui} />
           <div>
-            <div style={{ fontSize: 11, color: ui.muted, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 8 }}>Sex</div>
+            <div style={{ fontSize: 11, color: ui.muted, fontWeight: 600, marginBottom: 8 }}>Sex</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
               {[["male","Male"],["female","Female"],["","Other"]].map(([k,l]) => (
                 <button key={l} onClick={() => updateProfile("sex", k)}
@@ -78,7 +79,7 @@ export default function SettingsView({
 
         {/* Training background */}
         <div style={{ background: ui.card, borderRadius: 10, border: `1px solid ${ui.border}`, padding: "14px 16px", display: "grid", gap: 14, boxShadow: ui.shadow }}>
-          <div style={{ fontSize: 11, color: ui.muted, letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700 }}>Training Background</div>
+          <div style={{ fontSize: 11, color: ui.muted, fontWeight: 700 }}>Training Background</div>
           <div>
             <div style={{ fontSize: 11, color: ui.muted, marginBottom: 8 }}>Experience level</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
@@ -110,7 +111,7 @@ export default function SettingsView({
                   <button key={k} onClick={() => {
                     const cur = profile.limitations || [];
                     updateProfile("limitations", active ? cur.filter(x => x !== k) : [...cur, k]);
-                  }} style={{ padding: "8px 14px", borderRadius: 20, border: `1px solid ${active ? "#fb7185" : ui.border}`, background: active ? "#fb718522" : ui.control, color: active ? "#fb7185" : ui.soft, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                  }} style={{ padding: "8px 14px", borderRadius: 20, border: `1px solid ${active ? status.caution : ui.border}`, background: active ? "#fb718522" : ui.control, color: active ? status.caution : ui.soft, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                     {l}
                   </button>
                 );
@@ -126,12 +127,12 @@ export default function SettingsView({
           const risk = profileRisk(safe);
           const tier = ageTier(safe);
           const hasData = safe.age && safe.weightLb && safe.heightIn;
-          const RISK_COLOR = { standard: "#4ade80", steady: "#fbbf24", protect: "#fb7185" };
+          const RISK_COLOR = { standard: status.good, steady: status.warn, protect: status.caution };
           const RISK_LABEL = { standard: "Standard", steady: "Steady", protect: "Cautious" };
           const EXP_LABEL  = { new: "New lifter", returning: "Returning", trained: "Trained" };
           return (
             <div style={{ background: ui.card, borderRadius: 10, border: `1px solid ${accent}44`, padding: "14px 16px", boxShadow: ui.shadow }}>
-              <div style={{ fontSize: 11, color: accent, letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700, marginBottom: 12 }}>How the system sees you</div>
+              <div style={{ fontSize: 11, color: accent, fontWeight: 700, marginBottom: 12 }}>How the system sees you</div>
               {!hasData ? (
                 <div style={{ fontSize: 13, color: ui.muted }}>Fill in age, height, and weight above to see your profile estimates.</div>
               ) : (
@@ -145,7 +146,7 @@ export default function SettingsView({
                     { label: "Joint Concerns", value: (safe.limitations || []).length ? safe.limitations.join(", ") : "None", note: "Filters risky exercises from picker" },
                   ].map(({ label, value, color, note }) => (
                     <div key={label} style={{ background: ui.control, borderRadius: 8, padding: "10px 12px" }}>
-                      <div style={{ fontSize: 10, color: ui.muted, letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 4 }}>{label}</div>
+                      <div style={{ fontSize: 10, color: ui.muted, fontWeight: 600, marginBottom: 4 }}>{label}</div>
                       <div style={{ fontSize: 15, fontWeight: 800, color: color || ui.text }}>{value}</div>
                       <div style={{ fontSize: 10, color: ui.muted, marginTop: 3, lineHeight: 1.35 }}>{note}</div>
                     </div>
@@ -158,7 +159,7 @@ export default function SettingsView({
 
         {/* Workout days */}
         <div style={{ background: ui.card, borderRadius: 10, border: `1px solid ${ui.border}`, padding: "14px 16px", boxShadow: ui.shadow }}>
-          <div style={{ fontSize: 11, color: ui.muted, letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700, marginBottom: 12 }}>Workout Days</div>
+          <div style={{ fontSize: 11, color: ui.muted, fontWeight: 700, marginBottom: 12 }}>Workout Days</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6 }}>
             {ALL_DAYS.map(d => {
               const active = workoutDays.includes(d);
@@ -170,7 +171,7 @@ export default function SettingsView({
               );
             })}
           </div>
-          {workoutDays.length === 0 && <div style={{ fontSize: 12, color: "#fbbf24", marginTop: 8 }}>Pick at least one day.</div>}
+          {workoutDays.length === 0 && <div style={{ fontSize: 12, color: status.warn, marginTop: 8 }}>Pick at least one day.</div>}
         </div>
       </Accordion>
 
@@ -334,7 +335,7 @@ function Accordion({ title, children, ui }) {
           boxShadow: ui.shadow,
         }}
       >
-        <span style={{ fontSize: 14, color: ui.section, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700 }}>{title}</span>
+        <span style={{ fontSize: 14, color: ui.section, fontWeight: 700 }}>{title}</span>
         <span style={{ fontSize: 13, color: ui.muted }}>{open ? "▲" : "▼"}</span>
       </button>
       {open && (
@@ -458,7 +459,7 @@ function Toggle({ label, desc, value, onChange, accent, ui, help }) {
 function ProfileField({ label, value, onChange, placeholder, ui }) {
   return (
     <label style={{ display:"grid", gap:5 }}>
-      <span style={{ fontSize:10, color:ui.muted, letterSpacing:".1em", textTransform:"uppercase", fontWeight:800 }}>{label}</span>
+      <span style={{ fontSize:10, color:ui.muted, fontWeight:800 }}>{label}</span>
       <input type="number" inputMode="numeric" min="0" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
         style={{ width:"100%", boxSizing:"border-box", background:ui.control, border:`1px solid ${ui.border}`, borderRadius:8, color:ui.text, padding:"10px 8px", fontSize:15, fontWeight:700, outline:"none" }} />
     </label>
