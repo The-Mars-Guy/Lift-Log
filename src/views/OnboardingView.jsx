@@ -1,7 +1,7 @@
 // src/views/OnboardingView.jsx
 // Redesigned onboarding wizard — 7 steps matching app's UX direction
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DayPill,
   MultiSelectCard,
@@ -12,7 +12,7 @@ import {
 const ALL_DAYS    = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const DEFAULT_DAYS = ["Mon", "Wed", "Fri"];
 
-const STEPS = ["location", "goal", "results", "experience", "profile", "mode", "days"];
+const STEPS = ["location", "goal", "results", "experience", "profile", "mode", "days", "coach"];
 
 // ─── Data ──────────────────────────────────────────────────────────────────────
 
@@ -89,6 +89,8 @@ export default function OnboardingView({ onComplete }) {
   const [sex,        setSex]        = useState("");
   const [mode,       setMode]       = useState("");
   const [days,       setDays]       = useState(DEFAULT_DAYS);
+  const [coachCard,  setCoachCard]  = useState(0);
+  useEffect(() => { if (key === "coach") setCoachCard(0); }, [key]);
 
   const heightIn = useMemo(() => (
     feet || inches ? (Number(feet) || 0) * 12 + (Number(inches) || 0) : ""
@@ -104,7 +106,8 @@ export default function OnboardingView({ onComplete }) {
     if (key === "experience") return !!experience;
     if (key === "profile")    return !!(age && heightIn && weight);
     if (key === "mode")       return !!mode;
-    if (key === "days")       return days.length > 0;
+    if (key === "days")  return days.length > 0;
+    if (key === "coach") return true;
     return true;
   })();
 
@@ -142,7 +145,7 @@ export default function OnboardingView({ onComplete }) {
     });
   };
 
-  const ctaLabel = key === "days" ? "Start training" : "Continue";
+  const ctaLabel = key === "coach" && coachCard === 2 ? "Start training" : "Continue";
 
   const common = {
     step,
@@ -290,6 +293,81 @@ export default function OnboardingView({ onComplete }) {
           ))}
         </div>
         <HelperText>You can change this anytime in Settings.</HelperText>
+      </OnboardingScreen>
+    );
+  }
+
+  // ── Coach reveal (carousel, 3 cards in 1 step) ───────────────────────────
+  if (key === "coach") {
+    const COACH_CARDS = [
+      {
+        title: "Your workout adapts to recovery.",
+        preview: (
+          <DarkPreview>
+            <PreviewLabel>Session</PreviewLabel>
+            <div style={{fontSize:13,color:"#fbbf24",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>Recovery Session</div>
+            <div style={{fontSize:12,color:"#777",marginBottom:14}}>Energy is limited today — volume adjusted.</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {[{m:"Quads",s:"✗",c:"#fb7185"},{m:"Chest",s:"~",c:"#fbbf24"},{m:"Back",s:"✓",c:"#4ade80"}].map(({m,s,c})=>(
+                <span key={m} style={{fontSize:11,color:c,border:`1px solid ${c}44`,borderRadius:20,padding:"3px 9px",background:`${c}10`,letterSpacing:".08em",textTransform:"uppercase"}}>{m} {s}</span>
+              ))}
+            </div>
+          </DarkPreview>
+        ),
+        helper: "Rep targets, set counts, and load all shift automatically based on your recovery — no manual configuration needed.",
+      },
+      {
+        title: "Every target explains itself.",
+        preview: (
+          <DarkPreview>
+            <PreviewLabel>Set 1 of 3</PreviewLabel>
+            <div style={{fontSize:15,color:"#e0e0e0",fontWeight:600,marginBottom:2}}>Bench Press</div>
+            <div style={{fontSize:12,color:"#666",marginBottom:10}}>Target · 10 reps</div>
+            <div style={{fontSize:12,color:"#a78bfa",lineHeight:1.45}}>Reduced target — recent sets were marked hard.</div>
+          </DarkPreview>
+        ),
+        helper: "Every rep recommendation has a one-line reason. You always know why, not just what.",
+      },
+      {
+        title: "After each session, your coach summarizes what changed.",
+        preview: (
+          <DarkPreview>
+            <PreviewLabel>Session Debrief</PreviewLabel>
+            {[
+              { icon:"↑", col:"#a78bfa", text:"Strength improved on Bench Press." },
+              { icon:"↓", col:"#fbbf24", text:"Fatigue accumulated quickly on Squat." },
+              { icon:"✓", col:"#4ade80", text:"Session stayed within target recovery range." },
+            ].map((b,i)=>(
+              <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:i<2?8:0}}>
+                <span style={{fontSize:12,color:b.col,fontWeight:700,minWidth:14,lineHeight:1.55}}>{b.icon}</span>
+                <span style={{fontSize:13,color:"#999",lineHeight:1.55}}>{b.text}</span>
+              </div>
+            ))}
+          </DarkPreview>
+        ),
+        helper: "Strength gains, fatigue patterns, and recovery signals — summarized automatically after every workout.",
+      },
+    ];
+
+    const card = COACH_CARDS[coachCard];
+    const coachCta  = () => { if (coachCard < 2) setCoachCard(c => c + 1); else next(); };
+    const coachBack = () => { if (coachCard > 0) setCoachCard(c => c - 1); else back(); };
+
+    return (
+      <OnboardingScreen {...common} title={card.title} onBack={coachBack} cta={ctaLabel} onCta={coachCta}>
+        {card.preview}
+        <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:4}}>
+          {COACH_CARDS.map((_,i) => (
+            <div key={i} style={{
+              width: i === coachCard ? 20 : 8,
+              height: 8,
+              borderRadius: 4,
+              background: i === coachCard ? onboardingTokens.accent : "#dedee0",
+              transition: "all .2s",
+            }} />
+          ))}
+        </div>
+        <HelperText>{card.helper}</HelperText>
       </OnboardingScreen>
     );
   }
@@ -454,6 +532,28 @@ function NumberInput({ value, onChange, placeholder, suffix }) {
       />
       {suffix && <span style={{ fontSize: 21, color: onboardingTokens.text }}>{suffix}</span>}
     </label>
+  );
+}
+
+function DarkPreview({ children }) {
+  return (
+    <div style={{
+      background:"#111",
+      borderRadius:16,
+      padding:"16px 18px",
+      marginBottom:28,
+      border:"1px solid #1e1e1e",
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function PreviewLabel({ children }) {
+  return (
+    <div style={{fontSize:10,color:"#444",letterSpacing:".14em",textTransform:"uppercase",marginBottom:8}}>
+      {children}
+    </div>
   );
 }
 

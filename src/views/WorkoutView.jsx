@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   WORKOUTS, SCHEDULE, DAYS, MUSCLE_LABELS, DEFAULT_WEIGHTS,
   EXERCISE_GUIDES, todayName, dateStr, calcDynamicTarget, assessmentTargetForProfile,
@@ -9,7 +9,7 @@ import { useSessionTimer, fmtDuration } from "../hooks.js";
 import { ExerciseAnimation, RestTimer, Toast, MiniGraph } from "../components/shared.jsx";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
 import { completionKey, defaultWorkoutDay, scheduledDate, logKey as makeLogKey } from "../session.js";
-import { buildCoachMemory, buildCoachPlan, coachSetCount, coachTargetReps, DEFAULT_READINESS, evaluateProgression, explainExerciseDecision, plateauFixes, readinessLabel, sciencePrescription, summarizeWorkout, weeklyMuscleCoverage, SUBSTITUTIONS } from "../coach.js";
+import { bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildSessionIntent, coachSetCount, coachTargetReps, DEFAULT_READINESS, evaluateProgression, explainExerciseDecision, plateauFixes, readinessLabel, sciencePrescription, summarizeWorkout, weeklyMuscleCoverage, SUBSTITUTIONS } from "../coach.js";
 import { Confetti, XpFloat } from "./workout/Effects.jsx";
 import { FirstRunSetup, AssessmentFlow, ASSESSMENT_EXERCISES } from "./workout/Assessment.jsx";
 import PostWorkoutFeedback from "./workout/PostWorkoutFeedback.jsx";
@@ -85,7 +85,7 @@ function NoteField({ value, onChange }) {
         </button>
       ) : (
         <textarea value={value} onChange={e=>onChange(e.target.value)} placeholder="Sleep, joints, mood, anything worth remembering..." autoFocus
-          style={{width:"100%",minHeight:54,resize:"vertical",boxSizing:"border-box",padding:"11px 12px",background:"#0d0d0d",border:"1px solid #242424",borderRadius:10,color:"#ddd",fontFamily:"DM Mono, monospace",fontSize:13,lineHeight:1.45,outline:"none"}}/>
+          style={{width:"100%",minHeight:54,resize:"vertical",boxSizing:"border-box",padding:"11px 12px",background:"#0d0d0d",border:"1px solid #242424",borderRadius:10,color:"#ddd",fontSize:13,lineHeight:1.45,outline:"none"}}/>
       )}
     </div>
   );
@@ -224,7 +224,7 @@ function FocusWorkoutMode({
     <div style={{position:"fixed",inset:0,zIndex:150,background:"#050505",overflowY:"auto",padding:"calc(10px + env(safe-area-inset-top)) 16px 18px"}}>
       <div className="mobile-shell">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12}}>
-          <button onClick={onExit} style={{background:"transparent",border:"1px solid #2c2c2c",borderRadius:9,color:"#aaa",padding:"8px 12px",fontSize:12,letterSpacing:".08em"}}>PAUSE</button>
+          <button onClick={onExit} style={{background:"transparent",border:"none",color:"#555",padding:"8px 12px",fontSize:12}}>Pause</button>
           {tempoPattern.length > 0&&(
             <button
               aria-label={tempoOn ? "Stop tempo metronome" : "Start tempo metronome"}
@@ -305,7 +305,7 @@ function FocusWorkoutMode({
               <button onClick={()=>onApplySubstitution?.(focusSwap)}
                 style={{background:accent,border:"none",borderRadius:8,color:"#050505",padding:"8px 10px",fontSize:11,letterSpacing:".08em",fontWeight:700}}>USE SWAP</button>
               {next.ex.substitutedFor&&<button onClick={()=>onRemoveSubstitution?.(next.ex.substitutedFor)}
-                style={{background:"transparent",border:`1px solid ${accent}66`,borderRadius:8,color:accent,padding:"8px 10px",fontSize:11,letterSpacing:".08em"}}>ORIGINAL</button>}
+                style={{background:"transparent",border:"none",color:"#666",padding:"8px 10px",fontSize:12}}>Original</button>}
             </div>
           </div>
         )}
@@ -407,22 +407,22 @@ function WorkoutSummary({ summary, accent, onClose }) {
 function ExerciseGuide({ guide, accent }) {
   if (!guide) return null;
   return (
-    <div style={{marginTop:14,padding:"13px 16px",background:"#080808",borderRadius:10,border:`1.5px solid ${accent}33`}}>
-      <SLabel small>How To Do It</SLabel>
+    <div style={{marginTop:20}}>
+      <SLabel small>How to do it</SLabel>
       <GuideLine title="Setup" items={guide.setup} color={accent}/>
       <GuideLine title="Move" items={guide.movement} color={accent}/>
       <GuideLine title="Avoid" items={guide.mistakes} color="#fb923c"/>
-      <div style={{fontSize:12,color:"#fb7185",lineHeight:1.45,marginTop:9,padding:"8px 9px",background:"#2a101422",border:"1px solid #fb718533",borderRadius:8}}>{guide.pain}</div>
+      {guide.pain&&<div style={{fontSize:12,color:"#fb7185",lineHeight:1.45,marginTop:12}}>{guide.pain}</div>}
     </div>
   );
 }
 
 function GuideLine({ title, items, color }) {
   return (
-    <div style={{marginTop:9}}>
-      <div style={{fontSize:10,color,letterSpacing:".14em",textTransform:"uppercase",marginBottom:5}}>{title}</div>
-      <div style={{display:"grid",gap:5}}>
-        {items.map(item=><div key={item} style={{fontSize:13,color:"#ddd",lineHeight:1.4}}>• {item}</div>)}
+    <div style={{marginTop:12}}>
+      <div style={{fontSize:11,color,fontWeight:600,marginBottom:5}}>{title}</div>
+      <div style={{display:"grid",gap:4}}>
+        {items.map(item=><div key={item} style={{fontSize:13,color:"#aaa",lineHeight:1.45}}>• {item}</div>)}
       </div>
     </div>
   );
@@ -497,11 +497,13 @@ function SetLogger({ exerciseName, setNum, defaultWeight, defaultReps, accent, o
 function CoachWhyPanel({ lines, accent }) {
   if (!lines?.length) return null;
   return (
-    <details style={{marginTop:14,padding:"13px 16px",background:"#080808",borderRadius:10,border:`1.5px solid ${accent}33`}}>
-      <summary style={{fontSize:10,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,cursor:"pointer"}}>Why This Plan</summary>
-      <div style={{display:"grid",gap:7,marginTop:10}}>
+    <details style={{marginTop:20}}>
+      <summary style={{fontSize:12,color:"#555",fontWeight:600,cursor:"pointer",listStyle:"none",display:"flex",alignItems:"center",gap:6}}>
+        <span style={{fontSize:10,color:"#444"}}>▶</span> Why this plan
+      </summary>
+      <div style={{display:"grid",gap:6,marginTop:10,paddingLeft:16}}>
         {lines.map(line=>(
-          <div key={line} style={{fontSize:13,color:"#ddd",lineHeight:1.45}}>• {line}</div>
+          <div key={line} style={{fontSize:13,color:"#888",lineHeight:1.5}}>{line}</div>
         ))}
       </div>
     </details>
@@ -590,16 +592,16 @@ function SwapLibrary({ exerciseName, activeName, accent, onApply, onRemove }) {
   const options = SUBSTITUTIONS[exerciseName] || [];
   if (!options.length) return null;
   return (
-    <div style={{marginTop:14,padding:"13px 16px",background:"#080808",borderRadius:10,border:`1.5px solid ${accent}33`}}>
-      <SLabel small>Swap Library</SLabel>
-      <div style={{display:"grid",gap:8,marginTop:8}}>
+    <div style={{marginTop:20}}>
+      <SLabel small>Swap options</SLabel>
+      <div style={{display:"grid",gap:6}}>
         {options.map(option=>{
           const active = activeName === option.name;
           return (
             <button key={option.name} onClick={()=>active ? onRemove(exerciseName) : onApply({ exercise:exerciseName, substitute:option.name, reason:option.reason, alternatives:options }, option)}
-              style={{padding:"10px 11px",background:active?`${accent}22`:"#101010",border:`1px solid ${active?accent:"#242424"}`,borderRadius:9,textAlign:"left",color:active?accent:"#ddd"}}>
-              <div style={{fontSize:13,fontWeight:700}}>{option.name}{active ? " · active" : ""}</div>
-              <div style={{fontSize:11,color:active?accent:"#888",lineHeight:1.4,marginTop:3}}>{option.reason}</div>
+              style={{padding:"10px 12px",background:active?`${accent}18`:"#161616",border:"none",borderRadius:10,textAlign:"left",color:active?accent:"#ccc"}}>
+              <div style={{fontSize:13,fontWeight:600}}>{option.name}{active ? " · active" : ""}</div>
+              <div style={{fontSize:12,color:active?accent:"#666",lineHeight:1.4,marginTop:2}}>{option.reason}</div>
             </button>
           );
         })}
@@ -611,14 +613,14 @@ function SwapLibrary({ exerciseName, activeName, accent, onApply, onRemove }) {
 function PlateauFixPanel({ fixes, accent }) {
   if (!fixes?.length) return null;
   return (
-    <div style={{marginTop:14,padding:"13px 16px",background:"#100d08",borderRadius:10,border:"1.5px solid #fbbf2444"}}>
-      <SLabel small>Plateau Fix</SLabel>
-      <div style={{display:"grid",gap:7,marginTop:8}}>
+    <div style={{marginTop:20}}>
+      <SLabel small>Plateau fix</SLabel>
+      <div style={{display:"grid",gap:6}}>
         {fixes.map((fix,i)=>(
-          <div key={fix} style={{fontSize:13,color:"#f5d48a",lineHeight:1.45}}>{i+1}. {fix}</div>
+          <div key={fix} style={{fontSize:13,color:"#c9a84c",lineHeight:1.5}}>{i+1}. {fix}</div>
         ))}
       </div>
-      <div style={{fontSize:12,color:"#9a7b34",lineHeight:1.45,marginTop:8}}>The coach only shows this when recent reps are fading or targets are being missed.</div>
+      <div style={{fontSize:12,color:"#555",lineHeight:1.45,marginTop:8}}>Shown when recent reps are fading or targets are being missed.</div>
     </div>
   );
 }
@@ -786,6 +788,25 @@ function LogbookPanel({ accent, onClose, onSave }) {
   );
 }
 
+// ── SESSION DEBRIEF ──────────────────────────────────────────────────────────
+function buildDebrief(firedTypes) {
+  const bullets = [];
+  for (const type of firedTypes) {
+    if (type.startsWith("pr-")) {
+      bullets.push({ icon: "↑", text: `Strength improved on ${type.slice(3)}.` });
+    } else if (type.startsWith("rep-drop-")) {
+      bullets.push({ icon: "↓", text: `Fatigue accumulated quickly on ${type.slice(9)}.` });
+    } else if (type.startsWith("sore-start-")) {
+      const muscle = type.includes(":") ? type.split(":")[1] : type.slice(11);
+      bullets.push({ icon: "~", text: `You trained through limited recovery on ${muscle}.` });
+    }
+  }
+  if (bullets.length === 0) {
+    bullets.push({ icon: "✓", text: "Session stayed within target recovery range." });
+  }
+  return bullets;
+}
+
 // ── MAIN VIEW ─────────────────────────────────────────────────────────────────
 export default function WorkoutView({
   sets, setSets, history, setHistory, completed, setCompleted,
@@ -822,6 +843,9 @@ export default function WorkoutView({
   const [exerciseOrder, setExerciseOrder] = useState([]);
   const [benchmarkDismissed, setBenchmarkDismissed] = useState(false);
   const [logbookMode, setLogbookMode] = useState(false);
+  const [coachAlerts, setCoachAlerts] = useState([]);
+  const [debrief,     setDebrief]     = useState(null);
+  const firedAlertTypes = useRef(new Set());
 
   const customWorkout = customRoutine?.enabled ? customRoutineWorkout(customRoutine, activeTab) : null;
   const wKey    = customWorkout ? "CUSTOM" : SCHEDULE[activeTab];
@@ -988,6 +1012,11 @@ export default function WorkoutView({
     });
   }, [workoutPlan, history, checkIns]);
 
+  const sessionIntent = useMemo(() => {
+    const labeled = muscleReadiness.map(m => ({ ...m, label: MUSCLE_LABELS[m.muscle] || m.muscle }));
+    return buildSessionIntent({ readiness: effectiveReadiness, history, checkIns, muscleReadiness: labeled });
+  }, [effectiveReadiness, history, checkIns, muscleReadiness]); // eslint-disable-line
+
   const saveReadiness = (nextReadiness) => {
     const entry = {
       kind:"readiness",
@@ -1042,6 +1071,14 @@ export default function WorkoutView({
     setTimeout(()=>setXpVisible(false),900);
   };
 
+  const fireCoachAlert = (type, msg) => {
+    if (firedAlertTypes.current.has(type)) return;
+    firedAlertTypes.current.add(type);
+    const id = Date.now() + Math.random();
+    setCoachAlerts(prev => [...prev.slice(-1), { id, msg }]);
+    setTimeout(() => setCoachAlerts(prev => prev.filter(a => a.id !== id)), 5000);
+  };
+
   const completeLoggedSet = (i, j, log, action = "save") => {
     const k = setKey(i,j);
     const ex = workoutPlan.exercises[i];
@@ -1050,6 +1087,37 @@ export default function WorkoutView({
       weight: Number.isFinite(Number(log.weight)) ? Math.max(Number(log.weight), 0) : getWeight(ex),
       reps: Number.isFinite(Number(log.reps)) ? Math.max(Math.round(Number(log.reps)), 0) : getTargetReps(ex),
     };
+
+    // — Coach event: rep drop (fatigue signal) ——————————————————
+    const prevSessionSets = Object.entries({...sessionLogs, [lk]: cleanLog})
+      .filter(([k2]) => k2.startsWith(`${i}-`))
+      .sort(([a],[b]) => Number(a.split("-")[1]) - Number(b.split("-")[1]))
+      .map(([,v]) => v.reps);
+    if (prevSessionSets.length >= 2) {
+      const first = prevSessionSets[0];
+      const last  = prevSessionSets[prevSessionSets.length - 1];
+      if (first > 0 && last <= first * 0.72) {
+        fireCoachAlert(`rep-drop-${ex.name}`, `Fatigue on ${ex.name} — reps dropped from ${first} to ${last}. Keep form clean.`);
+      }
+    }
+
+    // — Coach event: PR (new est1RM) ——————————————————————————
+    if (cleanLog.weight > 0 && cleanLog.reps > 0) {
+      const newEst = cleanLog.weight * (1 + cleanLog.reps / 30);
+      const prevBest = bestEstimated1RM(history, exerciseKey(ex), exConfig);
+      if (!prevBest || newEst > prevBest * 1.02) {
+        fireCoachAlert(`pr-${ex.name}`, `New est. 1RM on ${ex.name} — up to ${Math.round(newEst)}lbs. Strong set.`);
+      }
+    }
+
+    // — Coach event: sore-muscle start ————————————————————————
+    if (j === 0) {
+      const sore = muscleReadiness.find(m => m.state === "sore" && (ex.primary||[]).includes(m.muscle));
+      if (sore) {
+        const label = MUSCLE_LABELS[sore.muscle] || sore.muscle;
+        fireCoachAlert(`sore-start-${ex.name}:${label}`, `${ex.name} targets ${label}, which is still sore. Targets are already adjusted.`);
+      }
+    }
 
     setSets(p=>({...p,[k]:true}));
     setSessionLogs(p=>({...p,[lk]:cleanLog}));
@@ -1199,6 +1267,7 @@ export default function WorkoutView({
     }));
     setHistory(p=>[{day:activeTab,workout:wKey,date:dateStr(scheduledDate(activeTab)),timestamp:scheduledDate(activeTab).getTime(),duration:sessionElapsed,exercises:exSnap,readiness:effectiveReadiness,note:workoutNote.trim()||undefined,warmup:"Easy movement + light first set",cooldown:"Slow breathing + gentle mobility"} ,...p].slice(0,120));
     setCompleted(p=>({...p,[sessionKey]:dateStr(scheduledDate(activeTab))}));
+    setDebrief(buildDebrief(firedAlertTypes.current));
     playSound("workoutDone"); vibrate([100,60,100]);
     setConfetti(true);
     spawnXp(XP_VALUES.workout);
@@ -1232,6 +1301,7 @@ export default function WorkoutView({
     setXpAwards({});
     setFocusMode(false);
     setWorkoutSummary(null);
+    setDebrief(null);
     setUndoSet(null);
     setRestState(null);
     setLoggerState(null);
@@ -1343,7 +1413,7 @@ export default function WorkoutView({
             <div style={{fontSize:12,color:"#888",lineHeight:1.45}}>A quick 3-exercise test (plank, push-ups, squats) lets the coach calibrate your starting reps and targets. Optional — skip anytime.</div>
             <div style={{display:"flex",gap:8,marginTop:10}}>
               <button onClick={()=>setBenchmarkEditorOpen?.(true)} style={{padding:"8px 14px",background:accent,border:"none",borderRadius:8,color:"#050505",fontSize:12,fontWeight:800,cursor:"pointer",letterSpacing:".06em"}}>TAKE TEST</button>
-              <button onClick={()=>setBenchmarkDismissed(true)} style={{padding:"8px 12px",background:"transparent",border:"1px solid #2a2a2a",borderRadius:8,color:"#666",fontSize:12,cursor:"pointer"}}>Skip for now</button>
+              <button onClick={()=>setBenchmarkDismissed(true)} style={{padding:"8px 10px",background:"transparent",border:"none",color:"#555",fontSize:12,cursor:"pointer"}}>Skip for now</button>
             </div>
           </div>
         </div>
@@ -1364,30 +1434,51 @@ export default function WorkoutView({
       </div>
 
       {/* WORKOUT META */}
-      <div style={{padding:"18px 16px 14px",borderBottom:"1px solid #1a1a1a"}}>
+      <div style={{padding:"22px 16px 18px",borderBottom:"1px solid #111"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:accent,letterSpacing:".06em",filter:`drop-shadow(0 0 10px ${accent}66)`}}>{workout.label}</span>
+          <div>
+            <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:accent,letterSpacing:".06em",filter:`drop-shadow(0 0 10px ${accent}66)`}}>{workout.label}</span>
+            {sessionIntent&&(
+              <div style={{marginTop:2}}>
+                <span style={{
+                  fontSize:12,fontWeight:600,
+                  color: sessionIntent.tone==="boost"?accent : sessionIntent.tone==="caution"?"#fbbf24" : sessionIntent.tone==="deload"?"#60a5fa" : "#666"
+                }}>{sessionIntent.label}</span>
+              </div>
+            )}
+          </div>
           <button onClick={()=>{if(!confirm("Reset today's sets?"))return;const n={...sets};workoutPlan.exercises.forEach((ex,i)=>Array.from({length:getSetCount(ex)},(_,j)=>{delete n[setKey(i,j)];}));setSets(n);setCompleted(p=>{const n2={...p};delete n2[sessionKey];return n2;});setExpanded(null);setRestState(null);setLoggerState(null);setSessionLogs({});setXpAwards({});setFocusMode(false);setWorkoutSummary(null);setUndoSet(null);}}
-            style={{background:"none",border:"1px solid #2c2c2c",borderRadius:8,color:"#aaa",fontSize:12,padding:"8px 16px",letterSpacing:".08em"}}>RESET</button>
+            style={{background:"none",border:"none",color:"#444",fontSize:12,padding:"8px 10px"}}>Reset</button>
         </div>
         <div style={{marginTop:14}}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:7}}>
-            <span style={{fontSize:13,color:"#aaa",letterSpacing:".1em"}}>PROGRESS</span>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+            <span style={{fontSize:13,color:"#777",fontWeight:500}}>Progress</span>
             <span style={{fontSize:13,color:doneSets>0?accent:"#aaa"}}>{doneSets}/{totalSets} sets · ~{fmtDuration(estimatedRemaining)} left</span>
           </div>
           <div style={{height:7,background:"#1a1a1a",borderRadius:4,overflow:"hidden"}}>
             <div style={{height:"100%",width:`${(doneSets/totalSets)*100}%`,background:`linear-gradient(90deg,${accent}bb,${accent})`,transition:"width .4s ease",boxShadow:doneSets>0?`0 0 14px ${accent}bb`:"none"}}/>
           </div>
+          {doneSets===0&&!isCompleted&&sessionIntent?.note&&(
+            <div style={{marginTop:12,fontSize:13,color:"#777",lineHeight:1.55}}>
+              {sessionIntent.note}
+            </div>
+          )}
           {doneSets===0&&!isCompleted&&muscleReadiness.length>0&&(
-            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:10}}>
-              {muscleReadiness.map(({muscle,state})=>{
-                const col = state==="sore"?"#fb7185":state==="recovering"?"#fbbf24":"#4ade80";
-                return (
-                  <span key={muscle} style={{fontSize:11,color:col,border:`1px solid ${col}44`,borderRadius:20,padding:"3px 9px",background:`${col}10`,letterSpacing:".08em",textTransform:"uppercase"}}>
-                    {MUSCLE_LABELS[muscle]||muscle}{state==="ready"?" ✓":state==="recovering"?" ~":" ✗"}
-                  </span>
-                );
-              })}
+            <div style={{marginTop:20}}>
+              <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:8}}>
+                <div style={{fontSize:12,color:"#555",fontWeight:600}}>Muscle readiness</div>
+                <div style={{fontSize:11,color:"#3a3a3a"}}>Adapts around recovery.</div>
+              </div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {muscleReadiness.map(({muscle,state})=>{
+                  const col = state==="sore"?"#fb7185":state==="recovering"?"#fbbf24":"#4ade80";
+                  return (
+                    <span key={muscle} style={{fontSize:11,color:col,borderRadius:999,padding:"3px 10px",background:`${col}18`,fontWeight:500}}>
+                      {MUSCLE_LABELS[muscle]||muscle}{state==="ready"?" ✓":state==="recovering"?" ~":" ✗"}
+                    </span>
+                  );
+                })}
+              </div>
             </div>
           )}
           {doneSets===0&&!isCompleted&&<ProgressionPreview items={progressionPreview} accent={accent}/>}
@@ -1401,8 +1492,8 @@ export default function WorkoutView({
                 START WORKOUT
               </button>
               <button onClick={() => setLogbookMode(true)}
-                style={{padding:"14px 16px",background:"#0d0d0d",border:`1px solid ${accent}55`,borderRadius:13,color:accent,fontSize:11,fontWeight:800,letterSpacing:".08em",textTransform:"uppercase",lineHeight:1.3}}>
-                📓{"\n"}FREE{"\n"}LOG
+                style={{padding:"14px 16px",background:"#161616",border:"none",borderRadius:13,color:"#666",fontSize:11,fontWeight:500,lineHeight:1.3,textAlign:"center"}}>
+                📓{"\n"}Free{"\n"}log
               </button>
             </div>
           )}
@@ -1442,21 +1533,19 @@ export default function WorkoutView({
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
                     {done&&<span style={{color:accent,fontSize:17}}>✓</span>}
                     <span style={{fontSize:18,fontWeight:500,color:"#f5f5f5",opacity:done?.5:1,textDecoration:done?"line-through":"none",textDecorationColor:accent,textDecorationThickness:"1.5px"}}>{ex.name}</span>
-                    {ex.substitutedFor&&<span style={{fontSize:10,color:accent,border:`1px solid ${accent}66`,borderRadius:5,padding:"2px 6px",letterSpacing:".08em"}}>SWAP</span>}
+                    {ex.substitutedFor&&<span style={{fontSize:11,color:accent,fontWeight:600}}>swap</span>}
                     <span style={{fontSize:14,color:open?accent:"#aaa",transform:open?"rotate(180deg)":"none",transition:"all .2s",display:"inline-block"}}>⌄</span>
                   </div>
                   <div style={{fontSize:14,color:"#bbb",marginTop:5,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                     <span>{getSetCount(ex)} × {reps}{ex.repSuffix||""}</span>
-                    <span style={{color:"#666"}}>{curW > 0 ? `@ ${curW}lbs` : "bodyweight"}</span>
-                    {science.enabled&&<span style={{color:"#a78bfa",fontSize:12,padding:"2px 7px",borderRadius:5,background:"#a78bfa18",fontWeight:500}}>{science.label}</span>}
-                    {science.tempo&&<span style={{color:"#a78bfa",fontSize:12,padding:"2px 7px",borderRadius:5,background:"#a78bfa18",fontWeight:500}}>tempo {science.tempo.code}</span>}
-                    {hasNxtW&&<span style={{color:accent,fontSize:12,padding:"2px 7px",borderRadius:5,background:`${accent}18`,fontWeight:500}}>next: {nextW}lbs</span>}
+                    <span style={{color:"#555"}}>{curW > 0 ? `@ ${curW}lbs` : "bodyweight"}</span>
+                    {hasNxtW&&<span style={{color:accent,fontSize:12,fontWeight:500}}>→ {nextW}lbs</span>}
                     {maxTest&&<span style={{color:"#888",fontSize:11}}>max: {maxTest}</span>}
                   </div>
                   {!isCompleted&&doneSets===0&&(
                     <div style={{display:"flex",gap:6,marginTop:8}}>
-                      <button onClick={(e)=>{e.stopPropagation();setExerciseOrder(order=>moveExerciseOrder(order, workoutPlan.exercises, i, -1, exerciseKey));}} style={{background:"#101010",border:"1px solid #282828",borderRadius:7,color:"#aaa",padding:"6px 8px",fontSize:11}}>↑</button>
-                      <button onClick={(e)=>{e.stopPropagation();setExerciseOrder(order=>moveExerciseOrder(order, workoutPlan.exercises, i, 1, exerciseKey));}} style={{background:"#101010",border:"1px solid #282828",borderRadius:7,color:"#aaa",padding:"6px 8px",fontSize:11}}>↓</button>
+                      <button onClick={(e)=>{e.stopPropagation();setExerciseOrder(order=>moveExerciseOrder(order, workoutPlan.exercises, i, -1, exerciseKey));}} style={{background:"none",border:"none",color:"#444",padding:"4px 6px",fontSize:13}}>↑</button>
+                      <button onClick={(e)=>{e.stopPropagation();setExerciseOrder(order=>moveExerciseOrder(order, workoutPlan.exercises, i, 1, exerciseKey));}} style={{background:"none",border:"none",color:"#444",padding:"4px 6px",fontSize:13}}>↓</button>
                     </div>
                   )}
                 </div>
@@ -1474,13 +1563,13 @@ export default function WorkoutView({
               </div>
 
               {open&&(
-                <div style={{marginTop:18,padding:18,background:"linear-gradient(180deg,#0e0e0e,#090909)",border:"1px solid #232323",borderRadius:14,animation:"slideDown .25s ease-out"}}>
+                <div style={{marginTop:18,padding:18,background:"#111",borderRadius:18,animation:"slideDown .25s ease-out"}}>
                   <SLabel>Animation</SLabel>
                   <ExerciseAnimation folder={exerciseFolder(ex)} video={ex.video} accent={accent}/>
 
                   {/* Progress graph */}
-                  <div style={{marginTop:16,padding:"14px 16px",background:"#080808",borderRadius:10,border:`1.5px solid ${exColor}33`}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                  <div style={{marginTop:16,padding:"16px",background:"#0a0a0a",borderRadius:12}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:0}}>
                       <SLabel small>Your Progress</SLabel>
                       {histData.length>=2&&(
                         <span style={{fontSize:12,color:exColor}}>{histData[histData.length-1].totalReps} reps last session</span>
@@ -1489,10 +1578,10 @@ export default function WorkoutView({
                     <MiniGraph data={histData} color={exColor} height={85}/>
                   </div>
 
-                  <div style={{marginTop:14,padding:"13px 16px",background:"#080808",borderRadius:10,border:`1.5px solid ${accent}33`}}>
-                    <SLabel small>Form Cue</SLabel>
-                    <div style={{fontSize:15,color:"#f0f0f0",marginTop:5,lineHeight:1.55}}>→ {ex.tip}</div>
-                    {ex.substitutedFor&&<div style={{fontSize:12,color:"#888",marginTop:8}}>Original: {ex.substitutedFor}</div>}
+                  <div style={{marginTop:20}}>
+                    <SLabel small>Form cue</SLabel>
+                    <div style={{fontSize:15,color:"#e0e0e0",lineHeight:1.6}}>{ex.tip}</div>
+                    {ex.substitutedFor&&<div style={{fontSize:12,color:"#555",marginTop:6}}>Original: {ex.substitutedFor}</div>}
                   </div>
 
                   <ExerciseGuide guide={guide} accent={accent}/>
@@ -1509,36 +1598,36 @@ export default function WorkoutView({
                   <CoachCard suggestions={suggestions.filter(s => s.cat === "Form" || s.cat === "Science" || s.cat === "Watch" || s.cat === "Habits").slice(0, 4)} accent={accent} onOpen={()=>setCoachOpen(true)}/>
 
                   {science.enabled&&(
-                    <div style={{marginTop:14,padding:"13px 16px",background:"#080808",borderRadius:10,border:"1.5px solid #a78bfa44"}}>
-                      <SLabel small>Science Coach</SLabel>
-                      <div style={{fontSize:14,color:"#ddd",marginTop:5,lineHeight:1.55}}>{science.note}</div>
-                      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:9}}>
-                        {science.targetRepReason&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",border:"1px solid #a78bfa44",borderRadius:7,padding:"6px 8px"}}>target {science.targetReps} reps</span>}
-                        {science.tempo&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",border:"1px solid #a78bfa44",borderRadius:7,padding:"6px 8px"}}>tempo {science.tempo.code}</span>}
-                        {science.est1RM&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",border:"1px solid #a78bfa44",borderRadius:7,padding:"6px 8px"}}>est. 1RM {science.est1RM}lbs</span>}
-                        {science.percent&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",border:"1px solid #a78bfa44",borderRadius:7,padding:"6px 8px"}}>{Math.round(science.percent*100)}% target</span>}
+                    <div style={{marginTop:20}}>
+                      <SLabel small>Science coach</SLabel>
+                      <div style={{fontSize:14,color:"#bbb",lineHeight:1.6}}>{science.note}</div>
+                      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:12}}>
+                        {science.targetRepReason&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",borderRadius:999,padding:"4px 10px"}}>target {science.targetReps} reps</span>}
+                        {science.tempo&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",borderRadius:999,padding:"4px 10px"}}>tempo {science.tempo.code}</span>}
+                        {science.est1RM&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",borderRadius:999,padding:"4px 10px"}}>est. 1RM {science.est1RM}lbs</span>}
+                        {science.percent&&<span style={{fontSize:12,color:"#a78bfa",background:"#a78bfa18",borderRadius:999,padding:"4px 10px"}}>{Math.round(science.percent*100)}% target</span>}
                       </div>
-                      {science.tempo&&<div style={{fontSize:13,color:"#aaa",lineHeight:1.45,marginTop:9}}>{science.tempo.note}</div>}
-                      {science.variation&&<div style={{fontSize:13,color:"#aaa",lineHeight:1.45,marginTop:7}}>Variation: <span style={{color:"#d8b4fe"}}>{science.variation.name}</span>. {science.variation.note}</div>}
+                      {science.tempo&&<div style={{fontSize:13,color:"#777",lineHeight:1.45,marginTop:10}}>{science.tempo.note}</div>}
+                      {science.variation&&<div style={{fontSize:13,color:"#777",lineHeight:1.45,marginTop:8}}>Variation: <span style={{color:"#d8b4fe"}}>{science.variation.name}</span>. {science.variation.note}</div>}
                     </div>
                   )}
 
-                  <div style={{marginTop:18}}>
+                  <div style={{marginTop:20}}>
                     <SLabel>Muscles</SLabel>
                     <MuscleDiagram primary={ex.primary} secondary={ex.secondary} accent={accent}/>
-                    <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:7,marginTop:12}}>
-                      {ex.primary.map(m=><span key={m} style={{fontSize:13,padding:"5px 12px",borderRadius:7,background:accent,color:"#0a0a0a",fontWeight:500}}>{MUSCLE_LABELS[m]}</span>)}
-                      {ex.secondary.map(m=><span key={m} style={{fontSize:13,padding:"5px 12px",borderRadius:7,border:`1px solid ${accent}66`,color:accent}}>{MUSCLE_LABELS[m]}</span>)}
+                    <div style={{display:"flex",flexWrap:"wrap",gap:10,marginTop:12}}>
+                      {ex.primary.map(m=><span key={m} style={{fontSize:13,color:accent,fontWeight:600}}>{MUSCLE_LABELS[m]}</span>)}
+                      {ex.secondary.map(m=><span key={m} style={{fontSize:13,color:"#555"}}>{MUSCLE_LABELS[m]}</span>)}
                     </div>
                   </div>
 
                   {/* Weight config */}
-                  <div style={{marginTop:18,padding:"14px 16px",background:"#080808",borderRadius:10,border:"1px solid #1f1f1f"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-                      <SLabel small>Working Weight</SLabel>
-                      {hasNxtW&&<span style={{fontSize:12,color:accent,background:`${accent}18`,padding:"3px 9px",borderRadius:6}}>→ Try {nextW}lbs</span>}
+                  <div style={{marginTop:20}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                      <SLabel small>Working weight</SLabel>
+                      {hasNxtW&&<span style={{fontSize:12,color:accent,fontWeight:500}}>→ Try {nextW}lbs</span>}
                     </div>
-                    <div style={{display:"flex",alignItems:"center",background:"#101010",borderRadius:10,border:`1px solid ${accent}33`,overflow:"hidden"}}>
+                    <div style={{display:"flex",alignItems:"center",background:"#161616",borderRadius:12,overflow:"hidden"}}>
                       <button onClick={()=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:Math.max((p[exKey]?.weight||curW)-(settings.weightIncrement||1),0)}}))} style={{width:52,height:52,background:"transparent",border:"none",color:"#ccc",fontSize:24}}>−</button>
                       <input value={curW} onChange={e=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:Math.max(Number(e.target.value)||0,0)}}))} type="number" inputMode="decimal" min="0" step="any" aria-label={`${ex.name} working weight`}
                         style={{flex:1,minWidth:0,textAlign:"center",fontSize:20,fontWeight:500,color:"#fff",background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono, monospace"}}/>
@@ -1549,11 +1638,11 @@ export default function WorkoutView({
 
                   {/* Logged sets today */}
                   {Array.from({length:getSetCount(ex)},(_,j)=>sessionLogs[logKey(i,j)]).some(Boolean)&&(
-                    <div style={{marginTop:12,padding:"14px 16px",background:"#080808",borderRadius:10,border:`1px solid ${accent}22`}}>
-                      <SLabel small>Today's Sets</SLabel>
-                      <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
+                    <div style={{marginTop:16}}>
+                      <SLabel small>Today's sets</SLabel>
+                      <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
                         {Array.from({length:getSetCount(ex)},(_,j)=>{const lg=sessionLogs[logKey(i,j)];return lg?(
-                          <div key={j} style={{padding:"8px 12px",background:`${accent}15`,borderRadius:8,border:`1px solid ${accent}44`,fontSize:13,color:accent,fontWeight:500}}>S{j+1}: {lg.weight > 0 ? `${lg.weight}lbs` : "bodyweight"} × {lg.reps}</div>
+                          <span key={j} style={{fontSize:13,color:accent,fontWeight:500}}>S{j+1} {lg.weight > 0 ? `${lg.weight}lbs` : "bw"} × {lg.reps}</span>
                         ):null;})}
                       </div>
                     </div>
@@ -1581,6 +1670,21 @@ export default function WorkoutView({
         )}
       </div>
 
+      {isCompleted && debrief && (
+        <div style={{margin:"16px 16px 0",padding:"18px",background:"#141414",borderRadius:16}}>
+          <div style={{fontSize:12,color:"#555",fontWeight:600,marginBottom:14}}>Session debrief</div>
+          {debrief.map((b,i)=>{
+            const col = b.icon==="↑"?accent : b.icon==="↓"?"#fbbf24" : b.icon==="~"?"#fb7185" : "#4ade80";
+            return (
+              <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:i<debrief.length-1?10:0}}>
+                <span style={{fontSize:12,color:col,fontWeight:700,minWidth:14,lineHeight:1.55}}>{b.icon}</span>
+                <span style={{fontSize:13,color:"#999",lineHeight:1.55}}>{b.text}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <ThisWeek completed={completed} setActiveTab={setActiveTab}/>
       <WeeklyMusclePlan completed={completed} accent={accent}/>
 
@@ -1600,7 +1704,7 @@ export default function WorkoutView({
               {h.note&&<div style={{fontSize:12,color:"#777",lineHeight:1.4,marginTop:6}}>Note: {h.note}</div>}
             </div>
           ))}
-          {history.length>4&&<button onClick={()=>setActiveView("calendar")} style={{background:"none",border:"1px solid #2c2c2c",borderRadius:9,color:"#bbb",padding:"12px 18px",fontSize:13,letterSpacing:".1em",marginTop:14,fontFamily:"DM Mono,monospace"}}>VIEW ALL → CALENDAR</button>}
+          {history.length>4&&<button onClick={()=>setActiveView("calendar")} style={{background:"none",border:"1px solid #2c2c2c",borderRadius:9,color:"#bbb",padding:"12px 18px",fontSize:13,letterSpacing:".04em",marginTop:14}}>View all → Calendar</button>}
         </div>
       )}
       <div style={{height:32}}/>
@@ -1652,6 +1756,14 @@ export default function WorkoutView({
           playSound("restEnd");vibrate([200,60,200]);focusMode?setRestState(p=>p?{...p,done:true}:null):setRestState(null);
         }}/>}
       {showFeedback&&<PostWorkoutFeedback exercises={workoutPlan.exercises} sessionLogs={sessionLogs} getLogKey={logKey} exConfig={exConfig} history={history} onComplete={handleFeedback} accent={accent}/>}
+      {coachAlerts.length > 0 && (
+        <div style={{position:"fixed",bottom:"calc(88px + env(safe-area-inset-bottom))",left:16,right:16,zIndex:270,pointerEvents:"none"}}>
+          <div className="mobile-shell" style={{background:"#0a0a0a",border:`1px solid ${accent}55`,borderRadius:12,padding:"11px 14px",boxShadow:`0 0 24px ${accent}22`,animation:"slideDown .2s ease-out"}}>
+            <div style={{fontSize:10,color:accent,letterSpacing:".14em",textTransform:"uppercase",marginBottom:4}}>Coach</div>
+            <div style={{fontSize:13,color:"#ddd",lineHeight:1.45}}>{coachAlerts[coachAlerts.length-1].msg}</div>
+          </div>
+        </div>
+      )}
       {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}
       <Confetti active={confetti} accent={accent} onDone={()=>setConfetti(false)}/>
       <CoachFab onClick={()=>setCoachOpen(true)} accent={accent}/>
@@ -1662,8 +1774,8 @@ export default function WorkoutView({
   );
 }
 
-function StatCard({label,value,accent}){return(<div style={{flex:1,padding:"14px",background:"#0d0d0d",border:"1px solid #1f1f1f",borderRadius:11}}><div style={{fontSize:11,color:"#aaa",letterSpacing:".14em",textTransform:"uppercase"}}>{label}</div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:accent||"#fafafa",marginTop:3,letterSpacing:".04em"}}>{value}</div></div>);}
-function SLabel({children,small}){return(<div style={{fontSize:small?10:11,color:"#aaa",letterSpacing:".16em",textTransform:"uppercase",fontWeight:500,marginBottom:small?0:9}}>{children}</div>);}
+function StatCard({label,value,accent}){return(<div style={{flex:1,padding:"16px",background:"#161616",borderRadius:14}}><div style={{fontSize:11,color:"#555",letterSpacing:".02em",fontWeight:600}}>{label}</div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:accent||"#fafafa",marginTop:4,letterSpacing:".04em"}}>{value}</div></div>);}
+function SLabel({children,small}){return(<div style={{fontSize:small?11:12,color:"#666",letterSpacing:".02em",fontWeight:600,marginBottom:small?6:10}}>{children}</div>);}
 
 function moveExerciseOrder(order, exercises, index, delta, keyFn) {
   const keys = order.length ? [...order] : exercises.map(keyFn);

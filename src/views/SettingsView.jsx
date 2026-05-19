@@ -197,7 +197,7 @@ export default function SettingsView({
       <Accordion title="Data" ui={ui}>
         <Action label="Export Data" desc="Download history, progression, and settings as JSON" onClick={exportData} ui={ui} />
         <button onClick={() => setBackupOpen(v => !v)}
-          style={{ width:"100%", padding:"12px 16px", background:ui.card, border:`1px solid ${ui.border}`, borderRadius:10, cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", fontFamily:"DM Mono, monospace", boxShadow:ui.shadow }}>
+          style={{ width:"100%", padding:"12px 16px", background:ui.card, border:`1px solid ${ui.border}`, borderRadius:10, cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", boxShadow:ui.shadow }}>
           <span style={{ fontSize:15, color:ui.soft }}>Backup & Recovery</span>
           <span style={{ fontSize:13, color:ui.muted }}>{backupOpen ? "▲" : "▼"}</span>
         </button>
@@ -217,8 +217,8 @@ export default function SettingsView({
           <div style={{ padding:16, background:"#1a0a0a", border:"1px solid #ff444466", borderRadius:10 }}>
             <div style={{ fontSize:14, color:"#ff8888", marginBottom:12 }}>This wipes ALL data — sessions, history, settings, and profile. App restarts fresh. A backup snapshot is saved first so you can recover.</div>
             <div style={{ display:"flex", gap:8 }}>
-              <button onClick={() => { resetAllData(); setConfirming(false); }} style={{ flex:1, padding:"10px 14px", background:"#ff4444", color:"#fff", border:"none", borderRadius:7, cursor:"pointer", fontFamily:"DM Mono, monospace", fontSize:15, letterSpacing:"0.1em" }}>YES, DELETE ALL</button>
-              <button onClick={() => setConfirming(false)} style={{ flex:1, padding:"10px 14px", background:"transparent", color:"#aaa", border:"1px solid #333", borderRadius:7, cursor:"pointer", fontFamily:"DM Mono, monospace", fontSize:15, letterSpacing:"0.1em" }}>CANCEL</button>
+              <button onClick={() => { resetAllData(); setConfirming(false); }} style={{ flex:1, padding:"10px 14px", background:"#ff4444", color:"#fff", border:"none", borderRadius:7, cursor:"pointer", fontSize:15, letterSpacing:"0.1em" }}>YES, DELETE ALL</button>
+              <button onClick={() => setConfirming(false)} style={{ flex:1, padding:"10px 14px", background:"transparent", color:"#aaa", border:"1px solid #333", borderRadius:7, cursor:"pointer", fontSize:15, letterSpacing:"0.1em" }}>CANCEL</button>
             </div>
           </div>
         ) : (
@@ -257,7 +257,7 @@ export default function SettingsView({
             value={settings.equipmentProfile || "fixed_dumbbells"} onChange={v => update("equipmentProfile", v)} accent={accent} ui={ui} />
         </Row>
         <button onClick={() => setAdvancedCoach(v => !v)}
-          style={{ width:"100%", padding:"12px 16px", background:ui.card, border:`1px solid ${ui.border}`, borderRadius:10, cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", fontFamily:"DM Mono, monospace", boxShadow:ui.shadow }}>
+          style={{ width:"100%", padding:"12px 16px", background:ui.card, border:`1px solid ${ui.border}`, borderRadius:10, cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", boxShadow:ui.shadow }}>
           <span style={{ fontSize:15, color:ui.soft }}>More Coach Options</span>
           <span style={{ fontSize:13, color:ui.muted }}>{advancedCoach ? "▲" : "▼"}</span>
         </button>
@@ -330,7 +330,6 @@ function Accordion({ title, children, ui }) {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          fontFamily: "DM Mono, monospace",
           marginBottom: open ? 0 : 8,
           boxShadow: ui.shadow,
         }}
@@ -401,7 +400,7 @@ function SegControl({ options, value, onChange, accent, ui }) {
         const active = opt.v === value;
         return (
           <button key={opt.v} onClick={() => onChange(opt.v)} title={opt.tip}
-            style={{ flex:1, padding:"8px 4px", background:active ? accent : "transparent", color:active ? "#050505" : ui.soft, border:"none", borderRadius:5, cursor:"pointer", fontSize:15, letterSpacing:"0.06em", fontWeight:active ? 500 : 400, fontFamily:"DM Mono, monospace", transition:"all 0.18s", boxShadow:active ? `0 0 12px ${accent}77` : "none" }}>
+            style={{ flex:1, padding:"8px 4px", background:active ? accent : "transparent", color:active ? "#050505" : ui.soft, border:"none", borderRadius:5, cursor:"pointer", fontSize:15, letterSpacing:"0.06em", fontWeight:active ? 500 : 400, transition:"all 0.18s", boxShadow:active ? `0 0 12px ${accent}77` : "none" }}>
             {opt.l}
           </button>
         );
@@ -432,7 +431,7 @@ function NumberInput({ value, onChange, suffix, ui }) {
     <div style={{ display:"flex", alignItems:"center", background:ui.control, border:`1px solid ${ui.border}`, borderRadius:9, overflow:"hidden" }}>
       <input value={value} onChange={e => onChange(Number(e.target.value) || 0)}
         type="number" inputMode="decimal" min="0" step="any"
-        style={{ flex:1, minWidth:0, padding:"12px 12px", background:"transparent", border:"none", outline:"none", color:ui.text, fontFamily:"DM Mono, monospace", fontSize:16 }} />
+        style={{ flex:1, minWidth:0, padding:"12px 12px", background:"transparent", border:"none", outline:"none", color:ui.text, fontSize:16 }} />
       <span style={{ fontSize:12, color:ui.muted, paddingRight:12 }}>{suffix}</span>
     </div>
   );
@@ -469,7 +468,7 @@ function ProfileField({ label, value, onChange, placeholder, ui }) {
 function Action({ label, desc, onClick, danger, ui }) {
   return (
     <button onClick={onClick}
-      style={{ padding:"14px 16px", background:ui.card, borderRadius:10, border:`1px solid ${danger ? "#ff444433" : ui.border}`, cursor:"pointer", textAlign:"left", width:"100%", fontFamily:"DM Mono, monospace", transition:"all 0.15s", boxShadow:ui.shadow }}
+      style={{ padding:"14px 16px", background:ui.card, borderRadius:10, border:`1px solid ${danger ? "#ff444433" : ui.border}`, cursor:"pointer", textAlign:"left", width:"100%", transition:"all 0.15s", boxShadow:ui.shadow }}
       onMouseEnter={e => e.currentTarget.style.borderColor = danger ? "#ff444499" : (ui.light ? "#8fb0ce" : "#3a3a3a")}
       onMouseLeave={e => e.currentTarget.style.borderColor = danger ? "#ff444433" : ui.border}>
       <div style={{ fontSize:15, color:danger ? "#ff5555" : ui.text }}>{label} →</div>

@@ -417,7 +417,20 @@ export function sciencePrescription({ exercise, history = [], checkIns = [], set
   }
 
   const suggestedWeight = pct && est1RM ? Math.max(2.5, Math.round((est1RM * pct) * 2) / 2) : null;
-  const targetRepReason = `Exact ${targetReps}: ${readinessLabel(readiness)}, ${trend.status} trend, ${feedback.status} feedback.`;
+  const targetRepReason = (() => {
+    const sc = readinessScore(readiness);
+    if (feedback.status === "pain")                                return `Reduced target — pain was flagged in a recent session.`;
+    if (label === "Protect")                                       return `Reduced target — pain or high fatigue detected.`;
+    if (label === "Deload")                                        return `Deload target — weekly fatigue is elevated.`;
+    if (feedback.status === "hard" && trend.status === "stalling") return `Reduced target — sets are hard and progress has stalled.`;
+    if (feedback.status === "hard")                                return `Reduced target — recent sets were marked hard.`;
+    if (feedback.status === "easy" && trend.status !== "stalling") return `Increased target — recent sets looked strong.`;
+    if (trend.status === "stalling")                               return `Held target — a performance plateau was detected.`;
+    if (load.status === "high")                                    return `Capped volume — you've trained frequently this week.`;
+    if (sc >= 1)                                                   return `Full target — energy is high and trend is clean.`;
+    if (sc <= -1)                                                  return `Reduced target — recovery is still limited.`;
+    return `Held target — recovery and recent feedback look stable.`;
+  })();
   return { enabled:true, targetReps, repRange, targetRepReason, tempo, variation, sets, est1RM, suggestedWeight, label, note, percent:pct, trend, feedback, load, behavior };
 }
 
@@ -1575,5 +1588,67 @@ export function generateCoachRoutine({
     difficulty,
     exercises:   selected,
     rationale,
+  };
+}
+
+// muscleReadiness: array of { muscle, state: "ready" | "recovering" | "sore" }
+// Returns { label, note, tone: "boost" | "caution" | "deload" | "neutral" }
+export function buildSessionIntent({ readiness = DEFAULT_READINESS, history = [], checkIns = [], muscleReadiness = [] }) {
+  const sc = readinessScore(readiness);
+  const deload = recommendDeload({ history, checkIns });
+  const load = recentTrainingLoad(history);
+  const recentPain = checkIns.some(ci =>
+    ci.kind === "set_feedback" && ci.feeling === "pain" &&
+    (Date.now() - (ci.timestamp || 0)) < 7 * 86400000
+  );
+  const soreMuscles    = muscleReadiness.filter(m => m.state === "sore").map(m => m.label || m.muscle);
+  const recoveringMuscles = muscleReadiness.filter(m => m.state === "recovering").map(m => m.label || m.muscle);
+  const readyCount     = muscleReadiness.filter(m => m.state === "ready").length;
+  const totalCount     = muscleReadiness.length;
+
+  if (recentPain) return {
+    label:"Caution Session",
+    note:"Pain was flagged recently. Load is reduced and swaps are available.",
+    tone:"caution",
+  };
+  if (deload.recommended) return {
+    label:"Adaptive Deload Active",
+    note:"Volume reduced to improve recovery. " + (deload.reason || "Weekly fatigue is elevated."),
+    tone:"deload",
+  };
+  if (load.status === "high" && sc <= -1) return {
+    label:"Recovery Session",
+    note:"High training frequency and lower energy today. Keeping volume moderate.",
+    tone:"caution",
+  };
+  if (sc <= -2) return {
+    label:"Recovery Session",
+    note:"Energy is low today. Targets are reduced — focus on clean movement.",
+    tone:"caution",
+  };
+  if (soreMuscles.length >= 2) return {
+    label:"Recovery-Focused Session",
+    note:`${soreMuscles.slice(0, 2).join(" and ")} fatigue still elevated. Coach has adjusted accordingly.`,
+    tone:"caution",
+  };
+  if (sc >= 2 && readyCount === totalCount && totalCount > 0) return {
+    label:"Performance Session",
+    note:"Energy is high and all target muscles are recovered. Push clean top sets.",
+    tone:"boost",
+  };
+  if (sc >= 1 && readyCount >= Math.ceil(totalCount * 0.7)) return {
+    label:"Performance Session",
+    note:"Recovery looks strong today. Good conditions for quality work.",
+    tone:"boost",
+  };
+  if (recoveringMuscles.length > 0 && sc >= 0) return {
+    label:"Balanced Session",
+    note:`${recoveringMuscles[0]} is still recovering — targets are balanced around that.`,
+    tone:"neutral",
+  };
+  return {
+    label:"Balanced Session",
+    note:"Energy and recovery are both stable. Targets set to match.",
+    tone:"neutral",
   };
 }
