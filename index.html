@@ -4,21 +4,50 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#f8fffb" />
-    <meta name="application-name" content="Lift Log" />
+    <meta name="application-name" content="Gym Forged" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Lift Log" />
+    <meta name="apple-mobile-web-app-title" content="Gym Forged" />
     <meta name="format-detection" content="telephone=no" />
     <meta name="color-scheme" content="light dark" />
     <link rel="manifest" href="manifest.json" />
+    <!-- Fonts: preconnect + parallel load (no render-blocking @import). Oswald 400 dropped (unused). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Geist+Mono:wght@400;500&family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap" />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23050505' rx='18'/%3E%3Ctext x='50' y='68' font-size='56' text-anchor='middle' fill='%234ade80' font-family='Arial Black' font-weight='900'%3EL%3C/text%3E%3C/svg%3E" />
-    <title>Lift Log</title>
-    <script type="module" crossorigin src="/Lift-Log/assets/index-Dvm7tYZg.js"></script>
+    <title>Gym Forged</title>
+    <style>
+      /* Boot splash — painted on first HTML parse, before any JS loads */
+      #boot-splash {
+        position: fixed; inset: 0; z-index: 9999;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        background:
+          radial-gradient(ellipse 80% 40% at 50% 105%, rgba(249,115,22,.22) 0%, transparent 65%),
+          radial-gradient(ellipse 50% 20% at 50% 50%, rgba(255,122,26,.06) 0%, transparent 60%),
+          linear-gradient(180deg, #100d09 0%, #030201 100%);
+        opacity: 1; transition: opacity .4s ease;
+      }
+      #boot-splash.hide { opacity: 0; pointer-events: none; }
+      #boot-splash .bs-word { font-family: 'Bebas Neue','Arial Narrow',sans-serif; font-size: 72px; letter-spacing: .1em; line-height: 1; margin-bottom: 12px; }
+      #boot-splash .bs-gym { color: #ede8de; }
+      #boot-splash .bs-forged { color: #ff7a1a; filter: drop-shadow(0 0 18px #ff7a1a99) drop-shadow(0 0 48px #f9731659); }
+      #boot-splash .bs-tag { font-size: 11px; color: rgba(255,140,50,.5); letter-spacing: .28em; text-transform: uppercase; margin-bottom: 44px; }
+      #boot-splash .bs-track { width: 140px; height: 2px; background: rgba(255,140,50,.10); border-radius: 2px; overflow: hidden; }
+      #boot-splash .bs-fill { height: 100%; width: 0; background: #ff7a1a; border-radius: 2px; box-shadow: 0 0 8px #ff7a1a8a; animation: bsfill .7s ease forwards; }
+      @keyframes bsfill { from { width: 0 } to { width: 100% } }
+    </style>
+    <script type="module" crossorigin src="/Lift-Log/assets/index-Bv3sfWgB.js"></script>
     <link rel="modulepreload" crossorigin href="/Lift-Log/assets/exercise-db-DusN7tRR.js">
-    <link rel="stylesheet" crossorigin href="/Lift-Log/assets/index-nGQ73nJ2.css">
+    <link rel="stylesheet" crossorigin href="/Lift-Log/assets/index-C5czrcnE.css">
   </head>
   <body>
     <div id="root"></div>
+    <div id="boot-splash">
+      <div class="bs-word"><span class="bs-gym">GYM </span><span class="bs-forged">FORGED</span></div>
+      <div class="bs-tag">shape your strength</div>
+      <div class="bs-track"><div class="bs-fill"></div></div>
+    </div>
   </body>
 </html>
