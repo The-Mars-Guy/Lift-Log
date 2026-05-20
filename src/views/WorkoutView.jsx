@@ -14,7 +14,8 @@ import { Confetti, XpFloat } from "./workout/Effects.jsx";
 import { FirstRunSetup, AssessmentFlow, ASSESSMENT_EXERCISES } from "./workout/Assessment.jsx";
 import PostWorkoutFeedback from "./workout/PostWorkoutFeedback.jsx";
 import { buildSuggestions, CoachDrawer, CoachFab, CoachCard } from "./workout/Coach.jsx";
-import { surface, text, status } from "../theme.js";
+import { surface, text, status, T } from "../theme.js";
+import { Disp, Caps, Bar, Card } from "../components/Primitives.jsx";
 
 const SET_FEELINGS = [
   { key:"easy", label:"EASY" },
@@ -253,10 +254,10 @@ function FocusWorkoutMode({
         )}
 
         {previous&&(
-          <div style={{marginBottom:8,padding:"9px 11px",background:surface.bg0,border:`1px solid ${accent}33`,borderRadius:10}}>
-            <div style={{fontSize:10,color:accent,fontWeight:600,marginBottom:3}}>Last Time</div>
+          <Card level={1} style={{marginBottom:8,border:`1px solid ${accent}33`}}>
+            <Caps color={accent} style={{display:"block",marginBottom:3}}>Last Time</Caps>
             <div style={{fontSize:13,color:"#ddd",lineHeight:1.4}}>{previous.sets} sets · {previous.totalReps} reps · best {previous.bestReps} reps{previous.bestWeight > 0 ? ` @ ${previous.bestWeight}lbs` : " bodyweight"}</div>
-          </div>
+          </Card>
         )}
 
         <ExerciseAnimation folder={exerciseFolder(next.ex)} video={next.ex.video} accent={accent} compact bare/>
@@ -274,15 +275,15 @@ function FocusWorkoutMode({
           })}
         </div>
 
-        <div style={{marginTop:10,padding:"10px 12px",background:surface.bg0,border:"1px solid #202020",borderRadius:11}}>
-          <div style={{fontSize:10,color:"#777",fontWeight:600,marginBottom:4}}>Cue</div>
+        <Card level={1} style={{marginTop:10}}>
+          <Caps style={{display:"block",marginBottom:4}}>Cue</Caps>
           <div style={{fontSize:beginnerFormMode?17:13,color:"#ddd",lineHeight:1.38}}>{beginnerFormMode && guide ? guide.movement[0] : next.ex.tip}</div>
           {science.enabled&&science.tempo&&(
             <div style={{fontSize:12,color:accent,lineHeight:1.4,marginTop:7}}>
               Tempo {science.tempo.code}: {science.tempo.label}
             </div>
           )}
-        </div>
+        </Card>
 
         {tempoPattern.length > 0&&tempoOn&&(
           <div style={{marginTop:10,padding:"10px 12px",background:surface.bg0,border:`1px solid ${accent}`,borderRadius:11,boxShadow:`0 0 22px ${accent}22`}}>
@@ -319,8 +320,8 @@ function FocusWorkoutMode({
           </div>
         )}
 
-        <div style={{height:6,background:"#181818",borderRadius:5,overflow:"hidden",marginTop:12}}>
-          <div style={{height:"100%",width:`${(doneSets/totalSets)*100}%`,background:accent,boxShadow:`0 0 12px ${accent}`,transition:"width .25s"}}/>
+        <div style={{marginTop:12}}>
+          <Bar value={doneSets} max={totalSets} color={accent} height={6} />
         </div>
 
         {allDone&&!isCompleted&&(
@@ -371,20 +372,20 @@ function WorkoutSummary({ summary, accent, onClose }) {
         )}
         <div style={{display:"grid",gap:10,marginBottom:14}}>
           {summary.bestSet&&(
-            <div style={{padding:14,background:surface.bg0,border:"1px solid #202020",borderRadius:12}}>
-              <div style={{fontSize:11,color:text.tertiary,fontWeight:600,marginBottom:6}}>Best Set</div>
+            <Card level={1}>
+              <Caps style={{display:"block",marginBottom:6}}>Best Set</Caps>
               <div style={{fontSize:15,color:"#eee",lineHeight:1.45}}>{summary.bestSet.name}: {summary.bestSet.weight > 0 ? `${summary.bestSet.weight}lbs` : "bodyweight"} x {summary.bestSet.reps}</div>
-            </div>
+            </Card>
           )}
           {summary.hardest&&(
-            <div style={{padding:14,background:surface.bg0,border:"1px solid #202020",borderRadius:12}}>
-              <div style={{fontSize:11,color:text.tertiary,fontWeight:600,marginBottom:6}}>Limiter</div>
+            <Card level={1}>
+              <Caps style={{display:"block",marginBottom:6}}>Limiter</Caps>
               <div style={{fontSize:15,color:"#eee",lineHeight:1.45}}>{summary.hardest.name} was the main limiter today.</div>
-            </div>
+            </Card>
           )}
         </div>
-        <div style={{padding:16,background:surface.bg0,border:"1px solid #202020",borderRadius:12,marginBottom:14}}>
-          <div style={{fontSize:11,color:accent,fontWeight:600,marginBottom:8}}>Coach Note</div>
+        <Card level={1} style={{marginBottom:14}}>
+          <Caps color={accent} style={{display:"block",marginBottom:8}}>Coach Note</Caps>
           <div style={{fontSize:15,color:"#ddd",lineHeight:1.55}}>{summary.coachNote}</div>
           {summary.nextChange&&<div style={{fontSize:13,color:accent,marginTop:10,lineHeight:1.45}}>{summary.nextChange}</div>}
           {summary.reasoning?.length>0&&(
@@ -395,7 +396,7 @@ function WorkoutSummary({ summary, accent, onClose }) {
             </div>
           )}
           {summary.nextWorkout&&<div style={{fontSize:13,color:text.tertiary,marginTop:10}}>Next up: Workout {summary.nextWorkout}</div>}
-        </div>
+        </Card>
         <button onClick={onClose}
           style={{width:"100%",padding:19,background:accent,border:"none",borderRadius:14,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:26,letterSpacing:".12em",boxShadow:`0 0 42px ${accent}66`}}>
           DONE
@@ -445,8 +446,8 @@ function SetFeelingButtons({ onPick }) {
 function SummaryStat({ label, value, sub, accent }) {
   return (
     <div style={{padding:"15px 14px",background:surface.bg0,border:"1px solid #202020",borderRadius:12}}>
-      <div style={{fontSize:10,color:text.tertiary,fontWeight:600,marginBottom:4}}>{label}</div>
-      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:32,color:accent,letterSpacing:".04em",lineHeight:1}}>{value}</div>
+      <Caps style={{display:"block",marginBottom:4}}>{label}</Caps>
+      <Disp size={32} color={accent} style={{display:"block"}}>{value}</Disp>
       {sub&&<div style={{fontSize:11,color:"#777",marginTop:2}}>{sub}</div>}
     </div>
   );
@@ -524,7 +525,7 @@ function ThisWeek({ completed, setActiveTab }) {
             <button key={day} onClick={()=>setActiveTab(day)}
               style={{flex:1,padding:"16px 8px",borderRadius:13,border:"none",background:isDone?`${wk.color}25`:isToday?"#161616":"#0d0d0d",outline:isToday?`2px solid ${wk.color}99`:isDone?`1px solid ${wk.color}55`:"1px solid #1e1e1e",cursor:"pointer",textAlign:"center"}}>
               <div style={{fontSize:12,color:isToday?wk.color:isDone?wk.color:text.muted,letterSpacing:".1em",fontWeight:600,textTransform:"uppercase",marginBottom:6}}>{day.slice(0,3)}</div>
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:isDone?wk.color:isToday?"#fff":"#777",letterSpacing:".06em"}}>{wk.label.split(" ")[1]}</div>
+              <Disp size={20} color={isDone?wk.color:isToday?"#fff":"#777"}>{wk.label.split(" ")[1]}</Disp>
               <div style={{fontSize:20,marginTop:5}}>{isDone?<span style={{color:wk.color}}>✓</span>:isToday?<span style={{color:wk.color}}>→</span>:<span style={{color:"#333"}}>·</span>}</div>
             </button>
           );
@@ -558,9 +559,7 @@ function WeeklyMusclePlan({ completed, accent }) {
                 <span style={{fontSize:12,color:"#ddd",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{row.label}</span>
                 <span style={{fontSize:11,color:pct>0?accent:"#666"}}>{pct}%</span>
               </div>
-              <div style={{height:5,background:surface.bg4,borderRadius:4,overflow:"hidden"}}>
-                <div style={{height:"100%",width:`${pct}%`,background:accent,boxShadow:pct?`0 0 8px ${accent}88`:"none"}}/>
-              </div>
+              <Bar value={pct} max={100} color={accent} height={5} />
             </div>
           );
         })}
@@ -575,7 +574,7 @@ function WeeklyMusclePlan({ completed, accent }) {
 function ProgressionPreview({ items, accent }) {
   if (!items.length) return null;
   return (
-    <div style={{marginTop:12,padding:"12px 13px",background:surface.bg0,border:`1px solid ${accent}33`,borderRadius:12}}>
+    <Card level={1} style={{marginTop:12,border:`1px solid ${accent}33`}}>
       <div style={{fontSize:10,color:accent,fontWeight:700,marginBottom:8}}>Today's Plan</div>
       <div style={{display:"grid",gap:7}}>
         {items.slice(0,4).map((item,i)=>(
@@ -585,7 +584,7 @@ function ProgressionPreview({ items, accent }) {
           </div>
         ))}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -1389,16 +1388,16 @@ export default function WorkoutView({
           </div>
           <div style={{textAlign:"right"}}>
             {sessionRunning?(<>
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:accent,filter:`drop-shadow(0 0 6px ${accent}99)`}}>{fmtDuration(sessionElapsed)}</div>
+              <Disp size={22} color={accent} style={{display:"block",filter:`drop-shadow(0 0 6px ${accent}99)`}}>{fmtDuration(sessionElapsed)}</Disp>
               <div style={{fontSize:10,color:text.tertiary}}>~{fmtDuration(estimatedRemaining)} left</div>
             </>):streak>0?(
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#fb923c",filter:"drop-shadow(0 0 6px #fb923c88)"}}>{streak} 🔥</div>
+              <Disp size={22} color="#fb923c" style={{display:"block",filter:"drop-shadow(0 0 6px #fb923c88)"}}>{streak} 🔥</Disp>
             ):null}
           </div>
         </div>
         {/* Slim XP bar — no labels */}
-        <div style={{marginTop:8,height:3,background:surface.bg4,borderRadius:2,overflow:"hidden"}}>
-          <div style={{height:"100%",width:`${level.pct*100}%`,background:`linear-gradient(90deg,${level.color}88,${level.color})`,transition:"width .5s ease"}}/>
+        <div style={{marginTop:8}}>
+          <Bar value={level.pct} max={1} color={level.color} height={3} />
         </div>
       </div>
 
@@ -1452,13 +1451,11 @@ export default function WorkoutView({
             style={{background:"none",border:"none",color:text.ghost,fontSize:12,padding:"8px 10px"}}>Reset</button>
         </div>
         <div style={{marginTop:14}}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
-            <span style={{fontSize:13,color:"#777",fontWeight:500}}>Progress</span>
-            <span style={{fontSize:13,color:doneSets>0?accent:"#aaa"}}>{doneSets}/{totalSets} sets · ~{fmtDuration(estimatedRemaining)} left</span>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <Caps>Progress</Caps>
+            <span style={{fontSize:12,color:doneSets>0?accent:"#aaa"}}>{doneSets}/{totalSets} sets · ~{fmtDuration(estimatedRemaining)} left</span>
           </div>
-          <div style={{height:7,background:surface.bg4,borderRadius:4,overflow:"hidden"}}>
-            <div style={{height:"100%",width:`${(doneSets/totalSets)*100}%`,background:`linear-gradient(90deg,${accent}bb,${accent})`,transition:"width .4s ease",boxShadow:doneSets>0?`0 0 14px ${accent}bb`:"none"}}/>
-          </div>
+          <Bar value={doneSets} max={totalSets} color={accent} height={7} />
           {doneSets===0&&!isCompleted&&sessionIntent?.note&&(
             <div style={{marginTop:12,fontSize:13,color:"#777",lineHeight:1.55}}>
               {sessionIntent.note}
@@ -1569,15 +1566,15 @@ export default function WorkoutView({
                   <ExerciseAnimation folder={exerciseFolder(ex)} video={ex.video} accent={accent}/>
 
                   {/* Progress graph */}
-                  <div style={{marginTop:16,padding:"16px",background:"#0a0a0a",borderRadius:12}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:0}}>
+                  <Card level={2} style={{marginTop:16}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                       <SLabel small>Your Progress</SLabel>
                       {histData.length>=2&&(
                         <span style={{fontSize:12,color:exColor}}>{histData[histData.length-1].totalReps} reps last session</span>
                       )}
                     </div>
                     <MiniGraph data={histData} color={exColor} height={85}/>
-                  </div>
+                  </Card>
 
                   <div style={{marginTop:20}}>
                     <SLabel small>Form cue</SLabel>
@@ -1776,7 +1773,9 @@ export default function WorkoutView({
 }
 
 function StatCard({label,value,accent}){return(<div style={{flex:1,padding:"16px",background:surface.bg3,borderRadius:14}}><div style={{fontSize:11,color:text.faint,letterSpacing:".02em",fontWeight:600}}>{label}</div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:accent||"#fafafa",marginTop:4,letterSpacing:".04em"}}>{value}</div></div>);}
-function SLabel({children,small}){return(<div style={{fontSize:small?11:12,color:text.muted,letterSpacing:".02em",fontWeight:600,marginBottom:small?6:10}}>{children}</div>);}
+function SLabel({ children, small }) {
+  return <Caps size={small ? 10 : 11} color={text.muted} style={{ display: "block", marginBottom: small ? 6 : 10 }}>{children}</Caps>;
+}
 
 function moveExerciseOrder(order, exercises, index, delta, keyFn) {
   const keys = order.length ? [...order] : exercises.map(keyFn);

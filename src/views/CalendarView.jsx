@@ -3,6 +3,7 @@ import { WORKOUTS, SCHEDULE, DAYS, computeStats, dateStr, todayName } from "../d
 import { Heatmap } from "../components/shared.jsx";
 import { fmtDuration } from "../hooks.js";
 import { surface, text, status } from "../theme.js";
+import { Card, Caps, Disp, Pill, Dot } from "../components/Primitives.jsx";
 
 export default function CalendarView({ history, progression, settings, accent, theme = "dark" }) {
   const stats = computeStats({ history, progression, settings });
@@ -48,9 +49,7 @@ export default function CalendarView({ history, progression, settings, accent, t
 
       {/* HEATMAP */}
       <div style={{ padding: "0 20px" }}>
-        <div style={{ fontSize: 15, color: ui.section, fontWeight: 500, marginBottom: 14 }}>
-          Last 12 Weeks
-        </div>
+        <Caps size={11} color={ui.section} weight={500} style={{ display: "block", marginBottom: 14 }}>Last 12 Weeks</Caps>
         {history.length===0&&(
           <div style={{padding:"16px",background:`linear-gradient(180deg,${accent}18,${ui.card})`,border:`1.5px solid ${accent}33`,borderRadius:11,marginBottom:12,boxShadow:ui.shadow}}>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:accent,letterSpacing:".06em"}}>CALENDAR STARTS AFTER SESSION ONE</div>
@@ -72,9 +71,7 @@ export default function CalendarView({ history, progression, settings, accent, t
 
       {/* FULL HISTORY */}
       <div style={{ padding: "32px 20px 0" }}>
-        <div style={{ fontSize: 15, color: ui.section, fontWeight: 500, marginBottom: 14 }}>
-          Session History
-        </div>
+        <Caps size={11} color={ui.section} weight={500} style={{ display: "block", marginBottom: 14 }}>Session History</Caps>
         {history.length === 0 ? (
           <div style={{ padding: 24, background:ui.card, border:`1px solid ${ui.border}`, borderRadius:11, color: ui.muted, fontSize: 14, lineHeight:1.55, boxShadow:ui.shadow }}>
             Your completed workouts will appear here with duration, exercises, logged sets, and readiness notes.
@@ -89,12 +86,11 @@ export default function CalendarView({ history, progression, settings, accent, t
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                   <div style={{ display: "flex", gap: 10, alignItems: "center", flex: 1, minWidth: 0 }}>
-                    <span style={{
-                      fontSize: 14, padding: "3px 9px", borderRadius: 5,
-                      background: `${WORKOUTS[h.workout]?.color || status.warn}22`,
-                      color: WORKOUTS[h.workout]?.color || status.warn,
-                      letterSpacing: "0.06em", fontWeight: 500, flexShrink: 0,
-                    }}>{h.workout}</span>
+                    <Pill
+                      color={WORKOUTS[h.workout]?.color || status.warn}
+                      bg={`${WORKOUTS[h.workout]?.color || status.warn}22`}
+                      style={{ flexShrink: 0 }}
+                    >{h.workout}</Pill>
                     <span style={{ fontSize: 15, color: ui.text }}>{h.day}</span>
                   </div>
                   <div style={{ display: "flex", gap: 12, alignItems: "center", flexShrink: 0 }}>
@@ -188,14 +184,14 @@ function NextSessionCard({ insights, accent, ui }) {
       <div style={{ padding:16, background:`linear-gradient(180deg,${accent}1f,${ui.card})`, border:`1.5px solid ${accent}44`, borderRadius:14, boxShadow:ui.shadow }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12 }}>
           <div>
-            <div style={{ fontSize:11, color:accent, fontWeight:700, marginBottom:6 }}>Next Best Move</div>
+            <Caps color={accent} style={{ display: "block", marginBottom: 6 }}>Next Best Move</Caps>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:32, color:ui.title, letterSpacing:".06em", lineHeight:.95 }}>
               {insights.nextDay}<br/>WORKOUT {insights.nextWorkout}
             </div>
           </div>
           <div style={{ textAlign:"right", flexShrink:0 }}>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:34, color:accent, letterSpacing:".04em", lineHeight:1 }}>{insights.adherence}%</div>
-            <div style={{ fontSize:10, color:ui.muted }}>4 week hit rate</div>
+            <Disp size={34} color={accent} style={{ display: "block", lineHeight: 1 }}>{insights.adherence}%</Disp>
+            <Caps size={9} color={ui.muted}>4 week hit rate</Caps>
           </div>
         </div>
         <div style={{ fontSize:14, color:ui.soft, lineHeight:1.5, marginTop:12 }}>{insights.guidance}</div>
@@ -211,9 +207,9 @@ function NextSessionCard({ insights, accent, ui }) {
 
 function Metric({ label, value, unit, ui, compact = false }) {
   return (
-    <div style={{ padding: compact ? "10px 9px" : "12px 10px", background: ui.card, borderRadius: 9, border: `1px solid ${ui.border}`, textAlign: "center", boxShadow:ui.shadow }}>
-      <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: compact ? 24 : 28, color: ui.title, letterSpacing: "0.04em" }}>{value}</div>
-      <div style={{ fontSize: compact ? 12 : 15, color: ui.soft, fontWeight: 600, marginTop: 2 }}>{label} {unit}</div>
+    <div style={{ padding: compact ? "10px 9px" : "12px 10px", background: ui.card, borderRadius: 9, border: `1px solid ${ui.border}`, textAlign: "center", boxShadow: ui.shadow }}>
+      <Disp size={compact ? 24 : 28} color={ui.title} style={{ display: "block" }}>{value}</Disp>
+      <Caps size={compact ? 9 : 10} color={ui.soft} style={{ display: "block", marginTop: 2 }}>{label} {unit}</Caps>
     </div>
   );
 }
@@ -221,7 +217,7 @@ function Metric({ label, value, unit, ui, compact = false }) {
 function Swatch({ color, label }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <div style={{ width: 12, height: 12, background: color, borderRadius: 3, boxShadow: color !== "#161616" ? `0 0 6px ${color}66` : "none" }} />
+      <Dot color={color} size={10} />
       <span>{label}</span>
     </div>
   );
@@ -250,7 +246,7 @@ function SessionDetail({ session, onClose, theme = "dark" }) {
         )}
         <div style={{display:"grid",gap:10}}>
           {(session.exercises||[]).map(ex=>(
-            <div key={ex.name} style={{padding:14,background:ui.card,border:`1px solid ${ui.border}`,borderRadius:11,boxShadow:ui.shadow}}>
+            <Card key={ex.name} level={1}>
               <div style={{fontSize:15,color:ui.text,fontWeight:600,marginBottom:8}}>{ex.name}</div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 {(ex.setLog||[]).map((log,i)=>(
@@ -259,7 +255,7 @@ function SessionDetail({ session, onClose, theme = "dark" }) {
                   </span>
                 ))}
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       </div>

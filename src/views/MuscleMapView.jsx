@@ -3,6 +3,7 @@ import { WORKOUTS, MUSCLE_LABELS, customRoutineWorkout } from "../data.js";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
 import { muscleRecoveryStats, latestMuscleSoreness } from "../coach.js";
 import { surface, text, status } from "../theme.js";
+import { Card, Caps, Bar, Pill, Dot } from "../components/Primitives.jsx";
 
 // Research-backed per-muscle recovery baselines (hours)
 // Sources: NSCA JSCR 2011, PMC11057610, PubMed 30036284, 28965198
@@ -97,7 +98,7 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
         <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center",marginTop:12}}>
           {RECOVERY_LEGEND.map(item=>(
             <div key={item.color} style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#aaa"}}>
-              <span style={{width:9,height:9,borderRadius:3,background:item.color,display:"inline-block"}}/>
+              <Dot color={item.color} size={8} />
               {item.label}
             </div>
           ))}
@@ -114,13 +115,13 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
       <Section title="Coach Focus" sub="what the muscle map thinks you should do next">
         <div style={{display:"grid",gap:8}}>
           {focusItems.map(item => (
-            <div key={item.title} style={{padding:"12px 13px",background:surface.bg0,border:`1px solid ${item.color}55`,borderRadius:10,boxShadow:`0 0 20px ${item.color}12`}}>
+            <Card key={item.title} level={1} style={{border:`1px solid ${item.color}55`,boxShadow:`0 0 20px ${item.color}12`}}>
               <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
                 <div style={{fontSize:14,color:item.color,fontWeight:800}}>{item.title}</div>
-                <div style={{fontSize:10,color:"#777",fontWeight:600}}>{item.tag}</div>
+                <Caps size={9} color="#777">{item.tag}</Caps>
               </div>
               <div style={{fontSize:12,color:text.secondary,lineHeight:1.45,marginTop:5}}>{item.detail}</div>
-            </div>
+            </Card>
           ))}
         </div>
       </Section>
@@ -314,8 +315,8 @@ function MuscleRow({ row, avg, currentSoreness, onSoreness }) {
           <div style={{fontSize:11,color:"#777",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{row.exercises.slice(0,3).join(", ")}</div>
         </div>
         <div style={{textAlign:"right",flexShrink:0}}>
-          <div style={{fontSize:12,color:row.level.color,fontWeight:800}}>{row.level.label}</div>
-          <div style={{fontSize:11,color:readinessColor,marginTop:2}}>{row.readiness}</div>
+          <div style={{fontSize:12,color:row.level.color,fontWeight:800,marginBottom:4}}>{row.level.label}</div>
+          <Pill color={readinessColor} bg={`${readinessColor}18`}>{row.readiness}</Pill>
         </div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
@@ -350,9 +351,7 @@ function SmallMeter({ label, value, color }) {
         <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</span>
         <span style={{flexShrink:0,marginLeft:4}}>{Math.round(value)}%</span>
       </div>
-      <div style={{height:6,background:"#171717",borderRadius:5,overflow:"hidden"}}>
-        <div style={{height:"100%",width:`${Math.min(100, value)}%`,background:color,transition:"width .3s"}}/>
-      </div>
+      <Bar value={value} max={100} color={color} height={6} />
     </div>
   );
 }
@@ -360,7 +359,7 @@ function SmallMeter({ label, value, color }) {
 function Mini({ label, value, color }) {
   return (
     <div style={{padding:"12px 13px",background:surface.bg0,border:"1px solid #1f1f1f",borderRadius:10,minWidth:0,overflow:"hidden"}}>
-      <div style={{fontSize:10,color:text.tertiary,fontWeight:600,marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{label}</div>
+      <Caps style={{display:"block",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</Caps>
       <div style={{fontSize:13,color,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{value}</div>
     </div>
   );
@@ -369,8 +368,8 @@ function Mini({ label, value, color }) {
 function Section({ title, sub, children }) {
   return (
     <div style={{padding:"24px 16px 8px"}}>
-      <div style={{fontSize:13,color:"#ddd",fontWeight:500}}>{title}</div>
-      {sub&&<div style={{fontSize:12,color:text.tertiary,marginTop:3,letterSpacing:".04em"}}>{sub}</div>}
+      <Caps size={11} color="#ddd" weight={500}>{title}</Caps>
+      {sub&&<div style={{fontSize:11,color:text.tertiary,marginTop:3,letterSpacing:".04em"}}>{sub}</div>}
       <div style={{marginTop:14}}>{children}</div>
     </div>
   );

@@ -76,7 +76,7 @@ export function Bar({ value, max = 1, color, height = 6, bg, t = T }) {
   return (
     <div style={{
       width: "100%", height,
-      background: bg || t.bg3,
+      background: bg || "rgba(255,255,255,.08)",
       borderRadius: 999, overflow: "hidden",
     }}>
       <div style={{

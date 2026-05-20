@@ -3,6 +3,7 @@ import { MusclePickerDiagram } from "../components/MuscleDiagram.jsx";
 import { BENCHMARK_TESTS_V2, EXERCISE_LIBRARY, MUSCLE_COVERAGE_GROUPS, MUSCLE_LABELS, ROUTINE_TEMPLATES, allRoutineExercises, customRoutineWorkout, exerciseId, exerciseIsRisky, exerciseRiskJoints, getDefaultWeight, getExerciseMovement, isUnilateral, normalizeCustomRoutine, normalizeUserProfile, routineBalanceScore, routineCoverage } from "../data.js";
 import { buildCoachNotes, generateCoachRoutine, routineEditSuggestions } from "../coach.js";
 import { surface, text, status } from "../theme.js";
+import { Disp, Caps, Bar, Card } from "../components/Primitives.jsx";
 
 const DIFFICULTIES = [
   ["beginner", "Beginner"],
@@ -242,9 +243,9 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
               style={{width:"100%",boxSizing:"border-box",marginTop:6,background:"#101010",border:"1px solid #252525",borderRadius:8,color:"#f0f0f0",padding:"10px 11px",fontSize:16,fontWeight:700,outline:"none"}} />
           </div>
           <div style={{textAlign:"right",flexShrink:0}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:complete ? status.good : status.warn,letterSpacing:".05em"}}>{selected.length}</div>
-            <div style={{fontSize:10,color:text.tertiary,fontWeight:600}}>Exercises</div>
-            <div style={{fontSize:10,color:balance >= 80 ? status.good : status.warn,marginTop:3}}>Balance {balance}/100</div>
+            <Disp size={34} color={complete ? status.good : status.warn} style={{display:"block"}}>{selected.length}</Disp>
+            <Caps style={{display:"block",marginTop:2}}>Exercises</Caps>
+            <Caps size={9} color={balance >= 80 ? status.good : status.warn} style={{display:"block",marginTop:3}}>Balance {balance}/100</Caps>
           </div>
         </div>
 
@@ -267,6 +268,9 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
 
       {/* ── ROUTINE BALANCE (collapsed) ─────────────────────────────────────── */}
       <Section title={`Routine balance · ${balance}/100`} defaultOpen={false}>
+        <div style={{marginBottom:12}}>
+          <Bar value={balance} max={100} color={balance >= 80 ? status.good : balance >= 60 ? status.warn : status.caution} height={6} />
+        </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
           {coverage.map(item => (
             <div key={item.key} style={{padding:"9px 6px",borderRadius:8,border:`1px solid ${item.ok ? "#4ade8066" : "#fb718555"}`,background:item.ok ? "#4ade8014" : "#fb718511",textAlign:"center"}}>
@@ -585,10 +589,10 @@ function CoachNotesSection({ notes }) {
           {notes.map((note, i) => {
             const col = TONE_COLOR[note.tone] || "#aaa";
             return (
-              <div key={i} style={{padding:"13px 14px",background:surface.bg0,border:`1px solid ${col}44`,borderRadius:10}}>
+              <Card key={i} level={1} style={{border:`1px solid ${col}44`}}>
                 <div style={{fontSize:13,color:col,fontWeight:700,marginBottom:5}}>{note.title}</div>
                 <div style={{fontSize:13,color:"#bbb",lineHeight:1.55}}>{note.text}</div>
-              </div>
+              </Card>
             );
           })}
         </div>
@@ -603,7 +607,7 @@ function Section({ title, children, defaultOpen = true }) {
     <div style={{padding:"8px 16px 6px"}}>
       <button onClick={() => setOpen(v => !v)}
         style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:surface.bg0,border:"1.5px solid #1f1f1f",borderRadius:10,padding:"13px 15px",cursor:"pointer",textAlign:"left",marginBottom:open?10:0}}>
-        <span style={{fontSize:13,color:"#e0e0e0",fontWeight:700}}>{title}</span>
+        <Caps size={11} color="#e0e0e0" weight={700}>{title}</Caps>
         <span style={{fontSize:16,color:"#aaa",transition:"transform .2s",display:"inline-block",transform:open?"rotate(180deg)":"rotate(0deg)"}}>⌄</span>
       </button>
       {open && children}
