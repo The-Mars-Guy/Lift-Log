@@ -74,6 +74,22 @@ export function customRoutineWorkout(routine = DEFAULT_CUSTOM_ROUTINE, day = nul
   };
 }
 
+// Union of every exercise across every routine in this custom-routine config.
+// Use this for week-level balance/coverage checks so split routines (e.g. A
+// covers pull-heavy, B covers push-heavy) read as balanced together rather
+// than each looking incomplete in isolation.
+export function allRoutineExercises(routine = DEFAULT_CUSTOM_ROUTINE) {
+  const safe = normalizeCustomRoutine(routine);
+  const ids = new Set();
+  (safe.routines || []).forEach(r => (r.exerciseIds || []).forEach(id => ids.add(id)));
+  // Fall back to the flat exerciseIds list if no routines defined.
+  if (!ids.size) (safe.exerciseIds || []).forEach(id => ids.add(id));
+  return [...ids]
+    .map(id => getExerciseById(id))
+    .filter(Boolean)
+    .map(ex => ({ ...ex, folder: exerciseFolder(ex) }));
+}
+
 export function routineCoverage(exercises = []) {
   return MUSCLE_COVERAGE_GROUPS.map(([key, label, muscles]) => {
     const hits = exercises.filter(ex => [...(ex.primary || []), ...(ex.secondary || [])].some(m => muscles.includes(m)));

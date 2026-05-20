@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { WORKOUTS, ACHIEVEMENTS, computeStats, isoWeek, getLevel, epley1RM, getExerciseHistory, customRoutineWorkout, routineBalanceScore, routineCoverage } from "../data.js";
+import { WORKOUTS, ACHIEVEMENTS, computeStats, isoWeek, getLevel, epley1RM, getExerciseHistory, allRoutineExercises, customRoutineWorkout, routineBalanceScore, routineCoverage } from "../data.js";
 import { BarChart, Heatmap, MiniGraph } from "../components/shared.jsx";
 import { fmtDuration } from "../hooks.js";
 import { exerciseVolume } from "../session.js";
@@ -10,9 +10,11 @@ export default function StatsView({ history, progression, settings, achievements
   const [tab, setTab] = useState("overview");
 
   const stats = computeStats({ history, progression, settings });
-  const allExercises = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises, ...(customRoutine?.enabled ? customRoutineWorkout(customRoutine).exercises : [])];
+  // Week-level union of all routines so balance reads correctly across an A/B split.
+  const customWeekExercises = customRoutine?.enabled ? allRoutineExercises(customRoutine) : [];
+  const allExercises = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises, ...customWeekExercises];
   const customWorkout = customRoutine?.enabled ? customRoutineWorkout(customRoutine) : null;
-  const balance = customWorkout ? routineBalanceScore(customWorkout.exercises) : null;
+  const balance = customRoutine?.enabled ? routineBalanceScore(customWeekExercises) : null;
   const coachMemory = buildCoachMemory({ history, checkIns, exercises: allExercises, exConfig, userProfile, goals, bodyMetrics });
   const weeklyReview = buildWeeklyReview({ history, checkIns });
   const weakPoints = detectWeakPoints({ history, exercises: allExercises, exConfig });
@@ -280,7 +282,7 @@ export default function StatsView({ history, progression, settings, achievements
               <div style={{padding:"16px",background:surface.bg0,borderRadius:12,border:"1px solid #1f1f1f"}}>
                 <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:38,color:balance>=90?status.good:balance>=70?status.warn:status.caution,letterSpacing:".06em"}}>{balance}%</div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginTop:10}}>
-                  {routineCoverage(customWorkout.exercises).map(item=>(
+                  {routineCoverage(customWeekExercises).map(item=>(
                     <div key={item.key} style={{padding:"8px 5px",borderRadius:8,border:`1px solid ${item.ok?"#4ade8066":"#fb718555"}`,background:item.ok?"#4ade8011":"#fb718511",textAlign:"center",fontSize:10,color:item.ok?status.good:status.caution,fontWeight:900,textTransform:"uppercase"}}>{item.label}</div>
                   ))}
                 </div>

@@ -1181,15 +1181,20 @@ function _pickSafeSwap(exName, currentIds, userProfile) {
   ) || null;
 }
 
-export function routineEditSuggestions({ routine, exercises = [], history = [], checkIns = [], userProfile = null }) {
+export function routineEditSuggestions({ routine, exercises = [], allExercises = null, history = [], checkIns = [], userProfile = null }) {
   const suggestions = [];
   const currentIds = exercises.map(ex => ex.id || exerciseId(ex.name));
-  const coverage = routineCoverage(exercises);
-  const balance = routineBalanceScore(exercises);
+  // Coverage + balance evaluate against the full week (all routines union)
+  // when provided, so split routines don't read as unbalanced individually.
+  // Other checks (pain, risk, practice) still operate on the active routine.
+  const weekExercises = Array.isArray(allExercises) && allExercises.length ? allExercises : exercises;
+  const weekIds = weekExercises.map(ex => ex.id || exerciseId(ex.name));
+  const coverage = routineCoverage(weekExercises);
+  const balance = routineBalanceScore(weekExercises);
 
   // 1. Coverage gaps → suggest exact exercise to add
   coverage.filter(item => !item.ok).forEach(item => {
-    const fill = _pickFillExercise(item.key, currentIds, userProfile);
+    const fill = _pickFillExercise(item.key, weekIds, userProfile);
     suggestions.push({
       type:"add",
       priority:3,
@@ -1589,6 +1594,106 @@ export function generateCoachRoutine({
     exercises:   selected,
     rationale,
   };
+}
+
+/**
+ * buildCoachNotes
+ * Short personalized summary of what the coach noticed about the routine.
+ * Max 2–3 notes, priority: pain → deload → imbalance → coverage gap → plateau → positive.
+ * @returns {{ tone: "warning"|"good"|"neutral", title: string, text: string }[]}
+ */
+export function buildCoachNotes({
+  routine = {},
+  allExercises = [],
+  history = [],
+  checkIns = [],
+  balance = null,
+  coverage = null,
+}) {
+  const notes = [];
+  const safeBalance  = balance  ?? routineBalanceScore(allExercises);
+  const safeCoverage = coverage ?? routineCoverage(allExercises);
+
+  // 1. Pain flag in the last 14 days
+  const recentPain = checkIns.some(ci =>
+    ci.kind === "set_feedback" && ci.feeling === "pain" &&
+    (Date.now() - (ci.timestamp || 0)) < 14 * 86400000
+  );
+  if (recentPain) {
+    notes.push({
+      tone: "warning",
+      title: "Pain flagged recently",
+      text: "A recent session logged discomfort. Keep loads conservative and use swap options where needed.",
+    });
+  }
+
+  // 2. Deload signal
+  if (notes.length < 3) {
+    const deload = recommendDeload({ history, checkIns });
+    if (deload.recommended) {
+      const reason = deload.reason.charAt(0).toUpperCase() + deload.reason.slice(1);
+      notes.push({
+        tone: "warning",
+        title: "Recovery load is elevated",
+        text: `${reason} Volume is scaled back to let the body adapt.`,
+      });
+    }
+  }
+
+  // 3. Major imbalance (balance < 60 — two or more groups missing)
+  if (notes.length < 3 && safeBalance < 60) {
+    const gaps = safeCoverage.filter(item => !item.ok).map(item => item.label);
+    notes.push({
+      tone: "warning",
+      title: "Routine has significant gaps",
+      text: `Missing: ${gaps.slice(0, 2).join(" and ")}. The week should cover push, pull, legs, and core.`,
+    });
+  }
+
+  // 4. Single missing group (balance 60–79)
+  if (notes.length < 3 && safeBalance >= 60 && safeBalance < 80) {
+    const gaps = safeCoverage.filter(item => !item.ok);
+    if (gaps.length > 0) {
+      notes.push({
+        tone: "neutral",
+        title: `${gaps[0].label} is missing`,
+        text: `One ${gaps[0].label.toLowerCase()} movement would round out the week.`,
+      });
+    }
+  }
+
+  // 5. Stalling exercise — plateau detected
+  if (notes.length < 3 && history.length >= 2) {
+    const stalling = allExercises
+      .map(ex => ({ name: ex.name, trend: exerciseTrend(history, ex, ex.baseReps) }))
+      .filter(item => item.trend.status === "stalling");
+    if (stalling.length) {
+      notes.push({
+        tone: "neutral",
+        title: `${stalling[0].name} has plateaued`,
+        text: "Recent sets are dropping off. Try a variation or hold load steady for two clean sessions.",
+      });
+    }
+  }
+
+  // 6. Positive confirmation — nothing to flag
+  if (notes.length === 0) {
+    notes.push(
+      safeBalance >= 80
+        ? {
+            tone: "good",
+            title: "Routine looks balanced",
+            text: "Push, pull, legs, and core are all covered across the week. Keep sessions consistent.",
+          }
+        : {
+            tone: "neutral",
+            title: "Routine is taking shape",
+            text: "Cover push, pull, legs, and core across the week to get the most out of each session.",
+          }
+    );
+  }
+
+  return notes.slice(0, 3);
 }
 
 // muscleReadiness: array of { muscle, state: "ready" | "recovering" | "sore" }

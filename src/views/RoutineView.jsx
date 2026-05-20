@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { MusclePickerDiagram } from "../components/MuscleDiagram.jsx";
-import { BENCHMARK_TESTS_V2, EXERCISE_LIBRARY, MUSCLE_COVERAGE_GROUPS, MUSCLE_LABELS, ROUTINE_TEMPLATES, customRoutineWorkout, exerciseId, exerciseIsRisky, exerciseRiskJoints, getDefaultWeight, getExerciseMovement, isUnilateral, normalizeCustomRoutine, normalizeUserProfile, routineBalanceScore, routineCoverage } from "../data.js";
-import { generateCoachRoutine, routineEditSuggestions } from "../coach.js";
+import { BENCHMARK_TESTS_V2, EXERCISE_LIBRARY, MUSCLE_COVERAGE_GROUPS, MUSCLE_LABELS, ROUTINE_TEMPLATES, allRoutineExercises, customRoutineWorkout, exerciseId, exerciseIsRisky, exerciseRiskJoints, getDefaultWeight, getExerciseMovement, isUnilateral, normalizeCustomRoutine, normalizeUserProfile, routineBalanceScore, routineCoverage } from "../data.js";
+import { buildCoachNotes, generateCoachRoutine, routineEditSuggestions } from "../coach.js";
 import { surface, text, status } from "../theme.js";
 
 const DIFFICULTIES = [
@@ -27,9 +27,13 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
   const [coachGenerated, setCoachGenerated] = useState(null);
   const [browseTab, setBrowseTab] = useState("browse"); // "browse" | "selected"
   const selected = useMemo(() => customRoutineWorkout(routine).exercises, [routine]);
-  const coverage = routineCoverage(selected);
-  const balance = routineBalanceScore(selected);
-  const suggestions = useMemo(() => routineEditSuggestions({ routine, exercises:selected, history, userProfile:profile }), [routine, selected, history, profile]);
+  // Week-level view: union of exercises across every routine (A + B + ...)
+  // so push/pull/leg/core balance is judged against the full split, not one day.
+  const weekExercises = useMemo(() => allRoutineExercises(routine), [routine]);
+  const coverage = routineCoverage(weekExercises);
+  const balance = routineBalanceScore(weekExercises);
+  const suggestions = useMemo(() => routineEditSuggestions({ routine, exercises:selected, allExercises:weekExercises, history, userProfile:profile }), [routine, selected, weekExercises, history, profile]);
+  const coachNotes = useMemo(() => buildCoachNotes({ routine, allExercises:weekExercises, history, checkIns, balance, coverage }), [routine, weekExercises, history, checkIns, balance, coverage]);
   const recentIds = useMemo(() => [...new Set(history.flatMap(h => h.exercises || []).slice(0, 18).map(ex => ex.id || ex.plannedId || exerciseId(ex.name)).filter(Boolean))], [history]);
   const complete = coverage.every(item => item.ok);
   const categories = [["all", "All"], ...MUSCLE_COVERAGE_GROUPS.map(([key, label]) => [key, label])];
@@ -226,8 +230,12 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
         </Section>
       )}
 
+      {/* ── COACH NOTES (open by default) ───────────────────────────────────── */}
+      <CoachNotesSection notes={coachNotes} />
+
+      {/* ── CURRENT ROUTINE CARD ─────────────────────────────────────────────── */}
       <div style={{margin:"0 16px 14px",padding:"15px",background:surface.bg0,border:`1.5px solid ${complete ? status.good : accent}55`,borderRadius:12,boxShadow:`0 0 24px ${accent}12`}}>
-        <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",marginBottom:12}}>
+        <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",marginBottom:14}}>
           <div style={{minWidth:0}}>
             <div style={{fontSize:11,color:accent,fontWeight:700}}>Current Routine</div>
             <input value={routine.name} onChange={e=>save({name:e.target.value})}
@@ -236,17 +244,8 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
           <div style={{textAlign:"right",flexShrink:0}}>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:complete ? status.good : status.warn,letterSpacing:".05em"}}>{selected.length}</div>
             <div style={{fontSize:10,color:text.tertiary,fontWeight:600}}>Exercises</div>
-            <div style={{fontSize:10,color:balance >= 80 ? status.good : status.warn,marginTop:3}}>Balance {balance}</div>
+            <div style={{fontSize:10,color:balance >= 80 ? status.good : status.warn,marginTop:3}}>Balance {balance}/100</div>
           </div>
-        </div>
-
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:12}}>
-          {coverage.map(item => (
-            <div key={item.key} style={{padding:"9px 6px",borderRadius:8,border:`1px solid ${item.ok ? "#4ade8066" : "#fb718555"}`,background:item.ok ? "#4ade8014" : "#fb718511",textAlign:"center"}}>
-              <div style={{fontSize:10,color:item.ok ? status.good : status.caution,fontWeight:900}}>{item.label}</div>
-              <div style={{fontSize:10,color:text.tertiary,marginTop:3}}>{item.hits.length || 0} hit</div>
-            </div>
-          ))}
         </div>
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
@@ -265,6 +264,24 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
         </button>
         {!complete&&<div style={{fontSize:12,color:status.warn,lineHeight:1.45,marginTop:10}}>Add at least one push, pull, legs, and core movement before using this routine.</div>}
       </div>
+
+      {/* ── ROUTINE BALANCE (collapsed) ─────────────────────────────────────── */}
+      <Section title={`Routine balance · ${balance}/100`} defaultOpen={false}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
+          {coverage.map(item => (
+            <div key={item.key} style={{padding:"9px 6px",borderRadius:8,border:`1px solid ${item.ok ? "#4ade8066" : "#fb718555"}`,background:item.ok ? "#4ade8014" : "#fb718511",textAlign:"center"}}>
+              <div style={{fontSize:10,color:item.ok ? status.good : status.caution,fontWeight:900}}>{item.label}</div>
+              <div style={{fontSize:10,color:text.tertiary,marginTop:3}}>{item.hits.length || 0} hit</div>
+            </div>
+          ))}
+        </div>
+        {!complete && <div style={{fontSize:12,color:status.warn,lineHeight:1.45,marginTop:10}}>Cover push, pull, legs, and core before using this routine.</div>}
+      </Section>
+
+      {/* ── EXERCISE SUGGESTIONS (collapsed) ────────────────────────────────── */}
+      {suggestions.length > 0 && (
+        <CoachEditsSection suggestions={suggestions} save={save} routine={routine} accent={accent} />
+      )}
 
       <Section title="Exercises">
         {/* SELECTED / BROWSE tabs */}
@@ -517,7 +534,7 @@ function CoachEditsSection({ suggestions, save, routine, accent }) {
       {/* Collapsible detail list */}
       <button onClick={() => setOpen(v => !v)}
         style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",background:surface.bg0,border:"1px solid #1f1f1f",borderRadius:10,cursor:"pointer",textAlign:"left",marginBottom:open?8:0}}>
-        <span style={{fontSize:13,color:"#ddd",fontWeight:700}}>Coach Edits ({suggestions.length})</span>
+        <span style={{fontSize:13,color:"#ddd",fontWeight:700}}>Exercise suggestions ({suggestions.length})</span>
         <span style={{fontSize:12,color:text.tertiary}}>{open ? "▲" : "▼"}</span>
       </button>
       {open && (
@@ -542,6 +559,35 @@ function CoachEditsSection({ suggestions, save, routine, accent }) {
                     {item.actionLabel}
                   </button>
                 )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const TONE_COLOR = { warning:"#fb7185", good:"#4ade80", neutral:"#aaa" };
+
+function CoachNotesSection({ notes }) {
+  const [open, setOpen] = useState(true);
+  if (!notes?.length) return null;
+  return (
+    <div style={{padding:"0 16px 8px"}}>
+      <button onClick={() => setOpen(v => !v)}
+        style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:surface.bg0,border:"1.5px solid #1f1f1f",borderRadius:10,padding:"13px 15px",cursor:"pointer",textAlign:"left",marginBottom:open?10:0}}>
+        <span style={{fontSize:13,color:"#e0e0e0",fontWeight:700}}>What the coach noticed</span>
+        <span style={{fontSize:16,color:"#aaa",transition:"transform .2s",display:"inline-block",transform:open?"rotate(180deg)":"rotate(0deg)"}}>⌄</span>
+      </button>
+      {open && (
+        <div style={{display:"grid",gap:8}}>
+          {notes.map((note, i) => {
+            const col = TONE_COLOR[note.tone] || "#aaa";
+            return (
+              <div key={i} style={{padding:"13px 14px",background:surface.bg0,border:`1px solid ${col}44`,borderRadius:10}}>
+                <div style={{fontSize:13,color:col,fontWeight:700,marginBottom:5}}>{note.title}</div>
+                <div style={{fontSize:13,color:"#bbb",lineHeight:1.55}}>{note.text}</div>
               </div>
             );
           })}

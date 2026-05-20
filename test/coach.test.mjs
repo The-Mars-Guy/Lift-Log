@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildSessionIntent, buildWeeklyReview, coachSetCount, coachTargetReps, computePersonalRecords, detectWeakPoints, evaluateProgression, exactRepTarget, exerciseFeedbackSignal, exerciseTrend, explainExerciseDecision, painBlockedExercises, plateauFixes, readinessScore, recommendDeload, routineEditSuggestions, sciencePrescription, SUBSTITUTIONS, suggestSubstitutions, summarizeWorkout, tempoPrescription, variationPrescription, weeklyMuscleCoverage } from "../src/coach.js";
+import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachNotes, buildCoachPlan, buildSessionIntent, buildWeeklyReview, coachSetCount, coachTargetReps, computePersonalRecords, detectWeakPoints, evaluateProgression, exactRepTarget, exerciseFeedbackSignal, exerciseTrend, explainExerciseDecision, painBlockedExercises, plateauFixes, readinessScore, recommendDeload, routineEditSuggestions, sciencePrescription, SUBSTITUTIONS, suggestSubstitutions, summarizeWorkout, tempoPrescription, variationPrescription, weeklyMuscleCoverage } from "../src/coach.js";
 
 const exercise = { name: "Floor Press", sets: 3, baseReps: 10 };
 
@@ -442,4 +442,89 @@ test("buildSessionIntent: high readiness + all muscles ready → Performance Ses
   });
   assert.equal(result.label, "Performance Session");
   assert.equal(result.tone, "boost");
+});
+
+// ── buildCoachNotes ──────────────────────────────────────────────────────────
+
+test("buildCoachNotes: pain flag produces warning as first note", () => {
+  const notes = buildCoachNotes({
+    allExercises: [{ name:"Floor Press", primary:["chest"], secondary:["triceps"], baseReps:10 }],
+    checkIns: [{ kind:"set_feedback", feeling:"pain", timestamp: Date.now() - 1000 }],
+    history: [],
+  });
+  assert.equal(notes[0].tone, "warning");
+  assert.ok(notes[0].title.toLowerCase().includes("pain"));
+  assert.ok(notes.length <= 3);
+});
+
+test("buildCoachNotes: missing hamstrings → coverage note produced", () => {
+  // Push-only routine → legs missing
+  const notes = buildCoachNotes({
+    allExercises: [
+      { name:"Floor Press", primary:["chest"], secondary:["triceps"], baseReps:10 },
+      { name:"Bent Over Row", primary:["lats"], secondary:["biceps"], baseReps:10 },
+    ],
+    checkIns: [],
+    history: [],
+  });
+  const hasCoverageNote = notes.some(n => n.tone === "warning" || n.tone === "neutral");
+  assert.ok(hasCoverageNote, "Should flag missing leg/hamstring coverage");
+});
+
+test("buildCoachNotes: A+B split balanced → no imbalance warning", () => {
+  // Union of A (push + core) and B (pull + legs) = balanced
+  const notes = buildCoachNotes({
+    allExercises: [
+      { name:"Floor Press",    primary:["chest"],    secondary:["triceps"],  baseReps:10 },
+      { name:"Bent Over Row",  primary:["lats"],     secondary:["biceps"],   baseReps:10 },
+      { name:"Goblet Squat",   primary:["quads"],    secondary:["glutes"],   baseReps:10 },
+      { name:"Dead Bug",       primary:["core"],     secondary:[],           baseReps:10 },
+      { name:"Romanian Deadlift", primary:["hamstrings"], secondary:["glutes"], baseReps:10 },
+      { name:"Arnold Press",   primary:["sideDelts"],secondary:["triceps"],  baseReps:10 },
+    ],
+    checkIns: [],
+    history: [],
+  });
+  const hasImbalanceWarning = notes.some(n => n.title.toLowerCase().includes("gap") || n.title.toLowerCase().includes("missing"));
+  assert.ok(!hasImbalanceWarning, "Balanced split should not produce a gap warning");
+});
+
+test("buildCoachNotes: no issues → calm positive note", () => {
+  const notes = buildCoachNotes({
+    allExercises: [
+      { name:"Floor Press",    primary:["chest"],    secondary:["triceps"],  baseReps:10 },
+      { name:"Bent Over Row",  primary:["lats"],     secondary:["biceps"],   baseReps:10 },
+      { name:"Goblet Squat",   primary:["quads"],    secondary:["glutes"],   baseReps:10 },
+      { name:"Dead Bug",       primary:["core"],     secondary:[],           baseReps:10 },
+      { name:"Romanian Deadlift", primary:["hamstrings"], secondary:["glutes"], baseReps:10 },
+      { name:"Arnold Press",   primary:["sideDelts"],secondary:["triceps"],  baseReps:10 },
+    ],
+    checkIns: [],
+    history: [],
+  });
+  assert.ok(notes.length >= 1, "Should always return at least one note");
+  assert.ok(notes.length <= 3, "Should return at most 3 notes");
+  const positiveNote = notes.find(n => n.tone === "good" || n.tone === "neutral");
+  assert.ok(positiveNote, "No issues should produce a positive/neutral note");
+});
+
+test("buildCoachNotes: stalling exercise → plateau note", () => {
+  const stallingHistory = [
+    { timestamp: 3, exercises: [{ name: "Floor Press", sets: 3, setLog: [{ reps: 10 }, { reps: 6 }, { reps: 5 }] }] },
+    { timestamp: 2, exercises: [{ name: "Floor Press", sets: 3, setLog: [{ reps: 9 }, { reps: 7 }, { reps: 6 }] }] },
+  ];
+  const notes = buildCoachNotes({
+    allExercises: [
+      { name:"Floor Press", primary:["chest"], secondary:["triceps"], baseReps:10 },
+      { name:"Bent Over Row", primary:["lats"], secondary:["biceps"], baseReps:10 },
+      { name:"Goblet Squat", primary:["quads"], secondary:["glutes"], baseReps:10 },
+      { name:"Dead Bug", primary:["core"], secondary:[], baseReps:10 },
+      { name:"Romanian Deadlift", primary:["hamstrings"], secondary:["glutes"], baseReps:10 },
+      { name:"Arnold Press", primary:["sideDelts"], secondary:["triceps"], baseReps:10 },
+    ],
+    checkIns: [],
+    history: stallingHistory,
+  });
+  const plateauNote = notes.find(n => n.title.toLowerCase().includes("plateau") || n.title.toLowerCase().includes("stall") || n.text.toLowerCase().includes("dropping off"));
+  assert.ok(plateauNote, "Stalling exercise should trigger a plateau note");
 });
