@@ -4,7 +4,8 @@ import { BarChart, Heatmap, MiniGraph } from "../components/shared.jsx";
 import { fmtDuration } from "../hooks.js";
 import { exerciseVolume } from "../session.js";
 import { buildCoachMemory, buildWeeklyReview, computePersonalRecords, detectWeakPoints } from "../coach.js";
-import { surface, text, status } from "../theme.js";
+import { surface, text, status, T } from "../theme.js";
+import { Card, Disp, Caps, Bar, TabRow } from "../components/Primitives.jsx";
 
 export default function StatsView({ history, progression, settings, achievements, accent, xp, level, exConfig, checkIns, bodyMetrics = [], setBodyMetrics, customRoutine, userProfile = null, goals = [] }) {
   const [tab, setTab] = useState("overview");
@@ -84,29 +85,17 @@ export default function StatsView({ history, progression, settings, achievements
   const xpToNext  = nextLevel ? nextLevel.min - xp : 0;
 
   const TABS = [
-    { id: "overview", label: "OVERVIEW" },
-    { id: "lifts",    label: "LIFTS" },
-    { id: "records",  label: "RECORDS" },
-    { id: "body",     label: "BODY" },
+    { id: "overview", label: "Overview" },
+    { id: "lifts",    label: "Lifts" },
+    { id: "records",  label: "Records" },
+    { id: "body",     label: "Body" },
   ];
 
   return (
     <div>
       {/* TAB BAR */}
       <div style={{padding:"12px 16px 4px",position:"sticky",top:0,zIndex:10,background:"#050505"}}>
-        <div style={{display:"flex",gap:6}}>
-          {TABS.map(t=>(
-            <button key={t.id} onClick={()=>setTab(t.id)}
-              style={{
-                flex:1,padding:"9px 4px",borderRadius:999,border:tab===t.id?"none":"1px solid #333",
-                background:tab===t.id?accent:"transparent",
-                color:tab===t.id?"#050505":"#888",
-                fontSize:11,fontWeight:800,letterSpacing:".08em",cursor:"pointer",
-              }}>
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <TabRow items={TABS} active={tab} onChange={setTab} />
       </div>
 
       {/* OVERVIEW TAB */}
@@ -140,8 +129,8 @@ export default function StatsView({ history, progression, settings, achievements
                 <div style={{fontSize:12,color:text.tertiary,letterSpacing:".1em"}}>TOTAL XP</div>
               </div>
             </div>
-            <div style={{height:8,background:surface.bg4,borderRadius:4,overflow:"hidden",marginBottom:8}}>
-              <div style={{height:"100%",width:`${level.pct*100}%`,background:`linear-gradient(90deg,${level.color}aa,${level.color})`,boxShadow:`0 0 12px ${level.color}88`,transition:"width .5s"}}/>
+            <div style={{marginBottom:8}}>
+              <Bar value={level.pct} max={1} color={level.color} height={8} />
             </div>
             {nextLevel?(
               <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:text.tertiary}}>
@@ -230,7 +219,7 @@ export default function StatsView({ history, progression, settings, achievements
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                     <div style={{fontSize:15,color:"#f0f0f0",fontWeight:500}}>{ex.name}</div>
                     <div style={{textAlign:"right"}}>
-                      {latestTotal!=null&&<div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:exColor,letterSpacing:".04em"}}>{latestTotal}</div>}
+                      {latestTotal!=null&&<Disp size={22} color={exColor}>{latestTotal}</Disp>}
                       {trend!=null&&data.length>=2&&<div style={{fontSize:11,color:trend>=0?status.good:"#fb923c"}}>{trend>=0?"+":""}{trend} since start</div>}
                     </div>
                   </div>
@@ -255,9 +244,7 @@ export default function StatsView({ history, progression, settings, achievements
                     <span style={{fontSize:15,color:"#f0f0f0"}}>{ex.name}</span>
                     <span style={{fontSize:13,color:col,fontWeight:500}}>×{ex.baseReps} → ×{ex.baseReps+bonus}{atMax?" 🏆":""}</span>
                   </div>
-                  <div style={{height:5,background:surface.bg4,borderRadius:3,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:`${(sess/settings.sessionsPerProgression)*100}%`,background:col,boxShadow:`0 0 7px ${col}88`,transition:"width .4s"}}/>
-                  </div>
+                  <Bar value={sess} max={settings.sessionsPerProgression} color={col} height={5} />
                 </div>
               );
             })}
@@ -326,7 +313,7 @@ export default function StatsView({ history, progression, settings, achievements
                   <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                     {cis.map((ci,i)=>(
                       <div key={i} style={{padding:"8px 12px",background:surface.bg2,borderRadius:8,border:"1px solid #2a2a2a",textAlign:"center"}}>
-                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:accent,letterSpacing:".04em"}}>{ci.est1RM}</div>
+                        <Disp size={22} color={accent}>{ci.est1RM}</Disp>
                         <div style={{fontSize:10,color:text.tertiary,letterSpacing:".08em"}}>LBS 1RM</div>
                         <div style={{fontSize:10,color:text.muted,marginTop:2}}>{ci.date}</div>
                       </div>
@@ -474,10 +461,10 @@ function RecordsSection({ records, accent }) {
 
 function RecordMini({ label, value, sub }) {
   return (
-    <div style={{padding:"9px 8px",background:"#101010",border:"1px solid #222",borderRadius:8,textAlign:"center"}}>
-      <div style={{fontSize:10,color:"#777",fontWeight:600,marginBottom:4}}>{label}</div>
-      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:23,color:"#fff",letterSpacing:".04em",lineHeight:1}}>{value}</div>
-      {sub&&<div style={{fontSize:10,color:"#777",marginTop:2}}>{sub}</div>}
+    <div style={{ padding: "9px 8px", background: "#101010", border: "1px solid #222", borderRadius: 8, textAlign: "center" }}>
+      <Caps style={{ display: "block", marginBottom: 4 }}>{label}</Caps>
+      <Disp size={22} style={{ display: "block" }}>{value}</Disp>
+      {sub && <div style={{ fontSize: 10, color: "#777", marginTop: 2 }}>{sub}</div>}
     </div>
   );
 }
@@ -495,25 +482,25 @@ function MetricInput({ label, value, onChange, suffix }) {
   );
 }
 
-function Section({title,sub,children}){
-  return(
-    <div style={{padding:"24px 16px 8px"}}>
-      <div style={{fontSize:13,color:"#ddd",fontWeight:500}}>{title}</div>
-      {sub&&<div style={{fontSize:12,color:text.tertiary,marginTop:3,letterSpacing:".04em"}}>{sub}</div>}
-      <div style={{marginTop:14}}>{children}</div>
+function Section({ title, sub, children }) {
+  return (
+    <div style={{ padding: "24px 16px 8px" }}>
+      <Caps size={11} color={text.secondary} weight={500}>{title}</Caps>
+      {sub && <div style={{ fontSize: 11, color: text.tertiary, marginTop: 3, letterSpacing: ".04em" }}>{sub}</div>}
+      <div style={{ marginTop: 14 }}>{children}</div>
     </div>
   );
 }
 
-function BigStat({label,value,unit,suffix,accent}){
-  return(
-    <div style={{padding:"18px 16px",background:surface.bg0,border:"1px solid #1c1c1c",borderRadius:12,position:"relative",overflow:"hidden"}}>
-      <div style={{position:"absolute",inset:0,background:`radial-gradient(circle at top right,${accent}12,transparent 70%)`,pointerEvents:"none"}}/>
-      <div style={{fontSize:11,color:"#aaa",fontWeight:600,position:"relative"}}>{label}</div>
-      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:accent||"#fafafa",marginTop:5,letterSpacing:".04em",filter:`drop-shadow(0 0 7px ${accent}55)`,position:"relative"}}>
-        {value}
-        {unit&&<span style={{fontSize:14,color:"#999",marginLeft:5,letterSpacing:".1em"}}>{unit}</span>}
-        {suffix&&<span style={{fontSize:20,marginLeft:6}}>{suffix}</span>}
+function BigStat({ label, value, unit, suffix, accent }) {
+  return (
+    <div style={{ padding: "18px 16px", background: surface.bg0, border: "1px solid #1c1c1c", borderRadius: 12, position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at top right,${accent}12,transparent 70%)`, pointerEvents: "none" }} />
+      <Caps style={{ position: "relative" }}>{label}</Caps>
+      <div style={{ marginTop: 6, position: "relative", display: "flex", alignItems: "baseline", gap: 4 }}>
+        <Disp size={34} color={accent || T.text} style={{ filter: `drop-shadow(0 0 7px ${accent}55)` }}>{value}</Disp>
+        {unit && <Caps color="#999" style={{ marginLeft: 4 }}>{unit}</Caps>}
+        {suffix && <span style={{ fontSize: 20, marginLeft: 4 }}>{suffix}</span>}
       </div>
     </div>
   );

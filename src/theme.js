@@ -88,3 +88,46 @@ export const alpha = {
   strong:"55",   // 33%
   bold:  "77",   // 47%
 };
+
+// ── PRIMITIVE THEME OBJECT ────────────────────────────────────────────────
+// Flat `t` object consumed by Primitives.jsx.
+// Mirrors the prototype shape so components can be compared 1:1.
+// Usage: buildT()                  → default (amber accent, dark)
+//        buildT(accent, accentFg)  → custom accent
+export function buildT(accentRaw = status.warn, accentFg = "#0a0a0a") {
+  return {
+    light:       false,
+    accentRaw,
+    accentFg,
+    bg:          surface.bg0,
+    bgSolid:     surface.bg0,
+    bg1:         surface.bg1,
+    bg2:         surface.bg2,
+    bg3:         surface.bg3,
+    bg4:         surface.bg4,
+    line:        "rgba(255,255,255,.06)",
+    lineStrong:  "rgba(255,255,255,.12)",
+    text:        text.primary,
+    textSec:     text.secondary,
+    textTer:     text.tertiary,
+    textMuted:   text.muted,
+    textGhost:   text.ghost,
+    shadow:      "0 1px 0 rgba(255,255,255,.02)",
+    shadowHi:    "0 18px 60px rgba(0,0,0,.5)",
+    display:     "'Geist', 'Inter', system-ui, sans-serif",
+    body:        font.body,
+    mono:        "'Geist Mono', 'DM Mono', monospace",
+    radius:      16,   // card
+    radiusS:     10,   // input
+    radiusXs:    6,    // tight (set rows, chips)
+    radiusXl:    24,   // modal
+    capsTrack:   "0.14em",
+    good:        status.good,
+    warn:        status.warn,
+    bad:         status.caution,
+    info:        status.info,
+  };
+}
+
+// Default singleton — dark, amber accent. Import `T` for zero-config usage.
+export const T = buildT();
