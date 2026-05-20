@@ -271,46 +271,51 @@ const NAV_ITEMS = [
 
 export function BottomNav({ active, onSelect, accent, level, theme="dark" }) {
   const light = theme === "pop_light";
+  const navBg = light
+    ? "linear-gradient(180deg, transparent 0%, rgba(248,255,251,0.95) 30%)"
+    : "linear-gradient(180deg, transparent 0%, #0b0c0e 30%)";
+  const borderColor = light ? "rgba(120,135,160,.20)" : "rgba(255,255,255,.06)";
   return (
     <nav style={{
       position:"fixed", bottom:0, left:0, right:0, zIndex:90,
-      background:light ? "rgba(255,255,255,0.94)" : "rgba(6,6,6,0.97)",
-      backdropFilter:"blur(20px)",
-      WebkitBackdropFilter:"blur(20px)",
-      borderTop:light ? "1px solid rgba(120,135,160,.25)" : "1px solid #222",
-      boxShadow:light ? "0 -12px 34px rgba(29,78,216,.10)" : "none",
+      background: navBg,
+      backdropFilter:"blur(8px)",
+      WebkitBackdropFilter:"blur(8px)",
+      borderTop:`1px solid ${borderColor}`,
       paddingBottom:"env(safe-area-inset-bottom)",
     }}>
-      <div className="mobile-shell" style={{ display:"flex", justifyContent:"space-around", padding:"12px 4px 10px" }}>
+      <div className="mobile-shell" style={{ display:"flex", justifyContent:"space-around", padding:"10px 16px 16px" }}>
         {NAV_ITEMS.map(({ id, label, Icon }) => {
           const isActive = active === id;
-          const color = isActive ? accent : (light ? "#718096" : "#666");
+          const iconColor = isActive ? accent : (light ? "#718096" : "#56575f");
+          const textColor = isActive ? accent : (light ? "#718096" : "#56575f");
           return (
             <button key={id} onClick={() => onSelect(id)}
               style={{
                 flex:1, background:"transparent", border:"none",
-                padding:"8px 4px", borderRadius:10,
-                display:"flex", flexDirection:"column", alignItems:"center", gap:5,
+                display:"flex", flexDirection:"column", alignItems:"center", gap:4,
                 position:"relative",
               }}>
               {/* Level badge on stats tab */}
               {id==="stats" && level && (
                 <div style={{
-                  position:"absolute", top:2, right:"18%",
-                  width:18, height:18, borderRadius:"50%",
+                  position:"absolute", top:-2, right:"14%",
+                  width:16, height:16, borderRadius:"50%",
                   background:level.color, display:"flex", alignItems:"center", justifyContent:"center",
-                  fontSize:9, fontWeight:700, color:"#000", lineHeight:1,
-                  boxShadow:`0 0 8px ${level.color}88`,
+                  fontSize:8, fontWeight:700, color:"#000", lineHeight:1,
                 }}>
                   {level.idx+1}
                 </div>
               )}
-              <div style={{ filter: isActive ? `drop-shadow(0 0 7px ${accent}bb)` : "none", transition:"filter .2s" }}>
-                <Icon color={color} size={22} />
-              </div>
-              <div style={{ fontSize:9, fontWeight:isActive?700:400, color, lineHeight:1 }}>
+              <Icon color={iconColor} size={20} />
+              <span style={{ fontSize:10, letterSpacing:"0.16em", textTransform:"uppercase", fontWeight:500, color:textColor, lineHeight:1 }}>
                 {label}
-              </div>
+              </span>
+              <span style={{
+                width:18, height:1.5,
+                background: isActive ? accent : "transparent",
+                borderRadius:1,
+              }}/>
             </button>
           );
         })}

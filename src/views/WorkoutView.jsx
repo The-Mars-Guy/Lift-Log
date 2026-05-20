@@ -6,7 +6,7 @@ import {
   ageTier, ageAdjustedRestSeconds, EXERCISE_LIBRARY, exerciseFolder,
 } from "../data.js";
 import { useSessionTimer, fmtDuration } from "../hooks.js";
-import { ExerciseAnimation, RestTimer, Toast, MiniGraph } from "../components/shared.jsx";
+import { ExerciseAnimation, RestTimer, Toast } from "../components/shared.jsx";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
 import { completionKey, defaultWorkoutDay, scheduledDate, logKey as makeLogKey } from "../session.js";
 import { bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildSessionIntent, coachSetCount, coachTargetReps, DEFAULT_READINESS, evaluateProgression, explainExerciseDecision, plateauFixes, readinessLabel, sciencePrescription, summarizeWorkout, weeklyMuscleCoverage, SUBSTITUTIONS } from "../coach.js";
@@ -15,7 +15,7 @@ import { FirstRunSetup, AssessmentFlow, ASSESSMENT_EXERCISES } from "./workout/A
 import PostWorkoutFeedback from "./workout/PostWorkoutFeedback.jsx";
 import { buildSuggestions, CoachDrawer, CoachFab, CoachCard } from "./workout/Coach.jsx";
 import { surface, text, status, T } from "../theme.js";
-import { Disp, Caps, Bar, Card } from "../components/Primitives.jsx";
+import { Disp, Caps, Bar, Card, Sparkline } from "../components/Primitives.jsx";
 
 const SET_FEELINGS = [
   { key:"easy", label:"EASY" },
@@ -1479,7 +1479,6 @@ export default function WorkoutView({
               </div>
             </div>
           )}
-          {doneSets===0&&!isCompleted&&<ProgressionPreview items={progressionPreview} accent={accent}/>}
           {!isCompleted&&(
             <NoteField value={workoutNote} onChange={setWorkoutNote} />
           )}
@@ -1560,8 +1559,27 @@ export default function WorkoutView({
                 </div>
               </div>
 
+              {/* per-exercise progress */}
+              <div style={{marginTop:8}}>
+                <Bar value={Array.from({length:getSetCount(ex)},(_,j)=>setDone(i,j)).filter(Boolean).length} max={getSetCount(ex)} color={done?accent:exColor} height={2}/>
+              </div>
+
               {open&&(
                 <div style={{marginTop:18,padding:18,background:surface.bg1,borderRadius:18,animation:"slideDown .25s ease-out"}}>
+                  {/* REPS / LOAD / SETS tile grid */}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:1,background:"rgba(255,255,255,.06)",borderRadius:10,overflow:"hidden",marginBottom:16}}>
+                    {[
+                      {lbl:"REPS",val:`${reps}${ex.repSuffix||""}`,sub:"target"},
+                      {lbl:"LOAD",val:curW>0?`${curW}`:"BW",sub:curW>0?"lbs":"body"},
+                      {lbl:"SETS",val:`${getSetCount(ex)}`,sub:`${effectiveRest}s rest`},
+                    ].map((m,mi)=>(
+                      <div key={mi} style={{background:surface.bg2,padding:"10px 8px",textAlign:"center"}}>
+                        <Caps color={text.muted} size={9}>{m.lbl}</Caps>
+                        <Disp size={32} color={text.primary} style={{display:"block",marginTop:4}}>{m.val}</Disp>
+                        <div style={{marginTop:2,color:text.tertiary,fontSize:10}}>{m.sub}</div>
+                      </div>
+                    ))}
+                  </div>
                   <SLabel>Animation</SLabel>
                   <ExerciseAnimation folder={exerciseFolder(ex)} video={ex.video} accent={accent}/>
 
@@ -1573,7 +1591,10 @@ export default function WorkoutView({
                         <span style={{fontSize:12,color:exColor}}>{histData[histData.length-1].totalReps} reps last session</span>
                       )}
                     </div>
-                    <MiniGraph data={histData} color={exColor} height={85}/>
+                    {histData.length>=2
+                      ? <Sparkline fluid data={histData.map(d=>d.totalReps)} w={300} h={60} color={exColor} areaColor={`${exColor}18`} thick area/>
+                      : <div style={{fontSize:12,color:text.muted,paddingTop:8}}>Log 2+ sessions to see trend.</div>
+                    }
                   </Card>
 
                   <div style={{marginTop:20}}>
@@ -1592,8 +1613,6 @@ export default function WorkoutView({
                     onApply={useSubstitution}
                     onRemove={removeSubstitution}
                   />
-
-                  <CoachCard suggestions={suggestions.filter(s => s.cat === "Form" || s.cat === "Science" || s.cat === "Watch" || s.cat === "Habits").slice(0, 4)} accent={accent} onOpen={()=>setCoachOpen(true)}/>
 
                   {science.enabled&&(
                     <div style={{marginTop:20}}>

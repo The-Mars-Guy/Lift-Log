@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { WORKOUTS, DAYS, todayName, pushPullRatio } from "../../data.js";
 import { buildCoachInsights } from "../../coach.js";
+import { surface, text, status } from "../../theme.js";
+import { Caps, Disp } from "../../components/Primitives.jsx";
 
-// ─── Insight constants ───────────────────────────────────────────────────────
+// ─── Insight constants ────────────────────────────────────────────────────────
 const MUSCLE_SHORT = {
   chest:"Chest", lats:"Lats", upperBack:"Back", sideDelts:"Delts",
   biceps:"Bi", triceps:"Tri", quads:"Quads", hamstrings:"Hams",
@@ -11,7 +13,7 @@ const MUSCLE_SHORT = {
 const MUSCLE_ROW_ORDER = ["chest","lats","upperBack","sideDelts","biceps","triceps","quads","hamstrings","glutes","calves","core"];
 
 function muscleDayColor(days) {
-  if (days === null) return "#444";
+  if (days === null) return "#3a3b42";
   if (days === 0)    return "#4ade80";
   if (days <= 2)     return "#86efac";
   if (days <= 4)     return "#fbbf24";
@@ -25,7 +27,7 @@ function muscleDayLabel(days) {
   return `${days}d`;
 }
 
-// ─── Build suggestions (workout-view helper, unchanged) ───────────────────────
+// ─── Build suggestions (used externally) ─────────────────────────────────────
 export function buildSuggestions({ history, progression, settings, exConfig, workoutKey }) {
   const workout = WORKOUTS[workoutKey];
   const suggs = [];
@@ -42,22 +44,6 @@ export function buildSuggestions({ history, progression, settings, exConfig, wor
     if(cfg?.pendingAdj<0) suggs.push({icon:"🎯",cat:"Adjustment",msg:`${ex.name}: target reduced to ×${cfg.targetReps}. Dialing in the right challenge.`});
   });
 
-  const FORM={A:[
-    {icon:"🦵",cat:"Form",msg:"Goblet Squat: drive elbows between knees at the bottom. Creates a natural brace."},
-    {icon:"💪",cat:"Form",msg:"Floor Press: 45° elbows, pause at chest. Control over momentum."},
-    {icon:"🔙",cat:"Form",msg:"Row: elbow to back pocket — not hand to hip. Your lats do the work."},
-    {icon:"🙌",cat:"Form",msg:"Arnold Press: the rotation IS the point. Don't skip it."},
-    {icon:"💪",cat:"Form",msg:"Hammer Curl: 3s down on every rep. The eccentric is where muscle grows."},
-  ],B:[
-    {icon:"🍑",cat:"Form",msg:"RDL: push hips BACK before bending. Feel the hamstring stretch first."},
-    {icon:"⚡",cat:"Form",msg:"Kickback: lock upper arm parallel. If it drops, weight is too heavy."},
-    {icon:"🦵",cat:"Form",msg:"Lunge: step back far enough that front shin stays vertical."},
-    {icon:"🔙",cat:"Form",msg:"Rear Delt Row: lead with pinky, elbows wide. Rear delts, not biceps."},
-    {icon:"🦵",cat:"Form",msg:"Calf Raise: 2s pause at top. Rushing defeats the purpose."},
-  ]};
-  const tips=FORM[workoutKey]||[];
-  const pick=tips[(new Date().getDate())%tips.length];
-  if(pick) suggs.push(pick);
   if(!DAYS.includes(today)) suggs.push({icon:"🛌",cat:"Recovery",msg:"Rest day. Muscle grows during recovery. Protein + sleep > extra sets."});
   if(history.length===0) suggs.push({icon:"🌱",cat:"Welcome",msg:"Form now = gains forever. Feel the muscle work, don't just move weight."});
   return suggs.filter(Boolean);
@@ -65,19 +51,22 @@ export function buildSuggestions({ history, progression, settings, exConfig, wor
 
 // ─── Drawer ───────────────────────────────────────────────────────────────────
 export function CoachDrawer({ open, onClose, suggestions, memory, plan, accent, exercises = [], history = [], checkIns = [], exConfig = {}, userProfile = null, goals = [], bodyMetrics = [] }) {
-  const [idx, setIdx] = useState(0);
 
   const insights = useMemo(
     () => buildCoachInsights({ history, exercises, exConfig, checkIns, userProfile, goals, bodyMetrics }),
     [history, exercises, exConfig, checkIns, userProfile, goals, bodyMetrics]
   );
 
-  const pp = useMemo(() => pushPullRatio(exercises), [exercises]);
+  // Full-week push/pull across both workouts
+  const allWeekExercises = useMemo(
+    () => [...(WORKOUTS.A?.exercises || []), ...(WORKOUTS.B?.exercises || [])],
+    []
+  );
+  const pp = useMemo(() => pushPullRatio(allWeekExercises), [allWeekExercises]);
 
   if (!open) return null;
-  const s = suggestions[idx] || suggestions[0];
-  const behavior = memory?.behavior || {};
 
+  const behavior = memory?.behavior || {};
   const ppColor = pp.label === "balanced" ? "#4ade80" : "#fbbf24";
   const ppBarPush = pp.pushSets + pp.pullSets > 0
     ? Math.round((pp.pushSets / (pp.pushSets + pp.pullSets)) * 100)
@@ -86,145 +75,158 @@ export function CoachDrawer({ open, onClose, suggestions, memory, plan, accent, 
   return (
     <div style={{position:"fixed",inset:0,zIndex:240,pointerEvents:"none"}}>
       <button aria-label="Close coach" onClick={onClose}
-        style={{position:"absolute",inset:0,border:"none",background:"rgba(0,0,0,.32)",pointerEvents:"auto"}} />
+        style={{position:"absolute",inset:0,border:"none",background:"rgba(0,0,0,.52)",pointerEvents:"auto"}} />
       <div className="mobile-shell" style={{position:"absolute",left:0,right:0,bottom:"calc(82px + env(safe-area-inset-bottom))",padding:"0 14px",pointerEvents:"auto"}}>
-        <div style={{background:"#ffffff",color:"#172033",border:`1.5px solid ${accent}66`,borderRadius:18,
-          boxShadow:"0 22px 70px rgba(20,40,80,.28)",overflow:"hidden",animation:"slideUp .24s ease-out"}}>
+        <div style={{
+          background: surface.bg1,
+          border: `1px solid rgba(255,255,255,.08)`,
+          borderRadius: 20,
+          boxShadow: `0 28px 80px rgba(0,0,0,.72), 0 0 0 1px rgba(255,255,255,.04)`,
+          overflow: "hidden",
+          animation: "slideUp .24s ease-out",
+        }}>
 
           {/* Header */}
-          <div style={{padding:"16px 17px",background:`linear-gradient(135deg,${accent}24,#ffffff)`,
-            borderBottom:"1px solid rgba(120,135,160,.22)",display:"flex",alignItems:"center",gap:12}}>
-            <div style={{width:42,height:42,borderRadius:13,background:accent,color:"#050505",display:"flex",
-              alignItems:"center",justifyContent:"center",fontSize:22,boxShadow:`0 10px 26px ${accent}55`}}>AI</div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:11,color:"#25536f",letterSpacing:".16em",textTransform:"uppercase",fontWeight:700}}>Coach</div>
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,letterSpacing:".05em",lineHeight:1,color:"#123047"}}>
+          <div style={{
+            padding: "16px 18px",
+            background: `linear-gradient(135deg,${accent}1a,transparent)`,
+            borderBottom: `1px solid rgba(255,255,255,.07)`,
+            display: "flex", alignItems: "center", gap: 12,
+          }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 12,
+              background: accent, color: "#050505",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 13, fontWeight: 900, letterSpacing: ".06em",
+              boxShadow: `0 8px 20px ${accent}44`,
+            }}>AI</div>
+            <div style={{flex:1, minWidth:0}}>
+              <Caps color={accent} size={9}>Coach</Caps>
+              <Disp size={24} style={{display:"block", marginTop:2}}>
                 {plan?.headline || "Training assistant"}
-              </div>
+              </Disp>
             </div>
-            <button onClick={onClose}
-              style={{width:34,height:34,borderRadius:10,border:"1px solid rgba(112,132,160,.28)",
-                background:"rgba(255,255,255,.68)",color:"#435166",fontSize:18}}>×</button>
+            <button onClick={onClose} style={{
+              width: 32, height: 32, borderRadius: 9,
+              border: `1px solid rgba(255,255,255,.1)`,
+              background: "rgba(255,255,255,.04)",
+              color: text.tertiary, fontSize: 18,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>×</button>
           </div>
 
-          <div style={{padding:"15px 17px",display:"grid",gap:12,maxHeight:"62vh",overflowY:"auto"}}>
+          <div style={{padding:"14px 16px", display:"grid", gap:10, maxHeight:"60vh", overflowY:"auto"}}>
 
-            {/* Suggestions carousel */}
-            {s && (
-              <div style={{padding:"13px 14px",background:"#f3f8fd",border:"1px solid rgba(112,132,160,.24)",borderRadius:13}}>
-                <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,marginBottom:7}}>{s.cat}</div>
-                <div style={{fontSize:14,lineHeight:1.55,color:"#263348"}}>{s.icon} {s.msg}</div>
-                {suggestions.length>1&&(
-                  <div style={{display:"flex",gap:8,marginTop:12}}>
-                    <button onClick={()=>setIdx(i=>(i+suggestions.length-1)%suggestions.length)}
-                      style={{flex:1,padding:"10px",borderRadius:10,border:"1px solid #d9e4ef",background:"#fff",color:"#435166"}}>BACK</button>
-                    <button onClick={()=>setIdx(i=>(i+1)%suggestions.length)}
-                      style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:accent,color:"#050505",fontWeight:700}}>NEXT</button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Muscle Frequency Heat Map */}
-            <div style={{padding:"13px 14px",background:"#fff",border:"1px solid rgba(112,132,160,.24)",borderRadius:13}}>
-              <div style={{fontSize:11,color:"#25536f",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,marginBottom:10}}>Muscle Frequency</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
+            {/* Muscle Frequency */}
+            <Section>
+              <Caps style={{display:"block", marginBottom:10}}>Muscle Frequency</Caps>
+              <div style={{display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:5}}>
                 {MUSCLE_ROW_ORDER.map(m => {
                   const days = insights.muscleLastTrained[m];
                   const col = muscleDayColor(days);
                   return (
-                    <div key={m} style={{textAlign:"center",padding:"8px 4px",borderRadius:8,
-                      background:`${col}18`,border:`1px solid ${col}44`}}>
-                      <div style={{fontSize:10,color:col,fontWeight:900,letterSpacing:".04em"}}>{muscleDayLabel(days)}</div>
-                      <div style={{fontSize:9,color:"#6b788c",letterSpacing:".06em",textTransform:"uppercase",marginTop:2}}>{MUSCLE_SHORT[m]}</div>
+                    <div key={m} style={{
+                      textAlign:"center", padding:"7px 4px", borderRadius:8,
+                      background: `${col}14`, border: `1px solid ${col}33`,
+                    }}>
+                      <div style={{fontSize:10, color:col, fontWeight:700}}>{muscleDayLabel(days)}</div>
+                      <div style={{fontSize:9, color:text.tertiary, letterSpacing:".06em", textTransform:"uppercase", marginTop:2}}>{MUSCLE_SHORT[m]}</div>
                     </div>
                   );
                 })}
               </div>
-              <div style={{display:"flex",gap:10,marginTop:8,flexWrap:"wrap"}}>
-                {[["#4ade80","Today"],["#fbbf24","3-4d"],["#f97316","5-7d"],["#ef4444","8d+"],["#444","Never"]].map(([c,l])=>(
-                  <div key={l} style={{display:"flex",alignItems:"center",gap:4}}>
-                    <div style={{width:8,height:8,borderRadius:2,background:c}}/>
-                    <span style={{fontSize:9,color:"#888"}}>{l}</span>
+              <div style={{display:"flex", gap:10, marginTop:8, flexWrap:"wrap"}}>
+                {[["#4ade80","Today"],["#fbbf24","3–4d"],["#f97316","5–7d"],["#ef4444","8d+"],["#3a3b42","Never"]].map(([c,l])=>(
+                  <div key={l} style={{display:"flex", alignItems:"center", gap:4}}>
+                    <div style={{width:7, height:7, borderRadius:2, background:c}}/>
+                    <Caps size={9} color={text.muted}>{l}</Caps>
                   </div>
                 ))}
               </div>
               {insights.suggestion && (
-                <div style={{marginTop:9,padding:"8px 10px",background:"#fff8e6",border:"1px solid #fbbf2444",borderRadius:8,fontSize:12,color:"#92400e",lineHeight:1.45}}>
-                  💡 {insights.suggestion}
+                <div style={{marginTop:9, padding:"8px 10px", background:`${status.warn}16`, border:`1px solid ${status.warn}33`, borderRadius:8, fontSize:12, color:status.warn, lineHeight:1.45}}>
+                  {insights.suggestion}
                 </div>
               )}
-            </div>
+            </Section>
 
-            {/* Push:Pull Balance */}
+            {/* Push · Pull Balance (full week) */}
             {(pp.pushSets > 0 || pp.pullSets > 0) && (
-              <div style={{padding:"13px 14px",background:"#fff",border:"1px solid rgba(112,132,160,.24)",borderRadius:13}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                  <div style={{fontSize:11,color:"#25536f",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700}}>Push:Pull Balance</div>
-                  <div style={{fontSize:11,fontWeight:700,color:ppColor,textTransform:"capitalize"}}>{pp.label}</div>
+              <Section>
+                <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10}}>
+                  <Caps>Push · Pull · Week</Caps>
+                  <Caps color={ppColor} size={9}>{pp.label}</Caps>
                 </div>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <div style={{fontSize:10,color:"#60a5fa",fontWeight:700,minWidth:28}}>PUSH</div>
-                  <div style={{flex:1,height:8,background:"#e5edfa",borderRadius:4,overflow:"hidden",position:"relative"}}>
-                    <div style={{position:"absolute",left:0,top:0,height:"100%",width:`${ppBarPush}%`,
-                      background:"#60a5fa",borderRadius:4,transition:"width .4s"}}/>
-                    <div style={{position:"absolute",right:0,top:0,height:"100%",width:`${100-ppBarPush}%`,
-                      background:"#f97316",borderRadius:4}}/>
+                <div style={{display:"flex", alignItems:"center", gap:8, marginBottom:6}}>
+                  <Caps color="#60a5fa" size={9} style={{minWidth:28}}>PUSH</Caps>
+                  <div style={{flex:1, height:6, background:"rgba(255,255,255,.08)", borderRadius:999, overflow:"hidden", position:"relative"}}>
+                    <div style={{position:"absolute", left:0, top:0, height:"100%", width:`${ppBarPush}%`, background:"#60a5fa", borderRadius:999, transition:"width .4s"}}/>
+                    <div style={{position:"absolute", right:0, top:0, height:"100%", width:`${100-ppBarPush}%`, background:"#f97316", borderRadius:999}}/>
                   </div>
-                  <div style={{fontSize:10,color:"#f97316",fontWeight:700,minWidth:28,textAlign:"right"}}>PULL</div>
+                  <Caps color="#f97316" size={9} style={{minWidth:28, textAlign:"right"}}>PULL</Caps>
                 </div>
-                <div style={{display:"flex",justifyContent:"space-between",marginTop:5}}>
-                  <div style={{fontSize:10,color:"#6b788c"}}>{pp.pushSets} sets</div>
-                  <div style={{fontSize:10,color:"#6b788c"}}>{pp.ratio != null ? `${pp.ratio}:1 ratio` : "no data"}</div>
-                  <div style={{fontSize:10,color:"#6b788c"}}>{pp.pullSets} sets</div>
+                <div style={{display:"flex", justifyContent:"space-between"}}>
+                  <Caps size={9} color={text.muted}>{pp.pushSets} sets</Caps>
+                  <Caps size={9} color={text.muted}>{pp.ratio != null ? `${pp.ratio}:1 ratio` : "—"}</Caps>
+                  <Caps size={9} color={text.muted}>{pp.pullSets} sets</Caps>
                 </div>
                 {pp.label !== "balanced" && (
-                  <div style={{marginTop:7,fontSize:11,color:ppColor,lineHeight:1.4}}>
+                  <div style={{marginTop:8, fontSize:11, color:status.warn, lineHeight:1.4}}>
                     {pp.label === "push heavy"
-                      ? "⚠ Add a pull movement (rows, pulldowns) to balance the routine."
-                      : "⚠ Add a push movement (press, fly) to balance the routine."}
+                      ? "Add pull movements (rows, pulldowns) to balance the week."
+                      : "Add push movements (press, fly) to balance the week."}
                   </div>
                 )}
-              </div>
+              </Section>
             )}
 
             {/* Weak Points */}
             {insights.weakPoints.length > 0 && (
-              <div style={{padding:"13px 14px",background:"#fff",border:"1px solid rgba(112,132,160,.24)",borderRadius:13}}>
-                <div style={{fontSize:11,color:"#25536f",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,marginBottom:9}}>Weak Points</div>
-                <div style={{display:"grid",gap:7}}>
+              <Section>
+                <Caps style={{display:"block", marginBottom:9}}>Weak Points</Caps>
+                <div style={{display:"grid", gap:7}}>
                   {insights.weakPoints.map((wp, i) => (
-                    <div key={i} style={{padding:"9px 11px",background:wp.type==="coverage"?"#fff8e6":"#fff0f0",
-                      border:`1px solid ${wp.type==="coverage"?"#fbbf2444":"#fb718544"}`,borderRadius:9}}>
-                      <div style={{fontSize:12,fontWeight:800,color:wp.type==="coverage"?"#92400e":"#9f1239"}}>{wp.title}</div>
-                      <div style={{fontSize:11,color:"#6b788c",marginTop:2,lineHeight:1.4}}>{wp.detail}</div>
+                    <div key={i} style={{
+                      padding: "9px 11px",
+                      background: wp.type==="coverage" ? `${status.warn}14` : `${status.caution}14`,
+                      border: `1px solid ${wp.type==="coverage" ? status.warn : status.caution}33`,
+                      borderRadius: 9,
+                    }}>
+                      <div style={{fontSize:12, fontWeight:700, color: wp.type==="coverage" ? status.warn : status.caution}}>{wp.title}</div>
+                      <div style={{fontSize:11, color:text.tertiary, marginTop:2, lineHeight:1.4}}>{wp.detail}</div>
                     </div>
                   ))}
                 </div>
-              </div>
+              </Section>
             )}
 
             {/* Stats row */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
-              <MiniStat label="Memory" value={`${memory?.readinessCount||0}+${memory?.setFeedbackCount||0}`} />
-              <MiniStat label="Rest Skips" value={behavior.restSkips||0} />
-              <MiniStat label="Avg Rest" value={behavior.avgRestSeconds ? `${behavior.avgRestSeconds}s` : "—"} />
+            <div style={{display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8}}>
+              <MiniStat label="Logged" value={`${memory?.readinessCount||0}+${memory?.setFeedbackCount||0}`} accent={accent}/>
+              <MiniStat label="Rest Skips" value={behavior.restSkips||0} accent={accent}/>
+              <MiniStat label="Avg Rest" value={behavior.avgRestSeconds ? `${behavior.avgRestSeconds}s` : "—"} accent={accent}/>
             </div>
 
-            {/* What I remember */}
-            <div style={{padding:"13px 14px",background:"#fff",border:"1px solid rgba(112,132,160,.24)",borderRadius:13}}>
-              <div style={{fontSize:11,color:"#25536f",letterSpacing:".14em",textTransform:"uppercase",fontWeight:700,marginBottom:7}}>What I remember</div>
-              <div style={{fontSize:13,lineHeight:1.55,color:"#435166"}}>{memory?.summary || "Still collecting enough sessions to spot patterns."}</div>
-              {memory?.recoverySummary&&<div style={{fontSize:13,lineHeight:1.55,color:"#435166",marginTop:8}}>{memory.recoverySummary}</div>}
-              {behavior.notes?.length>0&&<div style={{fontSize:13,lineHeight:1.55,color:"#435166",marginTop:8}}>{behavior.notes[0]}</div>}
-              {(memory?.profileNote||memory?.goalNote||memory?.weightNote)&&(
-                <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid rgba(112,132,160,.16)",display:"grid",gap:5}}>
-                  {memory.profileNote&&<div style={{fontSize:12,color:"#25536f",lineHeight:1.45}}>👤 {memory.profileNote}</div>}
-                  {memory.goalNote&&<div style={{fontSize:12,color:"#16a34a",lineHeight:1.45}}>🎯 {memory.goalNote}</div>}
-                  {memory.weightNote&&<div style={{fontSize:12,color:"#7c3aed",lineHeight:1.45}}>⚖️ {memory.weightNote}</div>}
+            {/* Coach memory */}
+            <Section>
+              <Caps style={{display:"block", marginBottom:7}}>What I Remember</Caps>
+              <div style={{fontSize:13, lineHeight:1.55, color:text.secondary}}>
+                {memory?.summary || "Still collecting enough sessions to spot patterns."}
+              </div>
+              {memory?.recoverySummary && (
+                <div style={{fontSize:13, lineHeight:1.55, color:text.secondary, marginTop:8}}>{memory.recoverySummary}</div>
+              )}
+              {behavior.notes?.length>0 && (
+                <div style={{fontSize:13, lineHeight:1.55, color:text.secondary, marginTop:8}}>{behavior.notes[0]}</div>
+              )}
+              {(memory?.profileNote || memory?.goalNote || memory?.weightNote) && (
+                <div style={{marginTop:10, paddingTop:10, borderTop:`1px solid rgba(255,255,255,.06)`, display:"grid", gap:5}}>
+                  {memory.profileNote && <div style={{fontSize:12, color:text.tertiary, lineHeight:1.45}}>👤 {memory.profileNote}</div>}
+                  {memory.goalNote    && <div style={{fontSize:12, color:status.good, lineHeight:1.45}}>🎯 {memory.goalNote}</div>}
+                  {memory.weightNote  && <div style={{fontSize:12, color:"#a78bfa", lineHeight:1.45}}>⚖️ {memory.weightNote}</div>}
                 </div>
               )}
-            </div>
+            </Section>
 
           </div>
         </div>
@@ -233,16 +235,33 @@ export function CoachDrawer({ open, onClose, suggestions, memory, plan, accent, 
   );
 }
 
-function MiniStat({ label, value }) {
+function Section({ children }) {
   return (
-    <div style={{padding:"11px 8px",background:"#f3f8fd",border:"1px solid rgba(112,132,160,.22)",borderRadius:11,textAlign:"center"}}>
-      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#123047",letterSpacing:".05em"}}>{value}</div>
-      <div style={{fontSize:10,color:"#6b788c",letterSpacing:".1em",textTransform:"uppercase"}}>{label}</div>
+    <div style={{
+      padding: "12px 14px",
+      background: surface.bg2,
+      border: `1px solid rgba(255,255,255,.06)`,
+      borderRadius: 14,
+    }}>{children}</div>
+  );
+}
+
+function MiniStat({ label, value, accent }) {
+  return (
+    <div style={{
+      padding: "11px 8px",
+      background: surface.bg2,
+      border: `1px solid rgba(255,255,255,.06)`,
+      borderRadius: 11,
+      textAlign: "center",
+    }}>
+      <Disp size={22} color={accent} style={{display:"block"}}>{value}</Disp>
+      <Caps size={9} style={{marginTop:3}}>{label}</Caps>
     </div>
   );
 }
 
-// ─── FAB (no badge) ───────────────────────────────────────────────────────────
+// ─── FAB ─────────────────────────────────────────────────────────────────────
 export function CoachFab({ onClick, accent }) {
   const [pos, setPos] = useState(null);
   const drag = useRef(null);
@@ -255,7 +274,7 @@ export function CoachFab({ onClick, accent }) {
   }, []);
 
   const clampPos = (x, y) => {
-    const pad = 10, size = 62;
+    const pad = 10, size = 52;
     const maxX = Math.max(pad, window.innerWidth - size - pad);
     const maxY = Math.max(pad, window.innerHeight - size - pad);
     return { x: Math.min(Math.max(x, pad), maxX), y: Math.min(Math.max(y, pad), maxY) };
@@ -264,7 +283,7 @@ export function CoachFab({ onClick, accent }) {
   const beginDrag = (event) => {
     event.currentTarget.setPointerCapture?.(event.pointerId);
     const point = event.touches?.[0] || event;
-    const current = pos || { x: window.innerWidth - 78, y: window.innerHeight - 160 };
+    const current = pos || { x: window.innerWidth - 72, y: window.innerHeight - 160 };
     drag.current = { startX:point.clientX, startY:point.clientY, x:current.x, y:current.y, moved:false, last:current };
   };
 
@@ -290,48 +309,31 @@ export function CoachFab({ onClick, accent }) {
 
   const position = pos
     ? { left:pos.x, top:pos.y }
-    : { right:16, bottom:"calc(98px + env(safe-area-inset-bottom))" };
+    : { right:16, bottom:"calc(96px + env(safe-area-inset-bottom))" };
 
   return (
     <button
       onPointerDown={beginDrag}
       onPointerMove={moveDrag}
       onPointerUp={endDrag}
-      onPointerCancel={()=>{drag.current=null;}}
-      style={{position:"fixed",...position,zIndex:130,width:59,height:59,borderRadius:18,
-        border:"1.5px solid #fb923c99",background:"#fb923c",color:"#1a0a00",
-        boxShadow:"0 16px 42px #fb923c55",fontWeight:900,letterSpacing:".04em",
-        touchAction:"none",cursor:"grab"}}
+      onPointerCancel={() => { drag.current = null; }}
+      style={{
+        position: "fixed", ...position, zIndex: 130,
+        width: 50, height: 50, borderRadius: 16,
+        border: `1px solid ${accent}55`,
+        background: `${accent}20`,
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        color: accent,
+        boxShadow: `0 8px 28px ${accent}30, inset 0 1px 0 ${accent}30`,
+        fontWeight: 900, letterSpacing: ".06em", fontSize: 11,
+        touchAction: "none", cursor: "grab",
+      }}
     >
       AI
     </button>
   );
 }
 
-// ─── Coach card (inline, used in workout scroll) ──────────────────────────────
-export function CoachCard({ suggestions, accent, onOpen }) {
-  const [idx, setIdx] = useState(0);
-  const [key, setKey] = useState(0);
-  if (!suggestions.length) return null;
-  const s = suggestions[idx];
-  const cc = {Streak:"#fb923c",Form:"#60a5fa",Progress:accent,Progression:accent,Adjustment:"#fbbf24",Recovery:"#a78bfa",Welcome:accent}[s.cat]||accent;
-  return (
-    <div style={{margin:"0 16px 18px",padding:"13px 14px",background:"#0e0e0e",border:`1.5px solid ${cc}44`,borderRadius:14,boxShadow:`0 0 28px ${cc}15`}}>
-      <div style={{display:"flex",alignItems:"flex-start",gap:14}}>
-        <span style={{fontSize:28,flexShrink:0,marginTop:1}}>{s.icon}</span>
-        <div style={{flex:1}}>
-          <div style={{fontSize:11,color:cc,letterSpacing:".14em",textTransform:"uppercase",marginBottom:5,fontWeight:500}}>{s.cat}</div>
-          <div key={key} style={{fontSize:15,color:"#eee",lineHeight:1.55,animation:"coachSlide .3s ease-out"}}>{s.msg}</div>
-        </div>
-        <button onClick={onOpen}
-          style={{background:"transparent",border:`1px solid ${cc}44`,color:cc,borderRadius:8,padding:"8px 10px",fontSize:12,flexShrink:0,alignSelf:"center",letterSpacing:".08em"}}>OPEN</button>
-      </div>
-      {suggestions.length>1&&(
-        <div style={{display:"flex",gap:5,justifyContent:"center",marginTop:12}}>
-          {suggestions.map((_,i)=><div key={i} onClick={()=>{setIdx(i);setKey(k=>k+1);}}
-            style={{width:i===idx?18:6,height:5,borderRadius:3,background:i===idx?cc:"#333",transition:"all .25s",cursor:"pointer"}}/>)}
-        </div>
-      )}
-    </div>
-  );
-}
+// ─── CoachCard (kept for API compat, noop if no suggestions) ──────────────────
+export function CoachCard() { return null; }

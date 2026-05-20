@@ -297,7 +297,7 @@ export default function App() {
   const lightMode = visualTheme === "pop_light";
   const appBackground = lightMode
     ? `radial-gradient(circle at 18% 0%, ${accent}30 0%, transparent 28%), linear-gradient(180deg,#f8fffb 0%,#eef7ff 52%,#ffffff 100%)`
-    : `radial-gradient(ellipse at top, ${accent}08 0%, #050505 40%, #000 100%)`;
+    : `radial-gradient(ellipse 100% 50% at 50% 0%, ${accent}22 0%, transparent 60%), linear-gradient(180deg, #0d0e13 0%, #06070a 100%)`;
   const preloadWorkout = safeCustomRoutine.enabled ? customRoutineWorkout(safeCustomRoutine, scheduledDay) : WORKOUTS[scheduledKey];
   const preloadFolders = [...new Set((preloadWorkout?.exercises || []).map(ex => ex.folder).filter(Boolean))].slice(0, 8).join("|");
 

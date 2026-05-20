@@ -4,22 +4,23 @@
 // ── SURFACES ──────────────────────────────────────────────────────────────
 // Tonal depth, not borders, separates surfaces.
 export const surface = {
-  bg0: "#0d0d0d", // app background
-  bg1: "#111",    // cards, panels, expansion surfaces
-  bg2: "#141414", // lifted cards (debrief, stat cards)
-  bg3: "#161616", // interactive widgets (steppers, swap options)
-  bg4: "#1a1a1a", // hover states, slight emphasis
+  bg0:    "#0d0e13", // app background (cool dark, slight blue tint)
+  bgSolid:"#0b0c0e", // nav fade-to (opaque base)
+  bg1:    "#13141a", // cards, panels, expansion surfaces
+  bg2:    "#181a21", // lifted cards (debrief, stat cards)
+  bg3:    "#1f2129", // interactive widgets (steppers, swap options)
+  bg4:    "#262832", // hover states, slight emphasis
 };
 
 // ── TEXT ──────────────────────────────────────────────────────────────────
 export const text = {
-  primary:   "#e8e8e8", // body
-  secondary: "#bbb",    // subtitles, secondary content
-  tertiary:  "#888",    // supporting text
-  muted:     "#666",    // captions, labels
-  faint:     "#555",    // helpers, deemphasis
-  ghost:     "#444",    // inactive, very low priority
-  disabled:  "#3a3a3a", // disabled / faded
+  primary:   "#ececef", // body
+  secondary: "#a5a6ad", // subtitles, secondary content
+  tertiary:  "#777881", // supporting text
+  muted:     "#56575f", // captions, labels
+  faint:     "#44454d", // helpers, deemphasis
+  ghost:     "#3a3b42", // inactive, very low priority
+  disabled:  "#2d2e35", // disabled / faded
 };
 
 // ── STATUS COLORS ─────────────────────────────────────────────────────────
@@ -99,14 +100,14 @@ export function buildT(accentRaw = status.warn, accentFg = "#0a0a0a") {
     light:       false,
     accentRaw,
     accentFg,
-    bg:          surface.bg0,
-    bgSolid:     surface.bg0,
+    bg:          `radial-gradient(ellipse 100% 50% at 50% 0%, ${accentRaw}22 0%, transparent 60%), linear-gradient(180deg, ${surface.bg0} 0%, #06070a 100%)`,
+    bgSolid:     surface.bgSolid,
     bg1:         surface.bg1,
     bg2:         surface.bg2,
     bg3:         surface.bg3,
     bg4:         surface.bg4,
     line:        "rgba(255,255,255,.06)",
-    lineStrong:  "rgba(255,255,255,.12)",
+    lineStrong:  "rgba(255,255,255,.13)",
     text:        text.primary,
     textSec:     text.secondary,
     textTer:     text.tertiary,
@@ -117,11 +118,11 @@ export function buildT(accentRaw = status.warn, accentFg = "#0a0a0a") {
     display:     "'Geist', 'Inter', system-ui, sans-serif",
     body:        font.body,
     mono:        "'Geist Mono', 'DM Mono', monospace",
-    radius:      16,   // card
+    radius:      14,   // card
     radiusS:     10,   // input
     radiusXs:    6,    // tight (set rows, chips)
-    radiusXl:    24,   // modal
-    capsTrack:   "0.14em",
+    radiusXl:    22,   // modal
+    capsTrack:   "0.16em",
     good:        status.good,
     warn:        status.warn,
     bad:         status.caution,

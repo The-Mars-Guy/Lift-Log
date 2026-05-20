@@ -92,22 +92,30 @@ export function Bar({ value, max = 1, color, height = 6, bg, t = T }) {
 // ── Sparkline ────────────────────────────────────────────────────────────────
 // Minimal SVG line chart. data = number[]. Needs at least 2 points.
 // areaColor defaults to a faint tint of color when omitted but area=true.
-export function Sparkline({ data, w = 100, h = 28, color, areaColor, area = false, thick = false, t = T }) {
+// fluid=true → SVG scales to 100% container width, preserving the h height.
+// Use fluid when the container width is unknown at render time.
+export function Sparkline({ data, w = 100, h = 28, color, areaColor, area = false, thick = false, fluid = false, t = T }) {
   if (!data || data.length < 2) return null;
   const min = Math.min(...data);
   const max = Math.max(...data);
   const range = max - min || 1;
+  const vbW = w || 100;
   const pts = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * w;
+    const x = (i / (data.length - 1)) * vbW;
     const y = h - ((v - min) / range) * (h - 4) - 2;
     return [x, y];
   });
   const pathD = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
-  const areaD = `${pathD} L${w},${h} L0,${h} Z`;
+  const areaD = `${pathD} L${vbW},${h} L0,${h} Z`;
   const lineColor = color || t.accentRaw;
   const fillColor = areaColor || `${lineColor}18`;
   return (
-    <svg width={w} height={h} style={{ display: "block", overflow: "visible" }}>
+    <svg
+      width={fluid ? "100%" : w} height={h}
+      viewBox={`0 0 ${vbW} ${h}`}
+      preserveAspectRatio={fluid ? "none" : "xMidYMid meet"}
+      style={{ display: "block" }}
+    >
       {(area || areaColor) && <path d={areaD} fill={fillColor} />}
       <path d={pathD} fill="none" stroke={lineColor}
         strokeWidth={thick ? 2 : 1.5}

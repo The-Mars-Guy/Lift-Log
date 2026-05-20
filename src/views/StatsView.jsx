@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { WORKOUTS, ACHIEVEMENTS, computeStats, isoWeek, getLevel, epley1RM, getExerciseHistory, allRoutineExercises, customRoutineWorkout, routineBalanceScore, routineCoverage } from "../data.js";
-import { BarChart, Heatmap, MiniGraph } from "../components/shared.jsx";
+import { BarChart, Heatmap } from "../components/shared.jsx";
 import { fmtDuration } from "../hooks.js";
 import { exerciseVolume } from "../session.js";
 import { buildCoachMemory, buildWeeklyReview, computePersonalRecords, detectWeakPoints } from "../coach.js";
 import { surface, text, status, T } from "../theme.js";
-import { Card, Disp, Caps, Bar, TabRow } from "../components/Primitives.jsx";
+import { Card, Disp, Caps, Bar, TabRow, Sparkline } from "../components/Primitives.jsx";
 
 export default function StatsView({ history, progression, settings, achievements, accent, xp, level, exConfig, checkIns, bodyMetrics = [], setBodyMetrics, customRoutine, userProfile = null, goals = [] }) {
   const [tab, setTab] = useState("overview");
@@ -107,6 +107,39 @@ export default function StatsView({ history, progression, settings, achievements
             <div style={{fontSize:13,color:"#999",marginTop:7,fontWeight:600}}>your numbers</div>
           </div>
 
+          {/* VOLUME HERO CARD */}
+          {weekVolumeData.some(d=>d.value>0)&&(
+            <div style={{padding:"0 16px 12px"}}>
+              <Card level={1} style={{padding:"16px 16px 14px"}}>
+                <Caps color={text.muted}>Total Volume · This Week</Caps>
+                <div style={{marginTop:4,display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:8}}>
+                  <div style={{display:"flex",alignItems:"baseline",gap:6}}>
+                    <Disp size={48} color={accent}>
+                      {(()=>{const v=weekVolumeData[weekVolumeData.length-1]?.value||0;return v>=1000?`${(v/1000).toFixed(1)}K`:v;})()}
+                    </Disp>
+                    <Caps color={text.tertiary} size={11}>LB</Caps>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <Disp size={26} color={text.secondary}>{stats.totalSessions}</Disp>
+                    <Caps color={text.muted} size={9} style={{display:"block",marginTop:1}}>Sessions</Caps>
+                  </div>
+                </div>
+                <div style={{marginTop:14}}>
+                  <Sparkline
+                    fluid data={weekVolumeData.map(d=>d.value)}
+                    w={320} h={80}
+                    color={accent} areaColor={`${accent}1f`}
+                    thick area
+                  />
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",marginTop:6}}>
+                  <Caps color={text.muted} size={9}>8 weeks ago</Caps>
+                  <Caps color={text.muted} size={9}>now</Caps>
+                </div>
+              </Card>
+            </div>
+          )}
+
           {/* KEY STAT GRID */}
           <div style={{padding:"0 16px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:4}}>
             <BigStat label="Total Sessions" value={stats.totalSessions} accent={status.good}/>
@@ -162,11 +195,22 @@ export default function StatsView({ history, progression, settings, achievements
 
           {/* SESSIONS PER WEEK */}
           <Section title="Sessions Per Week" sub="last 8 weeks · target 3/wk">
-            <BarChart data={weekData} height={150}/>
-            <div style={{display:"flex",gap:14,marginTop:10,fontSize:12,color:"#aaa",flexWrap:"wrap"}}>
+            <div style={{padding:"4px 0 8px"}}>
+              <Sparkline
+                fluid data={weekData.map(d=>d.value)}
+                w={320} h={80}
+                color={accent} areaColor={`${accent}15`}
+                thick area
+              />
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+              <Caps color={text.muted} size={9}>8 weeks ago</Caps>
+              <Caps color={text.muted} size={9}>now</Caps>
+            </div>
+            <div style={{display:"flex",gap:14,fontSize:12,color:"#aaa",flexWrap:"wrap"}}>
               <Leg color={status.good} label="3+ (target)"/>
               <Leg color={status.info} label="2"/>
-              <Leg color="#2a2a2a" label="0–1"/>
+              <Leg color={surface.bg3} label="0–1"/>
             </div>
           </Section>
 
@@ -204,7 +248,18 @@ export default function StatsView({ history, progression, settings, achievements
         <div>
           {/* VOLUME TREND */}
           <Section title="Weekly Volume" sub="lbs lifted per week · last 8 weeks">
-            <BarChart data={weekVolumeData} height={130}/>
+            <div style={{padding:"4px 0 8px"}}>
+              <Sparkline
+                fluid data={weekVolumeData.map(d=>d.value)}
+                w={320} h={90}
+                color={accent} areaColor={`${accent}1f`}
+                thick area
+              />
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between"}}>
+              <Caps color={text.muted} size={9}>8 weeks ago</Caps>
+              <Caps color={text.muted} size={9}>now</Caps>
+            </div>
           </Section>
 
           {/* EXERCISE PROGRESS */}
@@ -215,17 +270,22 @@ export default function StatsView({ history, progression, settings, achievements
               const latestTotal = data.length ? data[data.length-1].totalReps : null;
               const trend = data.length>=2 ? data[data.length-1].totalReps - data[0].totalReps : null;
               return(
-                <div key={ex.name} style={{background:surface.bg0,borderRadius:11,border:"1px solid #1c1c1c",marginBottom:10,padding:"13px 14px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                    <div style={{fontSize:15,color:"#f0f0f0",fontWeight:500}}>{ex.name}</div>
+                <div key={ex.name} style={{background:surface.bg1,borderRadius:12,border:`1px solid rgba(255,255,255,.06)`,marginBottom:10,padding:"14px 14px 10px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                    <div style={{fontSize:15,color:text.primary,fontWeight:600}}>{ex.name}</div>
                     <div style={{textAlign:"right"}}>
                       {latestTotal!=null&&<Disp size={22} color={exColor}>{latestTotal}</Disp>}
-                      {trend!=null&&data.length>=2&&<div style={{fontSize:11,color:trend>=0?status.good:"#fb923c"}}>{trend>=0?"+":""}{trend} since start</div>}
+                      {trend!=null&&data.length>=2&&<Caps size={9} color={trend>=0?status.good:status.caution} style={{display:"block",marginTop:2}}>{trend>=0?"+":""}{trend} since start</Caps>}
                     </div>
                   </div>
                   {data.length>=2
-                    ?<MiniGraph data={data} color={exColor} height={72}/>
-                    :<div style={{fontSize:12,color:text.faint,padding:"8px 0"}}>Log 2+ sessions to see progress</div>}
+                    ?<Sparkline
+                        fluid data={data.map(d=>d.totalReps)}
+                        w={300} h={60}
+                        color={exColor} areaColor={`${exColor}18`}
+                        thick area
+                      />
+                    :<Caps color={text.muted} style={{display:"block",padding:"8px 0"}}>Log 2+ sessions to see progress</Caps>}
                 </div>
               );
             })}
