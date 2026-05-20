@@ -1,26 +1,25 @@
-// Design tokens for Lift Log. See DESIGN_PRINCIPLES.md for rules.
+// Design tokens for Forged. See DESIGN_PRINCIPLES.md for rules.
 // Use these instead of inline hex values for surfaces, radii, spacing, and motion.
 
-// ── SURFACES ──────────────────────────────────────────────────────────────
-// Tonal depth, not borders, separates surfaces.
+// ── SURFACES — warm coal / forge ──────────────────────────────────────────
 export const surface = {
-  bg0:    "#0d0e13", // app background (cool dark, slight blue tint)
-  bgSolid:"#0b0c0e", // nav fade-to (opaque base)
-  bg1:    "#13141a", // cards, panels, expansion surfaces
-  bg2:    "#181a21", // lifted cards (debrief, stat cards)
-  bg3:    "#1f2129", // interactive widgets (steppers, swap options)
-  bg4:    "#262832", // hover states, slight emphasis
+  bg0:    "#100d09", // forge floor — warm coal, amber tint
+  bgSolid:"#0b0806", // nav fade-to — near-black warm
+  bg1:    "#18120d", // cards, panels — cast iron
+  bg2:    "#211810", // lifted cards — dark bronze
+  bg3:    "#2a2016", // widgets, steppers — iron
+  bg4:    "#33271b", // hover — lighter iron
 };
 
-// ── TEXT ──────────────────────────────────────────────────────────────────
+// ── TEXT — parchment hierarchy ────────────────────────────────────────────
 export const text = {
-  primary:   "#ececef", // body
-  secondary: "#a5a6ad", // subtitles, secondary content
-  tertiary:  "#777881", // supporting text
-  muted:     "#56575f", // captions, labels
-  faint:     "#44454d", // helpers, deemphasis
-  ghost:     "#3a3b42", // inactive, very low priority
-  disabled:  "#2d2e35", // disabled / faded
+  primary:   "#f4efe6", // warm off-white (parchment)
+  secondary: "#bdb1a1", // warm mid-gray
+  tertiary:  "#928574", // supporting
+  muted:     "#6c6153", // captions, labels
+  faint:     "#564c3e", // helpers, deemphasis
+  ghost:     "#443a2e", // inactive
+  disabled:  "#322a20", // disabled
 };
 
 // ── STATUS COLORS ─────────────────────────────────────────────────────────
@@ -75,7 +74,7 @@ export const motion = {
 // ── TYPOGRAPHY ────────────────────────────────────────────────────────────
 export const font = {
   display: "'Bebas Neue', sans-serif", // ALL CAPS CTAs, large numbers
-  body:    "'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif",
+  body:    "'Barlow', 'Inter', ui-sans-serif, system-ui, sans-serif",
   mono:    "'DM Mono', 'Courier New', monospace", // number inputs only
 };
 
@@ -95,34 +94,34 @@ export const alpha = {
 // Mirrors the prototype shape so components can be compared 1:1.
 // Usage: buildT()                  → default (amber accent, dark)
 //        buildT(accent, accentFg)  → custom accent
-export function buildT(accentRaw = status.warn, accentFg = "#0a0a0a") {
+export function buildT(accentRaw = "#dd6518", accentFg = "#0a0604") {
   return {
     light:       false,
     accentRaw,
     accentFg,
-    bg:          `radial-gradient(ellipse 100% 50% at 50% 0%, ${accentRaw}22 0%, transparent 60%), linear-gradient(180deg, ${surface.bg0} 0%, #06070a 100%)`,
+    bg:          `radial-gradient(ellipse 110% 55% at 50% -5%, ${accentRaw}28 0%, transparent 65%), radial-gradient(ellipse 60% 20% at 50% 105%, rgba(221,101,24,.08) 0%, transparent 70%), linear-gradient(180deg, ${surface.bg0} 0%, #030201 100%)`,
     bgSolid:     surface.bgSolid,
     bg1:         surface.bg1,
     bg2:         surface.bg2,
     bg3:         surface.bg3,
     bg4:         surface.bg4,
-    line:        "rgba(255,255,255,.06)",
-    lineStrong:  "rgba(255,255,255,.13)",
+    line:        "rgba(230,140,60,.09)",
+    lineStrong:  "rgba(230,140,60,.18)",
     text:        text.primary,
     textSec:     text.secondary,
     textTer:     text.tertiary,
     textMuted:   text.muted,
     textGhost:   text.ghost,
-    shadow:      "0 1px 0 rgba(255,255,255,.02)",
-    shadowHi:    "0 18px 60px rgba(0,0,0,.5)",
-    display:     "'Geist', 'Inter', system-ui, sans-serif",
-    body:        font.body,
+    shadow:      "0 1px 0 rgba(255,140,40,.06)",
+    shadowHi:    "0 20px 70px rgba(0,0,0,.7), 0 0 40px rgba(200,80,10,.07)",
+    display:     "'Oswald', 'Bebas Neue', system-ui, sans-serif",
+    body:        "'Barlow', 'Inter', ui-sans-serif, system-ui, sans-serif",
     mono:        "'Geist Mono', 'DM Mono', monospace",
-    radius:      14,   // card
-    radiusS:     10,   // input
-    radiusXs:    6,    // tight (set rows, chips)
-    radiusXl:    22,   // modal
-    capsTrack:   "0.16em",
+    radius:      14,
+    radiusS:     10,
+    radiusXs:    6,
+    radiusXl:    22,
+    capsTrack:   "0.14em",
     good:        status.good,
     warn:        status.warn,
     bad:         status.caution,

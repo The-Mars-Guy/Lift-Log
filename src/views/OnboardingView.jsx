@@ -240,7 +240,7 @@ export default function OnboardingView({ onComplete }) {
   if (key === "profile") {
     return (
       <OnboardingScreen {...common} title="Tell us a bit about yourself">
-        <div style={{ background: "#fff", borderRadius: 24, boxShadow: onboardingTokens.shadow, overflow: "hidden" }}>
+        <div style={{ background: onboardingTokens.surface, border: `1px solid ${onboardingTokens.border}`, borderRadius: 24, boxShadow: onboardingTokens.shadow, overflow: "hidden" }}>
           <ProfileRow label="Height">
             <NumberInput value={feet}   onChange={setFeet}   placeholder="5"   suffix="ft" />
             <NumberInput value={inches} onChange={setInches} placeholder="10"  suffix="in" />
@@ -258,10 +258,10 @@ export default function OnboardingView({ onComplete }) {
                 <button key={lbl} onClick={() => setSex(val)} style={{
                   padding: "12px 6px",
                   borderRadius: 999,
-                  border: `2px solid ${sex === val ? onboardingTokens.accent : "#dedee0"}`,
-                  background: sex === val ? onboardingTokens.accent : "#fff",
-                  color: sex === val ? "#fff" : onboardingTokens.text,
-                  fontWeight: 900,
+                  border: `2px solid ${sex === val ? onboardingTokens.accent : onboardingTokens.border}`,
+                  background: sex === val ? onboardingTokens.accent : onboardingTokens.surfaceHi,
+                  color: sex === val ? onboardingTokens.accentFg : onboardingTokens.text,
+                  fontWeight: 700,
                   fontSize: 14,
                   cursor: "pointer",
                   minWidth: 0,
@@ -362,7 +362,7 @@ export default function OnboardingView({ onComplete }) {
               width: i === coachCard ? 20 : 8,
               height: 8,
               borderRadius: 4,
-              background: i === coachCard ? onboardingTokens.accent : "#dedee0",
+              background: i === coachCard ? onboardingTokens.accent : onboardingTokens.faint,
               transition: "all .2s",
             }} />
           ))}
@@ -413,14 +413,14 @@ function LocationCard({ icon, label, desc, selected, onClick }) {
       <span style={{
         width: 58, height: 58,
         borderRadius: "50%",
-        background: selected ? onboardingTokens.accent : "#e8f0fe",
+        background: selected ? onboardingTokens.accent : onboardingTokens.surfaceHi,
         display: "grid",
         placeItems: "center",
-        fontSize: 26,
+        fontSize: 24,
         flexShrink: 0,
       }}>{icon}</span>
       <div>
-        <div style={{ fontSize: 22, fontWeight: 900, color: onboardingTokens.text, lineHeight: 1.15 }}>{label}</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: onboardingTokens.text, lineHeight: 1.18 }}>{label}</div>
         <div style={{ fontSize: 16, color: onboardingTokens.muted, marginTop: 4, lineHeight: 1.35 }}>{desc}</div>
       </div>
     </button>
@@ -446,15 +446,15 @@ function GoalCard({ icon, label, desc, selected, onClick }) {
         <span style={{
           width: 52, height: 52,
           borderRadius: "50%",
-          background: selected ? onboardingTokens.accent : "#e8f0fe",
+          background: selected ? onboardingTokens.accent : onboardingTokens.surfaceHi,
           display: "grid",
           placeItems: "center",
           fontSize: 24,
           flexShrink: 0,
         }}>{icon}</span>
       )}
-      <div style={{ flex: 1, borderLeft: `4px solid ${selected ? onboardingTokens.accent : "#e0e0e2"}`, paddingLeft: 14 }}>
-        <div style={{ fontSize: 20, fontWeight: 900, color: onboardingTokens.text, lineHeight: 1.2 }}>{label}</div>
+      <div style={{ flex: 1, borderLeft: `4px solid ${selected ? onboardingTokens.accent : onboardingTokens.border}`, paddingLeft: 14 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: onboardingTokens.text, lineHeight: 1.2 }}>{label}</div>
         {desc && <div style={{ fontSize: 14, color: onboardingTokens.muted, marginTop: 4, lineHeight: 1.4 }}>{desc}</div>}
       </div>
     </button>
@@ -476,8 +476,8 @@ function ModeCircle({ icon, label, selected, onClick }) {
         width: "min(28vw, 110px)",
         height: "min(28vw, 110px)",
         borderRadius: "50%",
-        background: selected ? onboardingTokens.accent : "#00558e",
-        color: "#fff",
+        background: selected ? onboardingTokens.accent : onboardingTokens.surfaceHi,
+        color: selected ? onboardingTokens.accentFg : onboardingTokens.text,
         display: "grid",
         placeItems: "center",
         fontSize: "min(8vw, 34px)",
@@ -500,11 +500,11 @@ function ProfileRow({ label, children, last = false }) {
       gridTemplateColumns: "minmax(128px, 1fr) 1.3fr",
       gap: 12,
       alignItems: "center",
-      minHeight: 82,
+      minHeight: 72,
       padding: "0 16px",
-      borderBottom: last ? "none" : "1px solid #e3e3e5",
+      borderBottom: last ? "none" : `1px solid ${onboardingTokens.border}`,
     }}>
-      <div style={{ fontSize: 24, fontWeight: 950, color: onboardingTokens.text }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: onboardingTokens.text }}>{label}</div>
       <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", alignItems: "center" }}>{children}</div>
     </div>
   );
@@ -525,12 +525,12 @@ function NumberInput({ value, onChange, placeholder, suffix }) {
           outline: "none",
           background: "transparent",
           color: onboardingTokens.text,
-          fontSize: 25,
-          fontWeight: 950,
+          fontSize: 22,
+          fontWeight: 700,
           textAlign: "right",
         }}
       />
-      {suffix && <span style={{ fontSize: 21, color: onboardingTokens.text }}>{suffix}</span>}
+      {suffix && <span style={{ fontSize: 18, color: onboardingTokens.muted }}>{suffix}</span>}
     </label>
   );
 }
@@ -538,11 +538,11 @@ function NumberInput({ value, onChange, placeholder, suffix }) {
 function DarkPreview({ children }) {
   return (
     <div style={{
-      background:"#111",
+      background:onboardingTokens.surfaceHi,
       borderRadius:16,
       padding:"16px 18px",
       marginBottom:28,
-      border:"1px solid #1e1e1e",
+      border:`1px solid ${onboardingTokens.border}`,
     }}>
       {children}
     </div>
@@ -551,7 +551,7 @@ function DarkPreview({ children }) {
 
 function PreviewLabel({ children }) {
   return (
-    <div style={{fontSize:11,color:"#777",fontWeight:600,marginBottom:8}}>
+    <div style={{fontSize:11,color:onboardingTokens.muted,fontWeight:600,marginBottom:8}}>
       {children}
     </div>
   );
@@ -562,10 +562,10 @@ function HelperText({ children }) {
     <div style={{
       marginTop: 34,
       paddingLeft: 18,
-      borderLeft: "4px solid #dedee0",
+      borderLeft: `4px solid ${onboardingTokens.accent}`,
       color: onboardingTokens.muted,
-      fontSize: 20,
-      lineHeight: 1.4,
+      fontSize: 16,
+      lineHeight: 1.45,
     }}>{children}</div>
   );
 }

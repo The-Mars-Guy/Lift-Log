@@ -93,7 +93,7 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
         <div style={{fontSize:13,color:"#999",marginTop:7,fontWeight:600}}>readiness, recovery, balance</div>
       </div>
 
-      <div style={{margin:"0 16px 14px",padding:"16px",background:surface.bg0,border:`1.5px solid ${accent}33`,borderRadius:12,boxShadow:`0 0 24px ${accent}12`}}>
+      <div style={{margin:"0 16px 14px",padding:"16px",background:surface.bg0,border:`1.5px solid ${accent}33`,borderRadius:12,boxShadow:`0 0 24px ${accent}10`}}>
         <MuscleDiagram activation={muscleStatus.activation} levelColors={levelColors} accent={accent}/>
         <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center",marginTop:12}}>
           {RECOVERY_LEGEND.map(item=>(
@@ -115,7 +115,7 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
       <Section title="Coach Focus" sub="what the muscle map thinks you should do next">
         <div style={{display:"grid",gap:8}}>
           {focusItems.map(item => (
-            <Card key={item.title} level={1} style={{border:`1px solid ${item.color}55`,boxShadow:`0 0 20px ${item.color}12`}}>
+            <Card key={item.title} level={1} style={{border:`1px solid ${item.color}55`,boxShadow:`0 0 20px ${item.color}10`}}>
               <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
                 <div style={{fontSize:14,color:item.color,fontWeight:800}}>{item.title}</div>
                 <Caps size={9} color="#777">{item.tag}</Caps>

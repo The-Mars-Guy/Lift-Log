@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS = {
   visualTheme: "dark",
   scienceCoach: true,
   equipmentProfile: "fixed_dumbbells",
+  availableWeights: [],  // lbs per dumbbell the user owns (fixed dumbbells). Empty = no snapping.
   trainingGoal: "hypertrophy",
   onboardingDone: false,
   cautiousJoints: [],
@@ -44,12 +45,12 @@ export const XP_VALUES = {
 };
 
 export const LEVELS = [
-  { min:0,    name:"Newcomer",   badge:"🌱", color:"#888"    },
-  { min:80,   name:"Consistent", badge:"💪", color:"#60a5fa" },
-  { min:220,  name:"Athlete",    badge:"⚡", color:"#4ade80" },
-  { min:480,  name:"Strong",     badge:"🔥", color:"#fb923c" },
-  { min:900,  name:"Elite",      badge:"⚔️", color:"#a78bfa" },
-  { min:1600, name:"Legend",     badge:"👑", color:"#fbbf24" },
+  { min:0,    name:"Apprentice",   badge:"🔨", color:"#7a6d5d"  },
+  { min:80,   name:"Journeyman",   badge:"⚒️", color:"#94a3b8"  },
+  { min:220,  name:"Smith",        badge:"🔥", color:"#dd6518"  },
+  { min:480,  name:"Blacksmith",   badge:"⚡", color:"#fb923c"  },
+  { min:900,  name:"Iron Master",  badge:"⚔️", color:"#fbbf24"  },
+  { min:1600, name:"Forge Master", badge:"👑", color:"#fbbf24"  },
 ];
 
 export function getLevel(xp) {
@@ -113,17 +114,23 @@ export function shouldDeload(checkIns = [], history = []) {
   return { needed: !!(hardCount >= 3 || painCount >= 2), hardCount, painCount, reason };
 }
 
-// Progressive overload recommendation
-// Returns { action: 'increase'|'maintain'|'decrease', nextWeight, note }
-export function calcNextLoad(setLogs, targetReps, currentWeight, increment=2.5) {
-  if (!setLogs?.length) return { action:"maintain", nextWeight:currentWeight, note:"No data yet" };
-  const cleanIncrement = Number.isFinite(Number(increment)) && Number(increment) > 0 ? Number(increment) : 1;
-  const cleanWeight = Number.isFinite(Number(currentWeight)) ? Number(currentWeight) : 0;
-  const allHit  = setLogs.every(l => (l.reps||0) >= targetReps);
-  const anyFail = setLogs.some(l => (l.reps||0) < Math.round(targetReps * 0.75));
-  if (allHit)  return { action:"increase", nextWeight: Math.round((cleanWeight + cleanIncrement) * 100) / 100, note:`Hit all reps → add ${cleanIncrement}lbs` };
-  if (anyFail) return { action:"decrease", nextWeight: Math.max(Math.round((cleanWeight - cleanIncrement*2) * 100)/100, 0), note:`Failed reps → reduce load` };
-  return { action:"maintain", nextWeight:cleanWeight, note:"Almost there — same weight" };
+// ─── AVAILABLE WEIGHTS (fixed dumbbells) ──────────────────────────────────────
+// Clean a raw availableWeights list: numbers only, deduped, sorted ascending.
+export function cleanAvailableWeights(list) {
+  if (!Array.isArray(list)) return [];
+  const nums = list.map(Number).filter(n => Number.isFinite(n) && n >= 0);
+  return [...new Set(nums)].sort((a, b) => a - b);
+}
+
+// Snap a weight to the nearest owned weight. dir: "nearest" | "up" | "down".
+// Returns the original weight when no list provided.
+export function snapWeight(weight, list, dir = "nearest") {
+  const owned = cleanAvailableWeights(list);
+  if (!owned.length) return weight;
+  const w = Number(weight) || 0;
+  if (dir === "up")   return owned.find(o => o > w) ?? owned[owned.length - 1];
+  if (dir === "down") return [...owned].reverse().find(o => o < w) ?? owned[0];
+  return owned.reduce((best, o) => Math.abs(o - w) < Math.abs(best - w) ? o : best, owned[0]);
 }
 
 // ─── DYNAMIC PROGRESSION ─────────────────────────────────────────────────────
@@ -133,11 +140,6 @@ export function calcDynamicTarget(currentTarget, feedback, maxTest) {
   const ceiling = maxTest ? maxTest + 10 : currentTarget + 20;
   const adj = { too_easy: +2, easy: +2, good: +1, hard: 0, too_hard: -1, pain: -2 }[feedback] ?? 0;
   return Math.max(floor, Math.min(ceiling, currentTarget + adj));
-}
-
-// Starting target from initial assessment (65% of max, minimum 3)
-export function assessmentTarget(maxReps) {
-  return Math.max(3, Math.ceil(maxReps * 0.65));
 }
 
 export function computeStats({ history, progression, settings }) {

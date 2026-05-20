@@ -39,7 +39,7 @@ export default function GoalsView({ goals = DEFAULT_GOALS, setGoals, history = [
       </div>
 
       {/* Mesocycle Phase Card */}
-      <div style={{margin:"0 16px 14px",padding:"14px 16px",background:surface.bg0,border:`1.5px solid ${phase.color}55`,borderRadius:12,boxShadow:`0 0 24px ${phase.color}14`}}>
+      <div style={{margin:"0 16px 14px",padding:"14px 16px",background:surface.bg0,border:`1.5px solid ${phase.color}55`,borderRadius:12,boxShadow:`0 0 24px ${phase.color}12`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
           <div>
             <div style={{fontSize:10,color:phase.color,fontWeight:700}}>Training Phase</div>

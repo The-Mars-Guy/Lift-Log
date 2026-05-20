@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { WORKOUTS, DAYS, todayName, pushPullRatio } from "../../data.js";
+import { WORKOUTS, pushPullRatio } from "../../data.js";
 import { buildCoachInsights } from "../../coach.js";
 import { surface, text, status } from "../../theme.js";
 import { Caps, Disp } from "../../components/Primitives.jsx";
@@ -17,7 +17,7 @@ function muscleDayColor(days) {
   if (days === 0)    return "#4ade80";
   if (days <= 2)     return "#86efac";
   if (days <= 4)     return "#fbbf24";
-  if (days <= 7)     return "#f97316";
+  if (days <= 7)     return "#dd6518";
   return "#ef4444";
 }
 
@@ -27,30 +27,8 @@ function muscleDayLabel(days) {
   return `${days}d`;
 }
 
-// ─── Build suggestions (used externally) ─────────────────────────────────────
-export function buildSuggestions({ history, progression, settings, exConfig, workoutKey }) {
-  const workout = WORKOUTS[workoutKey];
-  const suggs = [];
-  const today = todayName();
-  const sorted = [...history].sort((a,b)=>b.timestamp-a.timestamp);
-  let streak=0;
-  if(sorted.length>0){streak=1;for(let i=1;i<sorted.length;i++){if((sorted[i-1].timestamp-sorted[i].timestamp)/86400000<=4.5)streak++;else break;}}
-  if(streak>=3&&streak<7) suggs.push({icon:"🔥",cat:"Streak",msg:`${streak} sessions in a row. You're building a real habit.`});
-  if(streak>=7) suggs.push({icon:"⚡",cat:"Streak",msg:`${streak}-session streak. Your body is different than when you started.`});
-
-  workout?.exercises.forEach(ex=>{
-    const cfg=exConfig[ex.name];
-    if(cfg?.pendingAdj>0) suggs.push({icon:"↗️",cat:"Progression",msg:`${ex.name}: +${cfg.pendingAdj} rep${cfg.pendingAdj>1?"s":""} unlocked. New target: ×${cfg.targetReps}.`});
-    if(cfg?.pendingAdj<0) suggs.push({icon:"🎯",cat:"Adjustment",msg:`${ex.name}: target reduced to ×${cfg.targetReps}. Dialing in the right challenge.`});
-  });
-
-  if(!DAYS.includes(today)) suggs.push({icon:"🛌",cat:"Recovery",msg:"Rest day. Muscle grows during recovery. Protein + sleep > extra sets."});
-  if(history.length===0) suggs.push({icon:"🌱",cat:"Welcome",msg:"Form now = gains forever. Feel the muscle work, don't just move weight."});
-  return suggs.filter(Boolean);
-}
-
 // ─── Drawer ───────────────────────────────────────────────────────────────────
-export function CoachDrawer({ open, onClose, suggestions, memory, plan, accent, exercises = [], history = [], checkIns = [], exConfig = {}, userProfile = null, goals = [], bodyMetrics = [] }) {
+export function CoachDrawer({ open, onClose, memory, plan, accent, exercises = [], history = [], checkIns = [], exConfig = {}, userProfile = null, goals = [], bodyMetrics = [] }) {
 
   const insights = useMemo(
     () => buildCoachInsights({ history, exercises, exConfig, checkIns, userProfile, goals, bodyMetrics }),
@@ -98,7 +76,7 @@ export function CoachDrawer({ open, onClose, suggestions, memory, plan, accent, 
               background: accent, color: "#050505",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 13, fontWeight: 900, letterSpacing: ".06em",
-              boxShadow: `0 8px 20px ${accent}44`,
+              boxShadow: `0 8px 20px ${accent}3d`,
             }}>AI</div>
             <div style={{flex:1, minWidth:0}}>
               <Caps color={accent} size={9}>Coach</Caps>
@@ -136,7 +114,7 @@ export function CoachDrawer({ open, onClose, suggestions, memory, plan, accent, 
                 })}
               </div>
               <div style={{display:"flex", gap:10, marginTop:8, flexWrap:"wrap"}}>
-                {[["#4ade80","Today"],["#fbbf24","3–4d"],["#f97316","5–7d"],["#ef4444","8d+"],["#3a3b42","Never"]].map(([c,l])=>(
+                {[["#4ade80","Today"],["#fbbf24","3–4d"],["#dd6518","5–7d"],["#ef4444","8d+"],["#3a3b42","Never"]].map(([c,l])=>(
                   <div key={l} style={{display:"flex", alignItems:"center", gap:4}}>
                     <div style={{width:7, height:7, borderRadius:2, background:c}}/>
                     <Caps size={9} color={text.muted}>{l}</Caps>
@@ -161,9 +139,9 @@ export function CoachDrawer({ open, onClose, suggestions, memory, plan, accent, 
                   <Caps color="#60a5fa" size={9} style={{minWidth:28}}>PUSH</Caps>
                   <div style={{flex:1, height:6, background:"rgba(255,255,255,.08)", borderRadius:999, overflow:"hidden", position:"relative"}}>
                     <div style={{position:"absolute", left:0, top:0, height:"100%", width:`${ppBarPush}%`, background:"#60a5fa", borderRadius:999, transition:"width .4s"}}/>
-                    <div style={{position:"absolute", right:0, top:0, height:"100%", width:`${100-ppBarPush}%`, background:"#f97316", borderRadius:999}}/>
+                    <div style={{position:"absolute", right:0, top:0, height:"100%", width:`${100-ppBarPush}%`, background:"#dd6518", borderRadius:999}}/>
                   </div>
-                  <Caps color="#f97316" size={9} style={{minWidth:28, textAlign:"right"}}>PULL</Caps>
+                  <Caps color="#dd6518" size={9} style={{minWidth:28, textAlign:"right"}}>PULL</Caps>
                 </div>
                 <div style={{display:"flex", justifyContent:"space-between"}}>
                   <Caps size={9} color={text.muted}>{pp.pushSets} sets</Caps>
@@ -325,7 +303,7 @@ export function CoachFab({ onClick, accent }) {
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
         color: accent,
-        boxShadow: `0 8px 28px ${accent}30, inset 0 1px 0 ${accent}30`,
+        boxShadow: `0 8px 28px ${accent}2b, inset 0 1px 0 ${accent}30`,
         fontWeight: 900, letterSpacing: ".06em", fontSize: 11,
         touchAction: "none", cursor: "grab",
       }}
@@ -334,6 +312,3 @@ export function CoachFab({ onClick, accent }) {
     </button>
   );
 }
-
-// ─── CoachCard (kept for API compat, noop if no suggestions) ──────────────────
-export function CoachCard() { return null; }

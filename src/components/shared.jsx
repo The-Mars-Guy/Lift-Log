@@ -25,7 +25,7 @@ export function ExerciseAnimation({ folder, accent, video, compact=false, bare=f
       background:bare ? "transparent" : "linear-gradient(180deg,#fafafa,#eee)",
       borderRadius:bare ? 0 : 13, overflow:"hidden",
       border:bare ? "none" : `1.5px solid ${accent}40`,
-      boxShadow:bare ? "none" : `0 0 36px ${accent}18`,
+      boxShadow:bare ? "none" : `0 0 36px ${accent}14`,
     }}>
       {!videoFailed && (
         <video
@@ -109,7 +109,7 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent, fullscre
               <circle cx="84" cy="84" r={bigR} fill="none" stroke={accent} strokeWidth="8"
                 strokeLinecap="round" strokeDasharray={bigCirc}
                 strokeDashoffset={bigCirc*(1-pct/100)}
-                style={{transition:"stroke-dashoffset .25s linear",filter:`drop-shadow(0 0 12px ${accent})`}}/>
+                style={{transition:"stroke-dashoffset .25s linear",filter:`drop-shadow(0 0 12px ${accent}e6)`}}/>
             </svg>
             <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:72,color:accent,letterSpacing:".04em"}}>{remaining}</div>
           </div>
@@ -129,7 +129,7 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent, fullscre
       background:"linear-gradient(180deg,#0f0f0f,#050505)",
       borderTop:`1px solid ${accent}66`,
       padding:"16px 22px",
-      boxShadow:`0 -8px 36px ${accent}33`,
+      boxShadow:`0 -8px 36px ${accent}2e`,
       animation:"slideUp .25s ease-out",
     }}>
       <div className="mobile-shell" style={{ display:"flex", alignItems:"center", gap:16 }}>
@@ -139,7 +139,7 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent, fullscre
             <circle cx="28" cy="28" r={r} fill="none" stroke={accent} strokeWidth="3.5"
               strokeLinecap="round" strokeDasharray={circ}
               strokeDashoffset={circ*(1-pct/100)}
-              style={{ transition:"stroke-dashoffset 1s linear", filter:`drop-shadow(0 0 5px ${accent})` }}/>
+              style={{ transition:"stroke-dashoffset 1s linear", filter:`drop-shadow(0 0 5px ${accent}e6)` }}/>
           </svg>
           <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, color:accent, fontWeight:500 }}>{remaining}</div>
         </div>
@@ -165,7 +165,7 @@ export function Toast({ icon="🎯", title, msg, accent, onClose, duration=4000 
         width:"100%", maxWidth:488, margin:"0 auto",
         background:"#0c0c0c", border:`1.5px solid ${accent}`,
         borderRadius:13, padding:"14px 18px",
-        boxShadow:`0 0 40px ${accent}88,0 4px 24px rgba(0,0,0,.6)`,
+        boxShadow:`0 0 40px ${accent}7a,0 4px 24px rgba(0,0,0,.6)`,
         display:"flex", alignItems:"center", gap:14, pointerEvents:"auto",
       }}>
         <div style={{ fontSize:28 }}>{icon}</div>
@@ -386,7 +386,7 @@ export function Heatmap({ history, theme = "dark" }) {
                 <div key={ri} title={`${dateStr(c.date)}${c.workout?" — "+(WORKOUTS[c.workout]?.label || "Custom Routine"):""}`}
                   style={{ width:cSz, height:cSz, background:color, borderRadius:3,
                     border:isToday?`1.5px solid ${light ? "#123047" : "#f0f0f0"}`:"1px solid transparent",
-                    boxShadow: c.workout ? `0 0 6px ${workoutColor}66` : "none" }}/>
+                    boxShadow: c.workout ? `0 0 6px ${workoutColor}5c` : "none" }}/>
               );
             })}
           </div>

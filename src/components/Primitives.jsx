@@ -84,6 +84,7 @@ export function Bar({ value, max = 1, color, height = 6, bg, t = T }) {
         background: color || t.accentRaw,
         borderRadius: 999,
         transition: "width 0.4s ease",
+        boxShadow: pct > 2 ? `0 0 ${Math.round(height * 2.5)}px ${color || t.accentRaw}b3` : "none",
       }} />
     </div>
   );

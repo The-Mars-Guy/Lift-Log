@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { DEFAULT_SETTINGS, LIMITATION_OPTIONS, ageTier, normalizeUserProfile, profileFitnessEstimate, profileRisk } from "../data.js";
+import { DEFAULT_SETTINGS, LIMITATION_OPTIONS, ageTier, normalizeUserProfile, profileFitnessEstimate, profileRisk, cleanAvailableWeights } from "../data.js";
 import { EQUIPMENT_PROFILES, JOINT_AREAS, TRAINING_GOALS } from "../coach.js";
 import { surface, text, status } from "../theme.js";
 
@@ -41,7 +41,7 @@ export default function SettingsView({
     const file = e.target.files?.[0];
     if (!file) return;
     const ok = await importData(file);
-    setImportStatus(ok ? "Import complete." : "Import failed. Choose a Lift Log JSON export.");
+    setImportStatus(ok ? "Import complete." : "Import failed. Choose a Gym Forged JSON export.");
     e.target.value = "";
   };
 
@@ -188,6 +188,12 @@ export default function SettingsView({
           help="Use 1 for full freedom, 2.5 for adjustable dumbbells, or 5 for bigger jumps. You can still type any exact weight while logging sets." ui={ui}>
           <NumberInput value={settings.weightIncrement || 1} onChange={v => update("weightIncrement", Math.max(v, 0.1))} suffix="lb" ui={ui} />
         </Row>
+        {(settings.equipmentProfile || "fixed_dumbbells") === "fixed_dumbbells" && (
+          <AvailableWeights
+            value={settings.availableWeights || []}
+            onChange={v => update("availableWeights", v)}
+            accent={accent} ui={ui} />
+        )}
         <Row label="Sessions Per Progression" desc="Sessions before reps auto-bump" ui={ui}>
           <SegControl options={[{v:4,l:"4"},{v:6,l:"6"},{v:8,l:"8"},{v:10,l:"10"}]}
             value={settings.sessionsPerProgression} onChange={v => update("sessionsPerProgression", v)} accent={accent} ui={ui} />
@@ -205,7 +211,7 @@ export default function SettingsView({
         {backupOpen && <>
           <Action label="Create Backup Snapshot" desc="Save a local safety copy before risky changes" onClick={() => setRecoveryStatus(createBackupSnapshot?.("manual") ? "Backup snapshot saved on this device." : "Backup failed. Export data instead.")} ui={ui} />
           <Action label="Download Last Backup" desc="Download the latest automatic safety snapshot" onClick={() => setRecoveryStatus(exportLastBackup?.() ? "Backup downloaded." : "No backup snapshot found yet.")} ui={ui} />
-          <Action label="Import Data" desc="Restore from a Lift Log JSON export" onClick={() => fileInput.current?.click()} ui={ui} />
+          <Action label="Import Data" desc="Restore from a Gym Forged JSON export" onClick={() => fileInput.current?.click()} ui={ui} />
           <input ref={fileInput} type="file" accept="application/json,.json" onChange={handleImport} style={{ display:"none" }} />
           {importStatus && <div style={{ fontSize:13, color:importStatus.startsWith("Import complete") ? accent : "#ff8888", padding:"4px 2px 8px" }}>{importStatus}</div>}
           <Action label="Repair Saved Data" desc="Normalize older or broken local data shapes" onClick={() => { repairSavedData?.(); setRecoveryStatus("Saved data repaired."); }} ui={ui} />
@@ -434,6 +440,49 @@ function NumberInput({ value, onChange, suffix, ui }) {
         type="number" inputMode="decimal" min="0" step="any"
         style={{ flex:1, minWidth:0, padding:"12px 12px", background:"transparent", border:"none", outline:"none", color:ui.text, fontSize:16 }} />
       <span style={{ fontSize:12, color:ui.muted, paddingRight:12 }}>{suffix}</span>
+    </div>
+  );
+}
+
+function AvailableWeights({ value, onChange, accent, ui }) {
+  const [draft, setDraft] = useState("");
+  const weights = cleanAvailableWeights(value);
+  const add = () => {
+    const n = Number(draft);
+    if (!Number.isFinite(n) || n < 0) { setDraft(""); return; }
+    onChange(cleanAvailableWeights([...weights, n]));
+    setDraft("");
+  };
+  const remove = (w) => onChange(weights.filter(x => x !== w));
+  return (
+    <div style={{ padding:"14px 16px", background:ui.card, borderRadius:10, border:`1px solid ${ui.border}`, boxShadow:ui.shadow }}>
+      <div style={{ fontSize:15, color:ui.text }}>My Dumbbells</div>
+      <div style={{ fontSize:14, color:ui.muted, marginTop:2, lineHeight:1.4 }}>
+        Add each fixed dumbbell you own (lbs per hand). The +/- buttons snap to these.
+      </div>
+      <div style={{ display:"flex", gap:8, marginTop:12 }}>
+        <div style={{ display:"flex", flex:1, alignItems:"center", background:ui.control, border:`1px solid ${ui.border}`, borderRadius:9, overflow:"hidden" }}>
+          <input value={draft} onChange={e => setDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") add(); }}
+            type="number" inputMode="decimal" min="0" step="any" placeholder="e.g. 25"
+            style={{ flex:1, minWidth:0, padding:"12px 12px", background:"transparent", border:"none", outline:"none", color:ui.text, fontSize:16 }} />
+          <span style={{ fontSize:12, color:ui.muted, paddingRight:12 }}>lb</span>
+        </div>
+        <button onClick={add}
+          style={{ padding:"0 18px", background:accent, border:"none", borderRadius:9, color:"#050505", fontSize:13, fontWeight:800, letterSpacing:".06em", cursor:"pointer" }}>ADD</button>
+      </div>
+      {weights.length > 0 ? (
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginTop:12 }}>
+          {weights.map(w => (
+            <button key={w} onClick={() => remove(w)} title="Tap to remove"
+              style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 10px", background:`${accent}1e`, border:`1px solid ${accent}55`, borderRadius:999, color:accent, fontSize:13, fontWeight:700, cursor:"pointer" }}>
+              {w} lb <span style={{ fontSize:15, lineHeight:1, opacity:.8 }}>×</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div style={{ fontSize:13, color:ui.muted, marginTop:12 }}>No dumbbells added — +/- buttons use the increment instead.</div>
+      )}
     </div>
   );
 }

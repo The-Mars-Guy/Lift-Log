@@ -149,11 +149,11 @@ export default function StatsView({ history, progression, settings, achievements
           </div>
 
           {/* LEVEL CARD */}
-          <div style={{margin:"16px 16px 4px",padding:"20px 18px",background:surface.bg0,borderRadius:15,border:`1.5px solid ${level.color}44`,boxShadow:`0 0 32px ${level.color}18`}}>
+          <div style={{margin:"16px 16px 4px",padding:"20px 18px",background:surface.bg0,borderRadius:15,border:`1.5px solid ${level.color}44`,boxShadow:`0 0 32px ${level.color}14`}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
               <div>
                 <div style={{fontSize:13,color:text.tertiary,fontWeight:600,marginBottom:4}}>Current Level</div>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:level.color,letterSpacing:".06em",filter:`drop-shadow(0 0 10px ${level.color}66)`}}>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:level.color,letterSpacing:".06em",filter:`drop-shadow(0 0 10px ${level.color}5c)`}}>
                   {level.badge} {level.name}
                 </div>
               </div>
@@ -220,7 +220,7 @@ export default function StatsView({ history, progression, settings, achievements
               {ACHIEVEMENTS.map(a=>{
                 const ul=achievements.includes(a.id);
                 return(
-                  <div key={a.id} style={{padding:"16px 12px",borderRadius:10,background:ul?"#101010":"#0a0a0a",border:`1px solid ${ul?"#fbbf2455":"#1a1a1a"}`,textAlign:"center",opacity:ul?1:.45,boxShadow:ul?"0 0 18px #fbbf2422":"none"}}>
+                  <div key={a.id} style={{padding:"16px 12px",borderRadius:10,background:ul?"#101010":"#0a0a0a",border:`1px solid ${ul?"#fbbf2455":"#1a1a1a"}`,textAlign:"center",opacity:ul?1:.45,boxShadow:ul?"0 0 18px #fbbf241e":"none"}}>
                     <div style={{fontSize:28,marginBottom:8,filter:ul?"none":"grayscale(1) brightness(.4)"}}>{a.icon}</div>
                     <div style={{fontSize:12,color:ul?status.warn:"#666",letterSpacing:".06em",fontWeight:500,marginBottom:5}}>{a.name}</div>
                     <div style={{fontSize:11,color:text.tertiary,lineHeight:1.4}}>{a.desc}</div>
@@ -398,7 +398,7 @@ export default function StatsView({ history, progression, settings, achievements
 
           {/* COACH MEMORY */}
           <Section title="Coach Memory" sub="what the coach has learned">
-            <div style={{padding:"16px",background:surface.bg0,borderRadius:12,border:`1.5px solid ${accent}33`,boxShadow:`0 0 24px ${accent}12`}}>
+            <div style={{padding:"16px",background:surface.bg0,borderRadius:12,border:`1.5px solid ${accent}33`,boxShadow:`0 0 24px ${accent}10`}}>
               <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:accent,letterSpacing:".06em",lineHeight:1}}>FOCUS: {coachMemory.focus}</div>
               <div style={{fontSize:14,color:"#ddd",lineHeight:1.55,marginTop:8}}>{coachMemory.summary}</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:14}}>
@@ -558,7 +558,7 @@ function BigStat({ label, value, unit, suffix, accent }) {
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at top right,${accent}12,transparent 70%)`, pointerEvents: "none" }} />
       <Caps style={{ position: "relative" }}>{label}</Caps>
       <div style={{ marginTop: 6, position: "relative", display: "flex", alignItems: "baseline", gap: 4 }}>
-        <Disp size={34} color={accent || T.text} style={{ filter: `drop-shadow(0 0 7px ${accent}55)` }}>{value}</Disp>
+        <Disp size={34} color={accent || T.text} style={{ filter: `drop-shadow(0 0 7px ${accent}4d)` }}>{value}</Disp>
         {unit && <Caps color="#999" style={{ marginLeft: 4 }}>{unit}</Caps>}
         {suffix && <span style={{ fontSize: 20, marginLeft: 4 }}>{suffix}</span>}
       </div>
@@ -595,7 +595,7 @@ function Leg({color,label}){
 
 function EmptyState({ accent, title, body, items=[] }) {
   return (
-    <div style={{padding:"18px 16px",background:`linear-gradient(180deg,${accent}12,#0d0d0d)`,border:`1.5px solid ${accent}33`,borderRadius:12,boxShadow:`0 0 24px ${accent}12`}}>
+    <div style={{padding:"18px 16px",background:`linear-gradient(180deg,${accent}12,#0d0d0d)`,border:`1.5px solid ${accent}33`,borderRadius:12,boxShadow:`0 0 24px ${accent}10`}}>
       <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:accent,letterSpacing:".06em",lineHeight:1}}>{title}</div>
       <div style={{fontSize:14,color:"#ddd",lineHeight:1.55,marginTop:8}}>{body}</div>
       <div style={{display:"grid",gap:7,marginTop:13}}>

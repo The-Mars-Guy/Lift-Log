@@ -144,7 +144,7 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
       {/* BUILD WITH COACH */}
       <div style={{padding:"12px 16px 0"}}>
         <button onClick={buildWithCoach}
-          style={{width:"100%",padding:"16px",background:`linear-gradient(135deg,${accent}22,${accent}0a)`,border:`1.5px solid ${accent}66`,borderRadius:12,color:accent,fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:".1em",cursor:"pointer",boxShadow:`0 0 24px ${accent}22`,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+          style={{width:"100%",padding:"16px",background:`linear-gradient(135deg,${accent}22,${accent}0a)`,border:`1.5px solid ${accent}66`,borderRadius:12,color:accent,fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:".1em",cursor:"pointer",boxShadow:`0 0 24px ${accent}1e`,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
           <span style={{fontSize:20}}>🤖</span> BUILD ROUTINE WITH COACH
         </button>
         {coachGenerated && (
@@ -235,7 +235,7 @@ export default function RoutineView({ customRoutine, setCustomRoutine, userProfi
       <CoachNotesSection notes={coachNotes} />
 
       {/* ── CURRENT ROUTINE CARD ─────────────────────────────────────────────── */}
-      <div style={{margin:"0 16px 14px",padding:"15px",background:surface.bg0,border:`1.5px solid ${complete ? status.good : accent}55`,borderRadius:12,boxShadow:`0 0 24px ${accent}12`}}>
+      <div style={{margin:"0 16px 14px",padding:"15px",background:surface.bg0,border:`1.5px solid ${complete ? status.good : accent}55`,borderRadius:12,boxShadow:`0 0 24px ${accent}10`}}>
         <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",marginBottom:14}}>
           <div style={{minWidth:0}}>
             <div style={{fontSize:11,color:accent,fontWeight:700}}>Current Routine</div>

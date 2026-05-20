@@ -12,7 +12,7 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    console.error("Lift Log crashed:", error, info?.componentStack);
+    console.error("Gym Forged crashed:", error, info?.componentStack);
   }
 
   handleReload = () => {
@@ -27,7 +27,7 @@ export default class ErrorBoundary extends Component {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `lift-log-backup-${new Date().toISOString().slice(0,10)}.json`;
+        a.download = `forged-backup-${new Date().toISOString().slice(0,10)}.json`;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }
@@ -55,7 +55,7 @@ export default class ErrorBoundary extends Component {
           SOMETHING<br/>BROKE
         </div>
         <div style={{fontSize:15,color:"#435166",lineHeight:1.6,marginBottom:20}}>
-          Lift Log hit an unexpected error. Your saved workouts are still on this device — reloading usually clears it up.
+          Gym Forged hit an unexpected error. Your saved workouts are still on this device — reloading usually clears it up.
         </div>
         <pre style={{fontSize:12,padding:"12px 14px",background:"rgba(220,38,38,.08)",border:"1px solid rgba(220,38,38,.25)",borderRadius:10,color:"#7f1d1d",whiteSpace:"pre-wrap",wordBreak:"break-word",marginBottom:22}}>
           {message}

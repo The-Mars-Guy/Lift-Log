@@ -1,4 +1,4 @@
-import { EXERCISE_LIBRARY, MUSCLE_COVERAGE_GROUPS, MUSCLE_LABELS, ageTier, exerciseId, exerciseIsRisky, exerciseRiskJoints, mesocyclePhase, normalizeUserProfile, routineBalanceScore, routineCoverage, shouldDeload } from "./data.js";
+import { EXERCISE_LIBRARY, MUSCLE_COVERAGE_GROUPS, MUSCLE_LABELS, ageTier, exerciseId, exerciseIsRisky, exerciseRiskJoints, mesocyclePhase, normalizeUserProfile, routineBalanceScore, routineCoverage, shouldDeload, cleanAvailableWeights, snapWeight } from "./data.js";
 
 export const READINESS = {
   energy: {
@@ -416,7 +416,12 @@ export function sciencePrescription({ exercise, history = [], checkIns = [], set
     note += ` Exact target today is ${targetReps} reps per set. The coach keeps this inside the ${repRange.min}-${repRange.max} learning range and moves it as your logs improve.`;
   }
 
-  const suggestedWeight = pct && est1RM ? Math.max(2.5, Math.round((est1RM * pct) * 2) / 2) : null;
+  let suggestedWeight = pct && est1RM ? Math.max(2.5, Math.round((est1RM * pct) * 2) / 2) : null;
+  // Snap suggestion to weights the user owns (fixed dumbbells only)
+  const ownedWeights = (settings.equipmentProfile || "fixed_dumbbells") === "fixed_dumbbells"
+    ? cleanAvailableWeights(settings.availableWeights)
+    : [];
+  if (suggestedWeight && ownedWeights.length) suggestedWeight = snapWeight(suggestedWeight, ownedWeights, "nearest");
   const targetRepReason = (() => {
     const sc = readinessScore(readiness);
     if (feedback.status === "pain")                                return `Reduced target — pain was flagged in a recent session.`;
@@ -742,9 +747,14 @@ export function evaluateProgression({
   increment = 2.5,
   style = "balanced",
   autoDeload = true,
+  availableWeights = [],
 }) {
   const cleanIncrement = Number.isFinite(Number(increment)) && Number(increment) > 0 ? Number(increment) : 1;
   const cleanCurrentWeight = Number.isFinite(Number(currentWeight)) ? Number(currentWeight) : 0;
+  const owned = cleanAvailableWeights(availableWeights);
+  // Next/prev load: snap to owned dumbbells when available, else step by increment
+  const upWeight   = owned.length ? snapWeight(cleanCurrentWeight, owned, "up")   : roundWeight(cleanCurrentWeight + cleanIncrement);
+  const downWeight = owned.length ? snapWeight(cleanCurrentWeight, owned, "down") : Math.max(roundWeight(cleanCurrentWeight - cleanIncrement), 0);
   const allHit = setLog.length > 0 && setLog.every(l => (l.reps || 0) >= targetReps);
   const anyFail = setLog.some(l => (l.reps || 0) < Math.round(targetReps * 0.75));
   const cleanSessions = allHit ? (previous.cleanSessions || 0) + 1 : 0;
@@ -754,7 +764,7 @@ export function evaluateProgression({
   if (autoDeload && missSessions >= 2) {
     return {
       action: "deload",
-      nextWeight: Math.max(roundWeight(cleanCurrentWeight - cleanIncrement), 0),
+      nextWeight: downWeight,
       cleanSessions,
       missSessions,
       note: "Repeated misses. Reduce load and rebuild clean reps.",
@@ -764,7 +774,7 @@ export function evaluateProgression({
   if (cleanSessions >= requiredCleanSessions) {
     return {
       action: "increase",
-      nextWeight: roundWeight(cleanCurrentWeight + cleanIncrement),
+      nextWeight: upWeight,
       cleanSessions: 0,
       missSessions: 0,
       note: `${requiredCleanSessions} clean session${requiredCleanSessions === 1 ? "" : "s"}. Ready to progress.`,

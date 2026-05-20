@@ -45,7 +45,7 @@ export function XpFloat({ amount, onDone }) {
       fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:"#fbbf24",
       letterSpacing:".08em", pointerEvents:"none",
       animation:"xpFloat .9s ease-out forwards",
-      filter:"drop-shadow(0 0 8px #fbbf2499)",
+      filter:"drop-shadow(0 0 8px #fbbf248a)",
     }}>+{amount} XP</div>
   );
 }

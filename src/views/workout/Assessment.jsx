@@ -37,7 +37,7 @@ export function FirstRunSetup({ settings, setSettings, accent }) {
           ))}
         </SetupBlock>
       </div>
-      <button onClick={finish} style={{width:"100%",marginTop:24,padding:"20px",border:"none",borderRadius:15,background:accent,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:27,letterSpacing:".12em",boxShadow:`0 16px 42px ${accent}55`}}>SAVE SETUP</button>
+      <button onClick={finish} style={{width:"100%",marginTop:24,padding:"20px",border:"none",borderRadius:15,background:accent,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:27,letterSpacing:".12em",boxShadow:`0 16px 42px ${accent}4d`}}>SAVE SETUP</button>
     </div>
   );
 }
@@ -82,7 +82,7 @@ export function AssessmentFlow({ onComplete, accent, theme="dark", initialResult
 
   if (step === -1) return (
     <div style={{minHeight:"100vh",overflowY:"auto",padding:"40px 20px 40px",background:ui.page,color:ui.text}}>
-      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(44px, 14vw, 54px)",color:accent,letterSpacing:".04em",lineHeight:.9,marginBottom:20,filter:`drop-shadow(0 0 20px ${accent}55)`}}>
+      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(44px, 14vw, 54px)",color:accent,letterSpacing:".04em",lineHeight:.9,marginBottom:20,filter:`drop-shadow(0 0 20px ${accent}4d)`}}>
         {editing ? "EDIT" : "STRENGTH"}<br/>{editing ? "BENCHMARK" : "ASSESSMENT"}
       </div>
       <div style={{fontSize:16,color:ui.soft,lineHeight:1.65,marginBottom:28}}>
@@ -119,7 +119,7 @@ export function AssessmentFlow({ onComplete, accent, theme="dark", initialResult
       </div>
       <div style={{fontSize:13,color:ui.muted,marginBottom:20,textAlign:"center"}}>{editing ? "Current numbers are prefilled" : "Takes about 5-10 minutes · done only once"}</div>
         <button onClick={()=>setStep(0)}
-        style={{width:"100%",padding:"22px",background:accent,border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#050505",letterSpacing:".1em",boxShadow:`0 0 50px ${accent}66`}}>
+        style={{width:"100%",padding:"22px",background:accent,border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#050505",letterSpacing:".1em",boxShadow:`0 0 50px ${accent}5c`}}>
         {editing ? "EDIT BENCHMARKS" : "BEGIN ASSESSMENT"}
       </button>
       <button onClick={()=>editing ? onCancel?.() : onComplete(null)}
@@ -172,7 +172,7 @@ export function AssessmentFlow({ onComplete, accent, theme="dark", initialResult
           ))}
         </div>
         <button onClick={()=>onComplete(results)}
-          style={{width:"100%",padding:"22px",background:"#4ade80",border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#050505",letterSpacing:".1em",boxShadow:"0 0 50px #4ade8066"}}>
+          style={{width:"100%",padding:"22px",background:"#4ade80",border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#050505",letterSpacing:".1em",boxShadow:"0 0 50px #4ade805c"}}>
           {editing ? "SAVE BENCHMARKS →" : "START TRAINING →"}
         </button>
       </div>
@@ -190,7 +190,7 @@ export function AssessmentFlow({ onComplete, accent, theme="dark", initialResult
           <span style={{color:exColor}}>{ex.name}</span>
         </div>
         <div style={{height:5,background:ui.rail,borderRadius:3,overflow:"hidden"}}>
-          <div style={{height:"100%",width:`${(step/total)*100}%`,background:exColor,transition:"width .4s",boxShadow:`0 0 8px ${exColor}`}}/>
+          <div style={{height:"100%",width:`${(step/total)*100}%`,background:exColor,transition:"width .4s",boxShadow:`0 0 8px ${exColor}e6`}}/>
         </div>
       </div>
 
@@ -233,7 +233,7 @@ export function AssessmentFlow({ onComplete, accent, theme="dark", initialResult
         setResults(r=>({...r,[ex.name]:count}));
         setStep(s=>s+1);
       }}
-        style={{width:"100%",padding:"20px",background:exColor,border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#050505",letterSpacing:".1em",marginTop:16,boxShadow:`0 0 40px ${exColor}66`}}>
+        style={{width:"100%",padding:"20px",background:exColor,border:"none",borderRadius:14,fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#050505",letterSpacing:".1em",marginTop:16,boxShadow:`0 0 40px ${exColor}5c`}}>
         {step < total-1 ? "NEXT EXERCISE →" : "SEE MY RESULTS →"}
       </button>
       <button onClick={()=>{

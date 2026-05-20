@@ -3,7 +3,7 @@ import { EXERCISE_DB_EXTENDED } from "./exercisedb.js";
 // ─── WORKOUT DATA ────────────────────────────────────────────────────────────
 export const WORKOUTS = {
   A: {
-    label: "Workout A", days: "Mon & Fri", color: "#4ade80",
+    label: "Strike",    days: "Mon & Fri", color: "#dd6518",
     exercises: [
       { name:"Goblet Squat",   sets:3, baseReps:10, repLabel:"×", tip:"Squat deep, chest up, elbows between knees",      folder:"Goblet_Squat",                                          primary:["quads","glutes"],       secondary:["core","calves"]    },
       { name:"Floor Press",    sets:3, baseReps:10, repLabel:"×", tip:"Elbows 45° from body, pause at chest",             folder:"Dumbbell_Floor_Press",                                  primary:["chest","triceps"],      secondary:["frontDelts"]       },
@@ -13,7 +13,7 @@ export const WORKOUTS = {
     ],
   },
   B: {
-    label: "Workout B", days: "Wednesday", color: "#60a5fa",
+    label: "Temper",    days: "Wednesday",  color: "#b4cae8",
     exercises: [
       { name:"Romanian Deadlift", sets:3, baseReps:10, repLabel:"×", tip:"Push hips back, feel hamstring stretch first",   folder:"Romanian_Deadlift",                                      primary:["hamstrings","glutes"],  secondary:["lowerBack","upperBack"]},
       { name:"Reverse Lunge",     sets:3, baseReps:10, repLabel:"×", repSuffix:"/leg", tip:"Front shin stays vertical",   folder:"Dumbbell_Rear_Lunge",                                    primary:["quads","glutes"],       secondary:["hamstrings","calves"]  },
@@ -27,7 +27,6 @@ export const WORKOUTS = {
 
 export const SCHEDULE = { Monday:"A", Wednesday:"B", Friday:"A" };
 export const DAYS = ["Monday","Wednesday","Friday"];
-export const CUSTOM_WORKOUT_KEY = "CUSTOM";
 
 export const MUSCLE_LABELS = {
   chest:"Chest", triceps:"Triceps", biceps:"Biceps", forearms:"Forearms",

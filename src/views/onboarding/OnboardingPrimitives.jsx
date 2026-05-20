@@ -1,17 +1,18 @@
-import { ExerciseAnimation } from "../../components/shared.jsx";
-
 export const onboardingTokens = {
-  bg:"#f5f5f5",
-  surface:"#ffffff",
-  text:"#1f2024",
-  muted:"#8a8a8d",
-  faint:"#ededee",
-  border:"#e7e7ea",
-  accent:"#0b84ff",
-  disabled:"#d9d9dc",
+  bg:"radial-gradient(ellipse 110% 55% at 50% -5%, rgba(221,101,24,.16) 0%, transparent 65%), radial-gradient(ellipse 60% 20% at 50% 105%, rgba(221,101,24,.08) 0%, transparent 70%), linear-gradient(180deg, #100d09 0%, #030201 100%)",
+  bgSolid:"#100d09",
+  surface:"#18120d",
+  surfaceHi:"#211810",
+  text:"#f4efe6",
+  muted:"#928574",
+  faint:"#2a2016",
+  border:"rgba(255,140,50,.12)",
+  accent:"#dd6518",
+  accentFg:"#0a0604",
+  disabled:"#2a2016",
   radius:24,
-  shadow:"0 12px 28px rgba(17,24,39,.06)",
-  font:"Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  shadow:"0 12px 28px rgba(0,0,0,.45)",
+  font:"'Barlow', Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
 };
 
 export function OnboardingScreen({
@@ -54,11 +55,11 @@ export function OnboardingScreen({
           </div>
         </div>
         <h1 style={{
-          fontSize:"clamp(34px, 9.8vw, 56px)",
-          lineHeight:1.08,
+          fontSize:"clamp(24px, 6.6vw, 36px)",
+          lineHeight:1.12,
           letterSpacing:"0",
-          fontWeight:950,
-          margin:"0 0 26px",
+          fontWeight:800,
+          margin:"0 0 24px",
           color:onboardingTokens.text,
           maxWidth:"100%",
           overflowWrap:"break-word",
@@ -67,7 +68,7 @@ export function OnboardingScreen({
           {renderTitle(title, emphasis)}
         </h1>
         {subtitle && (
-          <div style={{fontSize:22,lineHeight:1.35,color:onboardingTokens.muted,margin:"0 0 40px"}}>
+          <div style={{fontSize:17,lineHeight:1.4,color:onboardingTokens.muted,margin:"0 0 36px"}}>
             {subtitle}
           </div>
         )}
@@ -79,7 +80,7 @@ export function OnboardingScreen({
             right:0,
             bottom:0,
             padding:"16px 20px calc(18px + env(safe-area-inset-bottom))",
-            background:"linear-gradient(180deg,rgba(245,245,245,0),#f5f5f5 28%)",
+            background:"linear-gradient(180deg,rgba(16,13,9,0),#100d09 28%)",
             display:"flex",
             justifyContent:"center",
             zIndex:20,
@@ -111,7 +112,7 @@ export function BackButton({ onClick, disabled }) {
         height:64,
         borderRadius:"50%",
         border:"none",
-        background:disabled ? "transparent" : "#ededee",
+        background:disabled ? "transparent" : onboardingTokens.faint,
         color:onboardingTokens.text,
         display:"grid",
         placeItems:"center",
@@ -130,35 +131,13 @@ export function ProgressRing({ value }) {
   const r = 22;
   const c = 2 * Math.PI * r;
   return (
-    <div style={{width:58,height:58,display:"grid",placeItems:"center",borderRadius:"50%",background:"#f0f0f0"}}>
+    <div style={{width:58,height:58,display:"grid",placeItems:"center",borderRadius:"50%",background:onboardingTokens.surface}}>
       <svg width="58" height="58" viewBox="0 0 58 58" style={{transform:"rotate(-90deg)"}} aria-hidden="true">
-        <circle cx="29" cy="29" r={r} fill="none" stroke="#ececee" strokeWidth="7"/>
+        <circle cx="29" cy="29" r={r} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth="7"/>
         <circle cx="29" cy="29" r={r} fill="none" stroke={onboardingTokens.accent} strokeWidth="7" strokeLinecap="round"
           strokeDasharray={c} strokeDashoffset={c * (1 - Math.max(0, Math.min(1, value)))} />
       </svg>
     </div>
-  );
-}
-
-export function OptionCard({ selected, children, onClick, compact = false }) {
-  return (
-    <button onClick={onClick} style={{
-      width:"100%",
-      maxWidth:"100%",
-      minHeight:compact ? 92 : 128,
-      padding:"22px 24px",
-      borderRadius:onboardingTokens.radius,
-      border:`3px solid ${selected ? onboardingTokens.accent : "transparent"}`,
-      background:onboardingTokens.surface,
-      boxShadow:selected ? "none" : onboardingTokens.shadow,
-      color:onboardingTokens.text,
-      fontSize:26,
-      fontWeight:900,
-      textAlign:"left",
-      lineHeight:1.18,
-    }}>
-      {children}
-    </button>
   );
 }
 
@@ -167,18 +146,18 @@ export function MultiSelectCard({ selected, label, onClick }) {
     <button onClick={onClick} style={{
       width:"100%",
       maxWidth:"100%",
-      minHeight:104,
-      padding:"24px 28px",
-      border:"none",
+      minHeight:96,
+      padding:"22px 26px",
       borderRadius:onboardingTokens.radius,
       background:onboardingTokens.surface,
       display:"flex",
       alignItems:"center",
       justifyContent:"space-between",
       boxShadow:onboardingTokens.shadow,
+      border:`1px solid ${selected ? onboardingTokens.accent : onboardingTokens.border}`,
       color:onboardingTokens.text,
-      fontSize:27,
-      fontWeight:950,
+      fontSize:20,
+      fontWeight:700,
       textAlign:"left",
     }}>
       <span>{label}</span>
@@ -186,11 +165,11 @@ export function MultiSelectCard({ selected, label, onClick }) {
         width:34,
         height:34,
         borderRadius:"50%",
-        border:`4px solid ${selected ? onboardingTokens.accent : "#bebec1"}`,
+        border:`4px solid ${selected ? onboardingTokens.accent : onboardingTokens.muted}`,
         background:selected ? onboardingTokens.accent : "transparent",
         display:"grid",
         placeItems:"center",
-        color:"#fff",
+        color:onboardingTokens.accentFg,
       }}>
         {selected && (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -202,94 +181,23 @@ export function MultiSelectCard({ selected, label, onClick }) {
   );
 }
 
-export function ImageOptionCard({ selected, title, tone = "athletic", onClick }) {
-  return (
-    <button onClick={onClick} style={{
-      width:"100%",
-      maxWidth:"100%",
-      height:128,
-      borderRadius:22,
-      border:`3px solid ${selected ? onboardingTokens.accent : "transparent"}`,
-      background:onboardingTokens.surface,
-      overflow:"hidden",
-      display:"grid",
-      gridTemplateColumns:"1fr 42%",
-      alignItems:"center",
-      boxShadow:selected ? "none" : onboardingTokens.shadow,
-      color:onboardingTokens.text,
-      textAlign:"left",
-    }}>
-      <div style={{padding:"0 26px",fontSize:28,fontWeight:950}}>{title}</div>
-      <BodyPlaceholder tone={tone} />
-    </button>
-  );
-}
-
-export function AnswerGrid({ options, value, onChange }) {
-  return (
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-      {options.map(opt => (
-        <OptionCard key={opt.value} selected={value === opt.value} compact onClick={() => onChange(opt.value)}>
-          <span style={{display:"block",textAlign:"center",fontSize:24}}>{opt.label}</span>
-        </OptionCard>
-      ))}
-    </div>
-  );
-}
-
 export function PrimaryCTA({ children, disabled, onClick }) {
   return (
     <button disabled={disabled} onClick={onClick} style={{
       width:"100%",
       maxWidth:"100%",
-      height:76,
+      height:70,
       border:"none",
       borderRadius:38,
       background:disabled ? onboardingTokens.disabled : onboardingTokens.accent,
-      color:disabled ? "#a8a8aa" : "#fff",
-      fontSize:25,
-      fontWeight:950,
-      letterSpacing:"0",
-      boxShadow:disabled ? "none" : "0 16px 26px rgba(11,132,255,.22)",
+      color:disabled ? onboardingTokens.muted : onboardingTokens.accentFg,
+      fontSize:22,
+      fontWeight:800,
+      letterSpacing:".02em",
+      boxShadow:disabled ? "none" : "0 14px 26px rgba(221,101,24,.28)",
     }}>
       {children}
     </button>
-  );
-}
-
-export function QuoteCard({ children }) {
-  return (
-    <div style={{
-      borderRadius:onboardingTokens.radius,
-      background:onboardingTokens.surface,
-      padding:"30px 28px",
-      boxShadow:onboardingTokens.shadow,
-      fontSize:30,
-      lineHeight:1.2,
-      fontWeight:950,
-      color:onboardingTokens.text,
-      marginBottom:24,
-    }}>
-      "{children}"
-    </div>
-  );
-}
-
-export function ExerciseImageCard({ folder, accent }) {
-  return (
-    <div style={{
-      height:"min(42vh, 430px)",
-      minHeight:290,
-      borderRadius:24,
-      background:onboardingTokens.surface,
-      boxShadow:onboardingTokens.shadow,
-      display:"grid",
-      placeItems:"center",
-      overflow:"hidden",
-      margin:"0 0 18px",
-    }}>
-      <ExerciseAnimation folder={folder} accent={accent || onboardingTokens.accent} bare compact />
-    </div>
   );
 }
 
@@ -299,32 +207,14 @@ export function DayPill({ active, children, onClick }) {
       width:58,
       height:58,
       borderRadius:"50%",
-      border:`2px solid ${active ? "#ffbd73" : "#dedee0"}`,
-      background:active ? "#ffbd73" : "#fff",
-      color:active ? "#fff" : onboardingTokens.text,
+      border:`2px solid ${active ? onboardingTokens.accent : onboardingTokens.border}`,
+      background:active ? onboardingTokens.accent : onboardingTokens.surface,
+      color:active ? onboardingTokens.accentFg : onboardingTokens.text,
       fontSize:19,
-      fontWeight:900,
+      fontWeight:800,
       flex:"0 0 auto",
     }}>
       {children}
     </button>
-  );
-}
-
-export function BodyPlaceholder({ tone = "athletic" }) {
-  const width = tone === "strong" || tone === "endomorph" ? 76 : tone === "balanced" || tone === "mesomorph" ? 62 : 50;
-  const shoulder = tone === "strong" ? 108 : tone === "endomorph" ? 92 : tone === "balanced" || tone === "mesomorph" ? 88 : 70;
-  return (
-    <div style={{height:"100%",position:"relative",display:"grid",placeItems:"center",background:"linear-gradient(90deg,#fff, #f6f6f7)"}}>
-      <div style={{
-        width:shoulder,
-        height:102,
-        borderRadius:"48% 48% 38% 38%",
-        background:"linear-gradient(180deg,#f0b489,#d88b63)",
-        position:"relative",
-        boxShadow:"inset 0 -10px 18px rgba(80,35,20,.12)",
-        clipPath:`polygon(${50 - width / 2}% 0, ${50 + width / 2}% 0, 72% 100%, 28% 100%)`,
-      }} />
-    </div>
   );
 }

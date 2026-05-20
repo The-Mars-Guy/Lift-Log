@@ -1,21 +1,31 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense, startTransition } from "react";
 import { WORKOUTS, SCHEDULE, DEFAULT_SETTINGS, DEFAULT_WEIGHTS, ACHIEVEMENTS, computeStats, todayName, DAYS, getLevel, XP_VALUES, DEFAULT_CUSTOM_ROUTINE, DEFAULT_GOALS, IMG_BASE, normalizeCustomRoutine, customRoutineWorkout, DEFAULT_USER_PROFILE, normalizeUserProfile, assessmentTargetForProfile } from "./data.js";
 import { useLocalStorage } from "./hooks.js";
 import { makePlay, vibrate as vib } from "./audio.js";
 import { BottomNav, Toast } from "./components/shared.jsx";
 import WorkoutView  from "./views/WorkoutView.jsx";
-import StatsView    from "./views/StatsView.jsx";
-import MuscleMapView from "./views/MuscleMapView.jsx";
-import CalendarView from "./views/CalendarView.jsx";
-import SettingsView from "./views/SettingsView.jsx";
-import RoutineView from "./views/RoutineView.jsx";
-import GoalsView from "./views/GoalsView.jsx";
+// Non-default views lazy-load on first navigation (smaller initial bundle).
+// Thunks shared by lazy() + idle prefetch so chunks warm during the splash window.
+const loadStats    = () => import("./views/StatsView.jsx");
+const loadMuscles  = () => import("./views/MuscleMapView.jsx");
+const loadCalendar = () => import("./views/CalendarView.jsx");
+const loadSettings = () => import("./views/SettingsView.jsx");
+const loadRoutine  = () => import("./views/RoutineView.jsx");
+const loadGoals    = () => import("./views/GoalsView.jsx");
+const StatsView    = lazy(loadStats);
+const MuscleMapView = lazy(loadMuscles);
+const CalendarView = lazy(loadCalendar);
+const SettingsView = lazy(loadSettings);
+const RoutineView  = lazy(loadRoutine);
+const GoalsView    = lazy(loadGoals);
 import { normalizeLiftLogData } from "./session.js";
 import OnboardingView from "./views/OnboardingView.jsx";
 import { nukeAndReload } from "./nuke.js";
 
 export default function App() {
   const [activeView, setActiveView] = useState("workout");
+  // Navigate via transition so lazy view chunks suspend without crashing on sync input
+  const navigate = (v) => startTransition(() => setActiveView(v));
 
   // Core workout state
   const [sets,        setSets]        = useLocalStorage("wt_sets",        {});
@@ -35,8 +45,6 @@ export default function App() {
   const [userProfile, setUserProfile] = useLocalStorage("wt_user_profile", DEFAULT_USER_PROFILE);
   const [goals,       setGoals]       = useLocalStorage("wt_goals",        DEFAULT_GOALS);
 
-  const [splashDone, setSplashDone] = useState(false);
-  const [splashFading, setSplashFading] = useState(false);
   const [achievementToast, setAchievementToast] = useState(null);
   const [assessmentDone, setAssessmentDone] = useLocalStorage("wt_assessment_done", false);
   const [updateReady, setUpdateReady] = useState(null);
@@ -106,14 +114,18 @@ export default function App() {
 
   useEffect(() => {
     const onUpdate = (event) => setUpdateReady(event.detail?.registration || null);
-    window.addEventListener("lift-log-update", onUpdate);
-    return () => window.removeEventListener("lift-log-update", onUpdate);
+    window.addEventListener("forged-update", onUpdate);
+    return () => window.removeEventListener("forged-update", onUpdate);
   }, []);
 
+  // Warm lazy view chunks during browser idle so tab switches are instant.
+  // Runs after first paint; won't compete with the critical initial load.
   useEffect(() => {
-    const t1 = setTimeout(() => setSplashFading(true), 700);
-    const t2 = setTimeout(() => setSplashDone(true), 1100);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    const warm = () => { loadRoutine(); loadStats(); loadSettings(); loadMuscles(); loadCalendar(); loadGoals(); };
+    const ric = window.requestIdleCallback;
+    if (ric) { const id = ric(warm, { timeout: 2000 }); return () => window.cancelIdleCallback?.(id); }
+    const t = setTimeout(warm, 1200);
+    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
@@ -225,7 +237,7 @@ export default function App() {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
-    a.href = url; a.download = `lift-log-${new Date().toISOString().slice(0,10)}.json`;
+    a.href = url; a.download = `forged-${new Date().toISOString().slice(0,10)}.json`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
@@ -264,7 +276,7 @@ export default function App() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       const date = backup.backedUpAt?.slice(0,10) || new Date().toISOString().slice(0,10);
-      a.href = url; a.download = `lift-log-backup-${date}.json`;
+      a.href = url; a.download = `forged-backup-${date}.json`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
       return true;
@@ -297,7 +309,7 @@ export default function App() {
   const lightMode = visualTheme === "pop_light";
   const appBackground = lightMode
     ? `radial-gradient(circle at 18% 0%, ${accent}30 0%, transparent 28%), linear-gradient(180deg,#f8fffb 0%,#eef7ff 52%,#ffffff 100%)`
-    : `radial-gradient(ellipse 100% 50% at 50% 0%, ${accent}22 0%, transparent 60%), linear-gradient(180deg, #0d0e13 0%, #06070a 100%)`;
+    : `radial-gradient(ellipse 110% 55% at 50% -5%, ${accent}28 0%, transparent 65%), radial-gradient(ellipse 60% 20% at 50% 105%, rgba(221,101,24,.08) 0%, transparent 70%), linear-gradient(180deg, #100d09 0%, #030201 100%)`;
   const preloadWorkout = safeCustomRoutine.enabled ? customRoutineWorkout(safeCustomRoutine, scheduledDay) : WORKOUTS[scheduledKey];
   const preloadFolders = [...new Set((preloadWorkout?.exercises || []).map(ex => ex.folder).filter(Boolean))].slice(0, 8).join("|");
 
@@ -352,7 +364,6 @@ export default function App() {
 
   return (
     <>
-    {!splashDone && <SplashScreen accent={accent} fading={splashFading}/>}
     <div className={`theme-root theme-${visualTheme}`} style={{
       minHeight:"100vh",
       background:appBackground,
@@ -378,49 +389,53 @@ export default function App() {
             goals={Array.isArray(goals) ? goals : DEFAULT_GOALS}
             bodyMetrics={normalized.bodyMetrics}
             playSound={playSound} vibrate={vibrate}
-            setActiveView={setActiveView}
+            setActiveView={navigate}
             theme={visualTheme}
           />
         )}
-        {activeView === "routine" && (
-          <RoutineView customRoutine={safeCustomRoutine} setCustomRoutine={setCustomRoutine} userProfile={safeUserProfile} setUserProfile={setUserProfile} history={normalized.history} accent={accent} setActiveView={setActiveView} checkIns={normalized.checkIns} settings={safeSettings} goals={Array.isArray(goals) ? goals : DEFAULT_GOALS} exConfig={normalized.exConfig} />
-        )}
-        {activeView === "stats" && (
-          <StatsView history={normalized.history} progression={normalized.progression} settings={safeSettings}
-            achievements={normalized.achievements} accent={accent} xp={normalized.xp} level={level}
-            exConfig={normalized.exConfig} checkIns={normalized.checkIns}
-            bodyMetrics={normalized.bodyMetrics} setBodyMetrics={setBodyMetrics} customRoutine={safeCustomRoutine}
-            userProfile={safeUserProfile} goals={Array.isArray(goals) ? goals : DEFAULT_GOALS} />
-        )}
-        {activeView === "muscles" && (
-          <MuscleMapView history={normalized.history} accent={accent} checkIns={normalized.checkIns} setCheckIns={setCheckIns} customRoutine={safeCustomRoutine} />
-        )}
-        {activeView === "calendar" && (
-          <CalendarView history={normalized.history} progression={normalized.progression} settings={safeSettings} accent={accent} theme={visualTheme} />
-        )}
-        {activeView === "goals" && (
-          <GoalsView
-            goals={Array.isArray(goals) ? goals : DEFAULT_GOALS}
-            setGoals={setGoals}
-            history={normalized.history}
-            exConfig={normalized.exConfig}
-            checkIns={normalized.checkIns}
-            accent={accent}
-            totalSessions={normalized.history?.length || 0}
-          />
-        )}
-        {activeView === "settings" && (
-          <SettingsView settings={safeSettings} setSettings={setSettings}
-            userProfile={safeUserProfile} setUserProfile={setUserProfile}
-            resetAllData={resetAllData} exportData={exportData} importData={importData}
-            repairSavedData={repairSavedData} clearWorkoutState={clearWorkoutState}
-            refreshAppCache={refreshAppCache} exportLastBackup={exportLastBackup}
-            createBackupSnapshot={createBackupSnapshot} editBenchmarkTest={editBenchmarkTest}
-            accent={accent} theme={visualTheme} />
+        {activeView !== "workout" && (
+          <Suspense fallback={<div style={{padding:"60px 20px",textAlign:"center",color:"#928574",fontSize:13}}>Loading…</div>}>
+            {activeView === "routine" && (
+              <RoutineView customRoutine={safeCustomRoutine} setCustomRoutine={setCustomRoutine} userProfile={safeUserProfile} setUserProfile={setUserProfile} history={normalized.history} accent={accent} setActiveView={navigate} checkIns={normalized.checkIns} settings={safeSettings} goals={Array.isArray(goals) ? goals : DEFAULT_GOALS} exConfig={normalized.exConfig} />
+            )}
+            {activeView === "stats" && (
+              <StatsView history={normalized.history} progression={normalized.progression} settings={safeSettings}
+                achievements={normalized.achievements} accent={accent} xp={normalized.xp} level={level}
+                exConfig={normalized.exConfig} checkIns={normalized.checkIns}
+                bodyMetrics={normalized.bodyMetrics} setBodyMetrics={setBodyMetrics} customRoutine={safeCustomRoutine}
+                userProfile={safeUserProfile} goals={Array.isArray(goals) ? goals : DEFAULT_GOALS} />
+            )}
+            {activeView === "muscles" && (
+              <MuscleMapView history={normalized.history} accent={accent} checkIns={normalized.checkIns} setCheckIns={setCheckIns} customRoutine={safeCustomRoutine} />
+            )}
+            {activeView === "calendar" && (
+              <CalendarView history={normalized.history} progression={normalized.progression} settings={safeSettings} accent={accent} theme={visualTheme} />
+            )}
+            {activeView === "goals" && (
+              <GoalsView
+                goals={Array.isArray(goals) ? goals : DEFAULT_GOALS}
+                setGoals={setGoals}
+                history={normalized.history}
+                exConfig={normalized.exConfig}
+                checkIns={normalized.checkIns}
+                accent={accent}
+                totalSessions={normalized.history?.length || 0}
+              />
+            )}
+            {activeView === "settings" && (
+              <SettingsView settings={safeSettings} setSettings={setSettings}
+                userProfile={safeUserProfile} setUserProfile={setUserProfile}
+                resetAllData={resetAllData} exportData={exportData} importData={importData}
+                repairSavedData={repairSavedData} clearWorkoutState={clearWorkoutState}
+                refreshAppCache={refreshAppCache} exportLastBackup={exportLastBackup}
+                createBackupSnapshot={createBackupSnapshot} editBenchmarkTest={editBenchmarkTest}
+                accent={accent} theme={visualTheme} />
+            )}
+          </Suspense>
         )}
       </div>
 
-      <BottomNav active={activeView} onSelect={setActiveView} accent={accent} level={level} theme={visualTheme} />
+      <BottomNav active={activeView} onSelect={navigate} accent={accent} level={level} theme={visualTheme} />
 
       {achievementToast && (
         <Toast icon={achievementToast.icon} title={achievementToast.title}
@@ -430,9 +445,9 @@ export default function App() {
 
       {installPrompt && !installDismissed && (
         <div style={{position:"fixed",left:16,right:16,bottom:"calc(92px + env(safe-area-inset-bottom))",zIndex:255,pointerEvents:"none"}}>
-          <div className="mobile-shell" style={{background:lightMode?"#ffffff":"#101010",border:`1.5px solid ${accent}55`,borderRadius:13,padding:"14px 15px",boxShadow:`0 16px 38px ${accent}24`,pointerEvents:"auto",display:"flex",alignItems:"center",gap:12}}>
+          <div className="mobile-shell" style={{background:lightMode?"#ffffff":"#101010",border:`1.5px solid ${accent}55`,borderRadius:13,padding:"14px 15px",boxShadow:`0 16px 38px ${accent}20`,pointerEvents:"auto",display:"flex",alignItems:"center",gap:12}}>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:700}}>Install Lift Log</div>
+              <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:700}}>Install Gym Forged</div>
               <div style={{fontSize:13,color:lightMode?"#435166":"#ddd",marginTop:3,lineHeight:1.35}}>Add it to your phone for fullscreen, app-like workouts.</div>
             </div>
             <button onClick={installApp} style={{background:accent,border:"none",borderRadius:9,color:"#050505",padding:"10px 12px",fontSize:12,letterSpacing:".08em",fontWeight:700}}>INSTALL</button>
@@ -443,10 +458,10 @@ export default function App() {
 
       {updateReady && (
         <div style={{position:"fixed",left:16,right:16,bottom:"calc(92px + env(safe-area-inset-bottom))",zIndex:260,pointerEvents:"none"}}>
-          <div className="mobile-shell" style={{background:"#101010",border:`1.5px solid ${accent}66`,borderRadius:13,padding:"14px 15px",boxShadow:`0 0 30px ${accent}33`,pointerEvents:"auto",display:"flex",alignItems:"center",gap:12}}>
+          <div className="mobile-shell" style={{background:"#101010",border:`1.5px solid ${accent}66`,borderRadius:13,padding:"14px 15px",boxShadow:`0 0 30px ${accent}2e`,pointerEvents:"auto",display:"flex",alignItems:"center",gap:12}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:11,color:accent,letterSpacing:".14em",textTransform:"uppercase",fontWeight:500}}>Update Ready</div>
-              <div style={{fontSize:13,color:"#ddd",marginTop:3,lineHeight:1.35}}>Refresh to load the newest Lift Log build.</div>
+              <div style={{fontSize:13,color:"#ddd",marginTop:3,lineHeight:1.35}}>Refresh to load the newest Gym Forged build.</div>
             </div>
             <button onClick={applyUpdate} style={{background:accent,border:"none",borderRadius:9,color:"#050505",padding:"10px 12px",fontSize:12,letterSpacing:".08em",fontWeight:700}}>REFRESH</button>
             <button onClick={()=>setUpdateReady(null)} style={{background:"transparent",border:"none",color:"#666",fontSize:18,padding:"4px"}}>×</button>
@@ -458,39 +473,3 @@ export default function App() {
   );
 }
 
-function SplashScreen({ accent, fading }) {
-  const [progress, setProgress] = useState(0);
-  useEffect(() => {
-    const start = Date.now();
-    const dur = 650;
-    let frame;
-    const tick = () => {
-      const pct = Math.min(100, ((Date.now() - start) / dur) * 100);
-      setProgress(pct);
-      if (pct < 100) frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, []);
-
-  return (
-    <div style={{
-      position:"fixed", inset:0, zIndex:9999,
-      background:"#000",
-      display:"flex", flexDirection:"column",
-      alignItems:"center", justifyContent:"center",
-      opacity: fading ? 0 : 1,
-      transition: "opacity 0.4s ease",
-      pointerEvents: fading ? "none" : "all",
-    }}>
-      <div style={{textAlign:"center", marginBottom:40}}>
-        <div style={{fontFamily:"'Bebas Neue',sans-serif", fontSize:80, letterSpacing:".1em", color:"#fafafa", lineHeight:1}}>LIFT</div>
-        <div style={{fontFamily:"'Bebas Neue',sans-serif", fontSize:80, letterSpacing:".1em", color:accent, lineHeight:1}}>LOG</div>
-        <div style={{fontSize:11, color:"#444", marginTop:10, letterSpacing:".25em", textTransform:"uppercase"}}>your training, your data</div>
-      </div>
-      <div style={{width:140, height:2, background:"#111", borderRadius:2, overflow:"hidden"}}>
-        <div style={{height:"100%", width:`${progress}%`, background:accent, borderRadius:2, transition:"width 0.05s linear"}}/>
-      </div>
-    </div>
-  );
-}
