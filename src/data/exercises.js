@@ -1,5 +1,3 @@
-import { EXERCISE_DB_EXTENDED } from "./exercisedb.js";
-
 // ─── WORKOUT DATA ────────────────────────────────────────────────────────────
 export const WORKOUTS = {
   A: {
@@ -181,9 +179,9 @@ export const EXERCISE_LIBRARY = [
   { id:"kb_farmer_carry",   name:"KB Farmer Carry",    sets:3, baseReps:30, repLabel:"sec", tip:"Bells at sides, stand tall, brace core, slow steady steps",                folder:"Goblet_Squat",                   primary:["core","forearms"], secondary:["quads","glutes","upperBack"],   category:"core",       difficulty:"beginner",     equipment:"kettlebell", ageFriendly:true,  defaultWeightLb:26 },
   { id:"kb_halo",           name:"KB Halo",            sets:2, baseReps:8,  repLabel:"×", repSuffix:"/dir", tip:"Circle bell slowly around head, keep ribs down, minimal neck movement", folder:"Arnold_Dumbbell_Press",  primary:["sideDelts","rearDelts","upperBack"], secondary:["core"],       category:"upperBack",  difficulty:"beginner",     equipment:"kettlebell", ageFriendly:true,  defaultWeightLb:18 },
   { id:"kb_turkish_getup",  name:"KB Turkish Get-Up",  sets:2, baseReps:3,  repLabel:"×", repSuffix:"/side", tip:"Keep arm vertical throughout, move in distinct steps, never rush", folder:"Crunches",                 primary:["core","frontDelts","glutes"], secondary:["quads","upperBack"],   category:"core",       difficulty:"intermediate", equipment:"kettlebell", ageFriendly:false, defaultWeightLb:18 },
-  // ── Extended library (free-exercise-db, public domain) ──────────────────────
-  ...EXERCISE_DB_EXTENDED,
 ];
+
+export const CORE_EXERCISE_LIBRARY = EXERCISE_LIBRARY;
 
 // ─── EXERCISE METADATA ───────────────────────────────────────────────────────
 // movement: primary movement pattern — used by coach push:pull ratio, pattern analysis
@@ -305,8 +303,9 @@ export const MUSCLE_COVERAGE_GROUPS = [
   ["core", "Core", ["core", "lowerBack"]],
 ];
 
-export function getExerciseById(id) {
-  return EXERCISE_LIBRARY.find(ex => ex.id === id) || EXERCISE_LIBRARY.find(ex => exerciseId(ex.name) === id);
+export function getExerciseById(id, exerciseLibrary = EXERCISE_LIBRARY) {
+  const library = Array.isArray(exerciseLibrary) && exerciseLibrary.length ? exerciseLibrary : EXERCISE_LIBRARY;
+  return library.find(ex => ex.id === id) || library.find(ex => exerciseId(ex.name) === id);
 }
 
 export function exerciseFolder(ex) {

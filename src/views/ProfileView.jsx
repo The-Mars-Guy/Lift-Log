@@ -3,7 +3,8 @@
 // Settings detail accessible via gear button → onSettings()
 
 import { useMemo, useState } from "react";
-import { ACHIEVEMENTS, EXERCISE_LIBRARY, DEFAULT_GOALS, goalProgress, makeGoal, mesocyclePhase } from "../data.js";
+import { ACHIEVEMENTS, DEFAULT_GOALS, goalProgress, makeGoal, mesocyclePhase } from "../data.js";
+import { FULL_EXERCISE_LIBRARY as EXERCISE_LIBRARY } from "../data/exerciseLibrary.js";
 import { buildT } from "../theme.js";
 import { Card, Caps, Bar, Disp, Pill, Dot } from "../components/Primitives.jsx";
 import { Icon } from "../components/Icons.jsx";
@@ -102,12 +103,12 @@ export default function ProfileView({
   const iconBg  = light ? "rgba(0,0,0,.06)"  : "rgba(255,255,255,.06)";
 
   const SETTINGS_ROWS = [
-    { icon:"target",   label:"Training Goal",  sub: GOAL_LABELS[trainingGoal] || trainingGoal },
-    { icon:"barbell",  label:"Equipment",      sub: EQUIP_LABELS[equipProfile] || equipProfile },
-    { icon:"calendar", label:"Schedule",       sub: workoutDays.join(" · ") },
-    { icon:"robot",    label:"Coach",          sub: coachOn ? "Science Coach · On" : "Coach · Off" },
-    { icon:"note",     label:"Sound & Haptics",sub: soundOn ? "Sound on" : "Sound off" },
-    { icon:"save",     label:"Data & Settings",sub: "Export, backup, advanced options" },
+    { icon:"target",   label:"Forge Goal",     sub: GOAL_LABELS[trainingGoal] || trainingGoal, section:"Smith"           },
+    { icon:"barbell",  label:"Equipment",      sub: EQUIP_LABELS[equipProfile] || equipProfile, section:"Smith"          },
+    { icon:"calendar", label:"Schedule",       sub: workoutDays.join(" · "),                    section:"Profile"        },
+    { icon:"robot",    label:"Smith",          sub: coachOn ? "Smith · On" : "Smith · Off",     section:"Smith"          },
+    { icon:"note",     label:"Sound & Haptics",sub: soundOn ? "Sound on" : "Sound off",         section:"Device Feedback"},
+    { icon:"save",     label:"Data & Settings",sub: "Export, backup, advanced options",          section:"Data"          },
   ];
 
   return (
@@ -169,9 +170,9 @@ export default function ProfileView({
           { label:"STREAK",    value:streak,            sub:`day${streak !== 1 ? "s" : ""}` },
         ].map((s, i) => (
           <div key={i} style={{ background:cardBg, borderRadius:12, border:`1px solid ${border}`, padding:"12px 13px", boxShadow:shadow }}>
-            <Caps t={t} size={9} color={tm}>{s.label}</Caps>
-            <Disp t={t} size={28} style={{ display:"block", marginTop:4 }}>{s.value}</Disp>
-            <div style={{ color:tt, fontSize:10, marginTop:2 }}>{s.sub}</div>
+            <Caps t={t} size={10} color={tm}>{s.label}</Caps>
+            <Disp t={t} size={24} style={{ display:"block", marginTop:4 }}>{s.value}</Disp>
+            <div style={{ color:tt, fontSize:11, marginTop:2 }}>{s.sub}</div>
           </div>
         ))}
       </div>
@@ -299,8 +300,8 @@ export default function ProfileView({
                     color: unlocked ? "#0a0604" : tm,
                     display:"flex", alignItems:"center", justifyContent:"center",
                   }}><Icon name={a.icon} size={16} color={unlocked ? "#0a0604" : tm} /></div>
-                  <div style={{ color:tp, fontWeight:600, fontSize:10, marginTop:6, lineHeight:1.2 }}>{a.name}</div>
-                  <div style={{ color:tt, fontSize:9, marginTop:2, lineHeight:1.3 }}>{a.desc}</div>
+                  <div style={{ color:tp, fontWeight:600, fontSize:12, marginTop:6, lineHeight:1.2 }}>{a.name}</div>
+                  <div style={{ color:tt, fontSize:11, marginTop:2, lineHeight:1.3 }}>{a.desc}</div>
                 </div>
               );
             })}
@@ -313,7 +314,7 @@ export default function ProfileView({
         <Caps t={t} size={10} color={ts} style={{ paddingLeft:2, marginBottom:10, display:"inline-block" }}>SETTINGS</Caps>
         <div style={{ background:cardBg, borderRadius:14, border:`1px solid ${border}`, boxShadow:shadow, overflow:"hidden" }}>
           {SETTINGS_ROWS.map((row, i) => (
-            <div key={i} onClick={onSettings} style={{
+            <div key={i} onClick={() => onSettings(row.section)} style={{
               padding:"14px 16px", display:"flex", alignItems:"center", gap:12,
               borderBottom: i < SETTINGS_ROWS.length - 1 ? `1px solid ${lineSep}` : "none",
               cursor:"pointer",

@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { WORKOUTS, computeStats, isoWeek, epley1RM, getExerciseHistory, allRoutineExercises } from "../data.js";
+import { FULL_EXERCISE_LIBRARY } from "../data/exerciseLibrary.js";
 import { exerciseVolume } from "../session.js";
 import { computePersonalRecords } from "../coach.js";
 import { surface, text, status } from "../theme.js";
@@ -21,7 +22,7 @@ export default function StatsView({
   const stats   = computeStats({ history, progression, settings });
   const records = computePersonalRecords({ history });
 
-  const customWeekExercises = customRoutine?.enabled ? allRoutineExercises(customRoutine) : [];
+  const customWeekExercises = customRoutine?.enabled ? allRoutineExercises(customRoutine, { exerciseLibrary: FULL_EXERCISE_LIBRARY }) : [];
   const allExercises = [
     ...WORKOUTS.A.exercises,
     ...WORKOUTS.B.exercises,
@@ -160,8 +161,8 @@ export default function StatsView({
       <div style={{ padding: "48px 16px 12px", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
         <div>
           <Caps color={text.muted} size={10} style={{ display: "block", marginBottom: 4 }}>DATA</Caps>
-          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 52, letterSpacing: ".06em", lineHeight: .88, color: "#fafafa" }}>
-            Progress
+          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 30, letterSpacing: ".06em", lineHeight: 1, color: "#fafafa" }}>
+            The Record
           </div>
         </div>
         {level && (
@@ -188,7 +189,7 @@ export default function StatsView({
             <div>
               <Caps color={text.muted}>{heroLabel}</Caps>
               <div style={{ marginTop: 4, display: "flex", alignItems: "baseline", gap: 6 }}>
-                <Disp size={52} color={accent}>{fmtVol(heroVolume)}</Disp>
+                <Disp size={40} color={accent}>{fmtVol(heroVolume)}</Disp>
                 <Caps color={text.tertiary} size={11}>LB</Caps>
               </div>
               {range === "week" && weekVolumeDelta !== null && (
@@ -200,9 +201,9 @@ export default function StatsView({
             <div style={{ textAlign: "right" }}>
               <Caps color={text.muted}>SESSIONS</Caps>
               <div style={{ marginTop: 4 }}>
-                <Disp size={32}>
+                <Disp size={24}>
                   {heroSessions}
-                  <span style={{ color: text.tertiary, fontSize: 20 }}>/{settings.workoutsPerWeek || 3}</span>
+                  <span style={{ color: text.tertiary, fontSize: 15 }}>/{settings.workoutsPerWeek || 3}</span>
                 </Disp>
               </div>
               <div style={{ marginTop: 4, color: text.tertiary, fontSize: 11 }}>
@@ -250,9 +251,9 @@ export default function StatsView({
             padding: "12px 13px",
             boxShadow: "0 8px 24px rgba(0,0,0,.28)",
           }}>
-            <Caps color={text.muted} size={9}>{s.label}</Caps>
-            <Disp size={32} style={{ display: "block", marginTop: 4 }}>{s.value}</Disp>
-            <div style={{ color: text.tertiary, fontSize: 10, marginTop: 2 }}>{s.sub}</div>
+            <Caps color={text.muted} size={10}>{s.label}</Caps>
+            <Disp size={26} style={{ display: "block", marginTop: 4 }}>{s.value}</Disp>
+            <div style={{ color: text.tertiary, fontSize: 11, marginTop: 2 }}>{s.sub}</div>
           </div>
         ))}
       </div>
@@ -342,12 +343,12 @@ export default function StatsView({
           <div style={{ padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div>
               <Caps color={text.muted}>LIFETIME SESSIONS</Caps>
-              <Disp size={42} style={{ display: "block", marginTop: 6 }}>{stats.totalSessions}</Disp>
+              <Disp size={32} style={{ display: "block", marginTop: 6 }}>{stats.totalSessions}</Disp>
             </div>
             <div>
               <Caps color={text.muted}>LIFETIME LIFTED</Caps>
               <div style={{ marginTop: 6, display: "flex", alignItems: "baseline", gap: 4 }}>
-                <Disp size={32}>{fmtVol(totalVolume)}</Disp>
+                <Disp size={28}>{fmtVol(totalVolume)}</Disp>
                 <Caps color={text.tertiary} size={10}>LB</Caps>
               </div>
             </div>
@@ -360,10 +361,10 @@ export default function StatsView({
         <div style={{ padding: "0 16px 16px" }}>
           <div style={{ padding: "20px 18px", background: `${accent}10`, border: `1.5px solid ${accent}33`, borderRadius: 14 }}>
             <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 30, color: accent, letterSpacing: ".06em", lineHeight: 1 }}>
-              No data yet
+              The forge is cold
             </div>
             <div style={{ fontSize: 14, color: text.secondary, lineHeight: 1.55, marginTop: 8 }}>
-              Complete your first workout — volume, lifts, PRs, and streaks fill in automatically.
+              Complete your first session — volume, lifts, peaks, and streaks fill in automatically.
             </div>
           </div>
         </div>

@@ -2,7 +2,7 @@
 // (and any leftover from older versions), then hard-reloads.
 //
 // Wiped:
-//   - localStorage
+//   - localStorage (optionally preserving named backup keys)
 //   - sessionStorage
 //   - IndexedDB (all databases visible to the origin)
 //   - Cache API (all service-worker caches)
@@ -13,11 +13,25 @@
 //   - Error boundary → "Full reset and restart"
 //
 // Returns a Promise that resolves only after window.location.reload() is queued.
-export async function nukeAndReload() {
+export async function nukeAndReload({ preserveLocalStorageKeys = [] } = {}) {
   const tasks = [];
+  const preserved = {};
+  try {
+    preserveLocalStorageKeys.forEach(key => {
+      const value = localStorage.getItem(key);
+      if (value != null) preserved[key] = value;
+    });
+  } catch (e) {
+    console.warn("localStorage preserve failed", e);
+  }
 
   // 1. Web Storage — synchronous, do first
   try { localStorage.clear(); } catch (e) { console.warn("localStorage.clear failed", e); }
+  try {
+    Object.entries(preserved).forEach(([key, value]) => localStorage.setItem(key, value));
+  } catch (e) {
+    console.warn("localStorage restore preserved keys failed", e);
+  }
   try { sessionStorage.clear(); } catch (e) { console.warn("sessionStorage.clear failed", e); }
 
   // 2. IndexedDB — delete every database

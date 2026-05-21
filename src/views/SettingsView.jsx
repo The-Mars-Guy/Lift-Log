@@ -21,6 +21,7 @@ export default function SettingsView({
   editBenchmarkTest,
   accent,
   theme,
+  initialSection,
 }) {
   const [confirming,     setConfirming]     = useState(false);
   const [importStatus,   setImportStatus]   = useState(null);
@@ -54,7 +55,7 @@ export default function SettingsView({
       </div>
 
       {/* ── PROFILE ─────────────────────────────────────────────────── */}
-      <Accordion title="Profile" ui={ui}>
+      <Accordion title="Profile" ui={ui} defaultOpen={initialSection === "Profile"}>
         {/* Basic stats */}
         <div style={{ background: ui.card, borderRadius: 10, border: `1px solid ${ui.border}`, padding: "14px 16px", display: "grid", gap: 12, boxShadow: ui.shadow }}>
           <div style={{ fontSize: 11, color: ui.muted, fontWeight: 700 }}>Basic Info</div>
@@ -159,7 +160,7 @@ export default function SettingsView({
 
         {/* Workout days */}
         <div style={{ background: ui.card, borderRadius: 10, border: `1px solid ${ui.border}`, padding: "14px 16px", boxShadow: ui.shadow }}>
-          <div style={{ fontSize: 11, color: ui.muted, fontWeight: 700, marginBottom: 12 }}>Workout Days</div>
+          <div style={{ fontSize: 11, color: ui.muted, fontWeight: 700, marginBottom: 12 }}>Forge Days</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6 }}>
             {ALL_DAYS.map(d => {
               const active = workoutDays.includes(d);
@@ -176,8 +177,8 @@ export default function SettingsView({
       </Accordion>
 
       {/* ── WORKOUT ─────────────────────────────────────────────────── */}
-      <Accordion title="Workout" ui={ui}>
-        <Row label="Rest Timer" desc="Seconds between sets" ui={ui}>
+      <Accordion title="Workout" ui={ui} defaultOpen={initialSection === "Workout"}>
+        <Row label="Cool-Down Timer" desc="Seconds between strikes" ui={ui}>
           <SegControl options={[{v:45,l:"45s"},{v:60,l:"60s"},{v:90,l:"90s"},{v:120,l:"2m"}]}
             value={settings.restSeconds} onChange={v => update("restSeconds", v)} accent={accent} ui={ui} />
         </Row>
@@ -201,7 +202,7 @@ export default function SettingsView({
       </Accordion>
 
       {/* ── DATA ────────────────────────────────────────────────────── */}
-      <Accordion title="Data" ui={ui}>
+      <Accordion title="Data" ui={ui} defaultOpen={initialSection === "Data"}>
         <Action label="Export Data" desc="Download history, progression, and settings as JSON" onClick={exportData} ui={ui} />
         <button onClick={() => setBackupOpen(v => !v)}
           style={{ width:"100%", padding:"12px 16px", background:ui.card, border:`1px solid ${ui.border}`, borderRadius:10, cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", boxShadow:ui.shadow }}>
@@ -234,7 +235,7 @@ export default function SettingsView({
       </Accordion>
 
       {/* ── APPEARANCE ──────────────────────────────────────────────── */}
-      <Accordion title="Appearance" ui={ui}>
+      <Accordion title="Appearance" ui={ui} defaultOpen={initialSection === "Appearance"}>
         <Row label="Visual Style" desc="Bright phone mode or classic dark mode" ui={ui}>
           <SegControl options={[{v:"dark",l:"Dark"},{v:"pop_light",l:"Pop"}]}
             value={settings.visualTheme || "dark"}
@@ -243,17 +244,17 @@ export default function SettingsView({
       </Accordion>
 
       {/* ── DEVICE FEEDBACK ─────────────────────────────────────────── */}
-      <Accordion title="Device Feedback" ui={ui}>
+      <Accordion title="Device Feedback" ui={ui} defaultOpen={initialSection === "Device Feedback"}>
         <Toggle label="Sound Effects" desc="Beeps and chimes during workouts" value={settings.soundEnabled} onChange={v => update("soundEnabled", v)} accent={accent} ui={ui} />
         <Toggle label="Vibration" desc="Haptic feedback on phone" value={settings.vibrationEnabled} onChange={v => update("vibrationEnabled", v)} accent={accent} ui={ui} />
       </Accordion>
 
       {/* ── COACH ───────────────────────────────────────────────────── */}
-      <Accordion title="Coach" ui={ui}>
-        <Toggle label="Science Coach" desc="Use estimated 1RM, goal, and equipment rules"
-          help="When enabled, the coach uses your logged reps, weights, recent set feedback, readiness, and equipment access to tune reps, sets, and sometimes suggested load."
+      <Accordion title="Smith" ui={ui} defaultOpen={initialSection === "Smith"}>
+        <Toggle label="Smith" desc="Use estimated 1RM, goal, and equipment rules"
+          help="When enabled, Smith uses your logged reps, weights, recent set feedback, readiness, and equipment access to tune reps, sets, and sometimes suggested load."
           value={settings.scienceCoach === true} onChange={v => update("scienceCoach", v)} accent={accent} ui={ui} />
-        <Row label="Training Goal" desc="Changes rep ranges and progression bias" help={TRAINING_GOALS[settings.trainingGoal || "general"]?.desc} ui={ui}>
+        <Row label="Forge Goal" desc="Changes rep ranges and progression bias" help={TRAINING_GOALS[settings.trainingGoal || "general"]?.desc} ui={ui}>
           <SegControl
             options={[{v:"general",l:"General",tip:TRAINING_GOALS.general.desc},{v:"strength",l:"Strength",tip:TRAINING_GOALS.strength.desc},{v:"hypertrophy",l:"Muscle",tip:TRAINING_GOALS.hypertrophy.desc},{v:"fatigue_friendly",l:"Easy",tip:TRAINING_GOALS.fatigue_friendly.desc}]}
             value={settings.trainingGoal || "general"} onChange={v => update("trainingGoal", v)} accent={accent} ui={ui} />
@@ -265,7 +266,7 @@ export default function SettingsView({
         </Row>
         <button onClick={() => setAdvancedCoach(v => !v)}
           style={{ width:"100%", padding:"12px 16px", background:ui.card, border:`1px solid ${ui.border}`, borderRadius:10, cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", boxShadow:ui.shadow }}>
-          <span style={{ fontSize:15, color:ui.soft }}>More Coach Options</span>
+          <span style={{ fontSize:15, color:ui.soft }}>More Smith Options</span>
           <span style={{ fontSize:13, color:ui.muted }}>{advancedCoach ? "▲" : "▼"}</span>
         </button>
         {advancedCoach && <>
@@ -276,18 +277,18 @@ export default function SettingsView({
               value={settings.coachStyle || "balanced"} onChange={v => update("coachStyle", v)} accent={accent} ui={ui} />
           </Row>
           <Toggle label="Auto Deload" desc="Reduce load after repeated big misses"
-            help="If the same exercise misses badly twice, the coach lowers the next load and rebuilds clean reps."
+            help="If the same exercise misses badly twice, Smith lowers the next load and rebuilds clean reps."
             value={settings.autoDeload !== false} onChange={v => update("autoDeload", v)} accent={accent} ui={ui} />
           <Toggle label="Readiness Check-In" desc="Ask energy, soreness, and time before workouts"
-            help="The coach uses this to trim sets on rough days, push when fresh, and suggest swaps when soreness is high."
+            help="Smith uses this to trim sets on rough days, push when fresh, and suggest swaps when soreness is high."
             value={settings.showReadiness !== false} onChange={v => update("showReadiness", v)} accent={accent} ui={ui} />
-          <Toggle label="Fullscreen Rest Timer" desc="Use the focused rest screen between sets"
+          <Toggle label="Fullscreen Cool-Down" desc="Use the focused cool-down screen between strikes"
             value={settings.fullscreenRest !== false} onChange={v => update("fullscreenRest", v)} accent={accent} ui={ui} />
           <Toggle label="Beginner Form Mode" desc="Larger cues and less noise during focus mode"
             help="Best when you want one clear instruction at a time instead of more advanced coaching detail."
             value={settings.beginnerFormMode === true} onChange={v => update("beginnerFormMode", v)} accent={accent} ui={ui} />
           <Action label="Edit Benchmark Test" desc="Update the initial max-rep numbers the coach uses for targets" onClick={editBenchmarkTest} ui={ui} />
-          <Row label="Joint Caution" desc="Coach biases swaps around selected joints"
+          <Row label="Joint Caution" desc="Smith biases swaps around selected joints"
             help="Use this for recurring caution areas. During workouts, pain feedback still matters most." ui={ui}>
             <MultiSelect
               options={Object.entries(JOINT_AREAS).map(([v, item]) => ({ v, l: item.label }))}
@@ -321,8 +322,8 @@ function makeSettingsTheme(theme, accent) {
 
 // ─── Accordion section ────────────────────────────────────────────────────────
 
-function Accordion({ title, children, ui }) {
-  const [open, setOpen] = useState(false);
+function Accordion({ title, children, ui, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <div style={{ padding: "0 20px 4px" }}>
       <button

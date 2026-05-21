@@ -76,13 +76,12 @@ export function CoachDrawer({ open, onClose, memory, plan, accent, exercises = [
               width: 40, height: 40, borderRadius: 12,
               background: accent, color: "#050505",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 13, fontWeight: 900, letterSpacing: ".06em",
               boxShadow: `0 8px 20px ${accent}3d`,
-            }}>AI</div>
+            }}><Icon name="hammer" size={22} color="#050505" /></div>
             <div style={{flex:1, minWidth:0}}>
-              <Caps color={accent} size={9}>Coach</Caps>
-              <Disp size={24} style={{display:"block", marginTop:2}}>
-                {plan?.headline || "Training assistant"}
+              <Caps color={accent} size={9}>Smith</Caps>
+              <Disp size={19} style={{display:"block", marginTop:2}}>
+                {plan?.headline || "Into the forge"}
               </Disp>
             </div>
             <button onClick={onClose} style={{
@@ -305,11 +304,11 @@ export function CoachFab({ onClick, accent }) {
         WebkitBackdropFilter: "blur(12px)",
         color: accent,
         boxShadow: `0 8px 28px ${accent}2b, inset 0 1px 0 ${accent}30`,
-        fontWeight: 900, letterSpacing: ".06em", fontSize: 11,
-        touchAction: "none", cursor: "grab",
+          touchAction: "none", cursor: "grab",
+        display: "flex", alignItems: "center", justifyContent: "center",
       }}
     >
-      AI
+      <Icon name="hammer" size={24} color={accent} />
     </button>
   );
 }

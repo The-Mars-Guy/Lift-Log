@@ -48,6 +48,7 @@ export const IconGear        = (p) => <S {...p}><circle cx="12" cy="12" r="3"/><
 export const IconNote        = (p) => <S {...p}><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></S>;
 export const IconArrowDown   = (p) => <S {...p}><path d="M12 5v14M5 12l7 7 7-7"/></S>;
 export const IconArrowUp     = (p) => <S {...p}><path d="M12 19V5M5 12l7-7 7 7"/></S>;
+export const IconAnvil       = (p) => <S {...p}><path d="M2 6 L6 3 h12 a2 2 0 0 1 2 2 v4 H6 z"/><path d="M8 9 v5 h8 V9"/><path d="M5 14 h14 v4 H5 z"/></S>;
 export const IconCheck       = (p) => <S {...p}><polyline points="20 6 9 17 4 12"/></S>;
 export const IconX           = (p) => <S {...p}><path d="M18 6 6 18M6 6l12 12"/></S>;
 
@@ -91,6 +92,7 @@ const MAP = {
   note:           IconNote,
   "arrow-down":   IconArrowDown,
   "arrow-up":     IconArrowUp,
+  anvil:          IconAnvil,
   check:          IconCheck,
   x:              IconX,
 };

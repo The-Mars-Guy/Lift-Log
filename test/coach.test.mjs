@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachNotes, buildCoachPlan, buildSessionIntent, buildWeeklyReview, coachSetCount, coachTargetReps, computePersonalRecords, detectWeakPoints, evaluateProgression, exactRepTarget, exerciseFeedbackSignal, exerciseTrend, explainExerciseDecision, painBlockedExercises, plateauFixes, readinessScore, recommendDeload, routineEditSuggestions, sciencePrescription, SUBSTITUTIONS, suggestSubstitutions, summarizeWorkout, tempoPrescription, variationPrescription, weeklyMuscleCoverage } from "../src/coach.js";
+import { behaviorMemory, bestEstimated1RM, buildCoachMemory, buildCoachNotes, buildCoachPlan, buildSessionIntent, buildWeeklyReview, coachSetCount, coachTargetReps, computePersonalRecords, detectWeakPoints, evaluateProgression, exactRepTarget, exerciseFeedbackSignal, exerciseTrend, explainExerciseDecision, generateCoachRoutine, painBlockedExercises, plateauFixes, readinessScore, recommendDeload, routineEditSuggestions, sciencePrescription, SUBSTITUTIONS, suggestSubstitutions, summarizeWorkout, tempoPrescription, variationPrescription, weeklyMuscleCoverage } from "../src/coach.js";
 
 const exercise = { name: "Floor Press", sets: 3, baseReps: 10 };
 
@@ -92,6 +92,36 @@ test("routineEditSuggestions flags missing coverage and avoided movements", () =
 
   assert.equal(suggestions.some(item => item.title === "Add Pull"), true);
   assert.equal(suggestions.some(item => item.type === "avoid"), true);
+});
+
+test("routineEditSuggestions can use injected extended exercise library", () => {
+  const injected = [
+    { id:"custom_pull", name:"Custom Pull", primary:["lats"], secondary:[], sets:3, baseReps:10, difficulty:"beginner", equipment:"bodyweight", ageFriendly:true, tip:"Pull smoothly" },
+  ];
+  const suggestions = routineEditSuggestions({
+    routine:{ avoidedExerciseIds:[] },
+    exercises:[{ id:"wall_pushup", name:"Wall Push-Up", primary:["chest"], secondary:["triceps"] }],
+    allExercises:[{ id:"wall_pushup", name:"Wall Push-Up", primary:["chest"], secondary:["triceps"] }],
+    exerciseLibrary: injected,
+  });
+
+  assert.equal(suggestions.find(item => item.title === "Add Pull")?.actionId, "custom_pull");
+});
+
+test("generateCoachRoutine can choose from injected exercise library", () => {
+  const injected = [
+    { id:"custom_push", name:"Custom Push", primary:["chest"], secondary:["triceps"], sets:3, baseReps:10, difficulty:"beginner", equipment:"bodyweight", ageFriendly:true, tip:"Push" },
+    { id:"custom_pull", name:"Custom Pull", primary:["lats"], secondary:["biceps"], sets:3, baseReps:10, difficulty:"beginner", equipment:"bodyweight", ageFriendly:true, tip:"Pull" },
+    { id:"custom_legs", name:"Custom Legs", primary:["quads"], secondary:["glutes"], sets:3, baseReps:10, difficulty:"beginner", equipment:"bodyweight", ageFriendly:true, tip:"Legs" },
+    { id:"custom_core", name:"Custom Core", primary:["core"], secondary:[], sets:3, baseReps:10, difficulty:"beginner", equipment:"bodyweight", ageFriendly:true, tip:"Core" },
+  ];
+  const routine = generateCoachRoutine({
+    settings:{ equipmentProfile:"fixed_dumbbells" },
+    targetCount: 4,
+    exerciseLibrary: injected,
+  });
+
+  assert.equal(routine.exerciseIds.every(id => id.startsWith("custom_")), true);
 });
 
 test("exactRepTarget clamps coach targets to the learned rep range", () => {

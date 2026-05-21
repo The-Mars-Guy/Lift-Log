@@ -304,4 +304,3 @@ export function assessmentTargetForProfile(maxReps, profile = DEFAULT_USER_PROFI
 }
 
 export const IMG_BASE = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises";
-export const VIDEO_BASE = "/Lift-Log/videos";

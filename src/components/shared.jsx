@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { IMG_BASE, VIDEO_BASE, WORKOUTS, isoDate, isoWeek, dateStr } from "../data.js";
+import { IMG_BASE, WORKOUTS, isoDate, isoWeek, dateStr } from "../data.js";
 import { remainingSeconds } from "../session.js";
 import { surface, text, status } from "../theme.js";
 import { Icon } from "./Icons.jsx";
@@ -9,7 +9,7 @@ export function ExerciseAnimation({ folder, accent, video, compact=false, bare=f
   const [loaded, setLoaded] = useState({ 0:false, 1:false });
   const [videoFailed, setVideoFailed] = useState(false);
   const ready = loaded[0] && loaded[1];
-  const videoSrc = video || `${VIDEO_BASE}/${folder}.mp4`;
+  const videoSrc = video || null;
   const frameStyle = {
     position:"absolute",
     inset:0,
@@ -28,7 +28,7 @@ export function ExerciseAnimation({ folder, accent, video, compact=false, bare=f
       border:bare ? "none" : `1.5px solid ${accent}40`,
       boxShadow:bare ? "none" : `0 0 36px ${accent}14`,
     }}>
-      {!videoFailed && (
+      {videoSrc && !videoFailed && (
         <video
           src={videoSrc}
           autoPlay
@@ -42,7 +42,7 @@ export function ExerciseAnimation({ folder, accent, video, compact=false, bare=f
           style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"contain",background:bare ? "transparent" : "#f2f2f2"}}
         />
       )}
-      {videoFailed && !ready && (
+      {(!videoSrc || videoFailed) && !ready && (
         <div style={{
           position:"absolute", inset:0,
           display:"flex", alignItems:"center", justifyContent:"center",
@@ -52,10 +52,10 @@ export function ExerciseAnimation({ folder, accent, video, compact=false, bare=f
           animation:"shimmer 1.4s ease-in-out infinite",
         }}>LOADING...</div>
       )}
-      {videoFailed && <img src={`${IMG_BASE}/${folder}/0.jpg`} alt="" onLoad={() => setLoaded(p=>({...p,0:true}))} onError={() => setLoaded(p=>({...p,0:true}))}
+      {(!videoSrc || videoFailed) && <img src={`${IMG_BASE}/${folder}/0.jpg`} alt="" onLoad={() => setLoaded(p=>({...p,0:true}))} onError={() => setLoaded(p=>({...p,0:true}))}
         style={{ ...frameStyle, opacity:ready?1:0, animation:ready?"exerciseFrameA 2.1s ease-in-out infinite":"none" }}/>
       }
-      {videoFailed && <img src={`${IMG_BASE}/${folder}/1.jpg`} alt="" onLoad={() => setLoaded(p=>({...p,1:true}))} onError={() => setLoaded(p=>({...p,1:true}))}
+      {(!videoSrc || videoFailed) && <img src={`${IMG_BASE}/${folder}/1.jpg`} alt="" onLoad={() => setLoaded(p=>({...p,1:true}))} onError={() => setLoaded(p=>({...p,1:true}))}
         style={{ ...frameStyle, opacity:0, animation:ready?"exerciseFrameB 2.1s ease-in-out infinite":"none" }}/>
       }
     </div>
@@ -103,7 +103,7 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent, fullscre
         display:"flex", alignItems:"center", justifyContent:"center", padding:"28px 22px",
       }}>
         <div className="mobile-shell" style={{textAlign:"center"}}>
-          <div style={{fontSize:12,color:text.tertiary,fontWeight:600,marginBottom:20}}>Rest</div>
+          <div style={{fontSize:12,color:text.tertiary,fontWeight:600,marginBottom:20}}>Cool Down</div>
           <div style={{position:"relative",width:168,height:168,margin:"0 auto 26px"}}>
             <svg width="168" height="168" viewBox="0 0 168 168" style={{transform:"rotate(-90deg)"}}>
               <circle cx="84" cy="84" r={bigR} fill="none" stroke="#171717" strokeWidth="8"/>
@@ -115,10 +115,10 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent, fullscre
             <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:72,color:accent,letterSpacing:".04em"}}>{remaining}</div>
           </div>
           <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:"#f5f5f5",letterSpacing:".06em",lineHeight:1.05,marginBottom:10}}>{label}</div>
-          <div style={{fontSize:13,color:text.tertiary,lineHeight:1.5,marginBottom:30}}>Breathe, shake it out, then hit the next set clean.</div>
+          <div style={{fontSize:13,color:text.tertiary,lineHeight:1.5,marginBottom:30}}>The forge cools between strikes. Breathe, then return harder.</div>
           <button onClick={onSkip}
             style={{width:"100%",padding:"18px",background:"transparent",border:`1.5px solid ${accent}77`,borderRadius:13,color:accent,fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:".12em"}}>
-            SKIP REST
+            PUSH THROUGH
           </button>
         </div>
       </div>
@@ -145,12 +145,12 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent, fullscre
           <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, color:accent, fontWeight:500 }}>{remaining}</div>
         </div>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:11, color:"#aaa", marginBottom:3 }}>REST · {remaining}s</div>
+          <div style={{ fontSize:11, color:"#aaa", marginBottom:3 }}>COOLING · {remaining}s</div>
           <div style={{ fontSize:14, color:"#f0f0f0", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{label}</div>
         </div>
         <button onClick={onSkip}
           style={{ background:"transparent", border:`1.5px solid ${accent}66`, color:accent, padding:"10px 18px", borderRadius:8, fontSize:12, letterSpacing:"0.12em", flexShrink:0 }}>
-          SKIP
+          PUSH
         </button>
       </div>
     </div>
@@ -271,7 +271,7 @@ function IconPerson({ color, size=22 }) {
 }
 
 const NAV_ITEMS = [
-  { id:"workout", label:"Train",   Icon:IconDumbbell },
+  { id:"workout", label:"Forge",   Icon:IconDumbbell },
   { id:"stats",   label:"Stats",   Icon:IconStats    },
   { id:"routine", label:"Routine", Icon:IconRoutine  },
   { id:"muscles", label:"Muscles", Icon:IconMuscles  },

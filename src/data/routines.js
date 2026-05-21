@@ -1,4 +1,4 @@
-import { exerciseId, getExerciseById, exerciseFolder, MUSCLE_COVERAGE_GROUPS, DAYS, FORGE_WORKOUT_NAMES } from "./exercises.js";
+import { getExerciseById, exerciseFolder, MUSCLE_COVERAGE_GROUPS, DAYS, FORGE_WORKOUT_NAMES } from "./exercises.js";
 import { normalizeUserProfile, ageTier } from "./profile.js";
 
 export const DEFAULT_CUSTOM_ROUTINE = {
@@ -140,16 +140,23 @@ function normalizeRoutineSchedule(schedule = DEFAULT_CUSTOM_ROUTINE.schedule, ro
   }, {});
 }
 
-export function normalizeCustomRoutine(routine = DEFAULT_CUSTOM_ROUTINE) {
+const preserveOrFilterIds = (ids, exerciseLibrary, validateIds) => {
+  const source = Array.isArray(ids) ? ids : [];
+  const filtered = validateIds ? source.filter(id => getExerciseById(id, exerciseLibrary)) : source;
+  return [...new Set(filtered)];
+};
+
+export function normalizeCustomRoutine(routine = DEFAULT_CUSTOM_ROUTINE, options = {}) {
+  const { exerciseLibrary = null, validateIds = false } = options;
   const source = routine && typeof routine === "object" && !Array.isArray(routine) ? routine : {};
-  const ids = Array.isArray(source.exerciseIds) ? source.exerciseIds.filter(id => getExerciseById(id)) : DEFAULT_CUSTOM_ROUTINE.exerciseIds;
+  const ids = Array.isArray(source.exerciseIds) ? preserveOrFilterIds(source.exerciseIds, exerciseLibrary, validateIds) : DEFAULT_CUSTOM_ROUTINE.exerciseIds;
   const rawRoutines = Array.isArray(source.routines)
     ? source.routines
     : (Array.isArray(source.exerciseIds) ? [{ id:source.activeRoutineId || "day_1", name:source.name || "Strike", exerciseIds:source.exerciseIds }] : DEFAULT_CUSTOM_ROUTINE.routines);
   const routines = rawRoutines.map((item, index) => ({
     id:item.id || `day_${index + 1}`,
     name:item.name || FORGE_WORKOUT_NAMES[index % FORGE_WORKOUT_NAMES.length],
-    exerciseIds:(Array.isArray(item.exerciseIds) ? item.exerciseIds : []).filter(id => getExerciseById(id)),
+    exerciseIds:preserveOrFilterIds(item.exerciseIds, exerciseLibrary, validateIds),
   }));
   // Normalize saved programs array — same shape as the main program
   const programs = Array.isArray(source.programs)
@@ -158,11 +165,11 @@ export function normalizeCustomRoutine(routine = DEFAULT_CUSTOM_ROUTINE) {
   return {
     ...DEFAULT_CUSTOM_ROUTINE,
     ...source,
-    exerciseIds: ids.length ? [...new Set(ids)] : DEFAULT_CUSTOM_ROUTINE.exerciseIds,
+    exerciseIds: ids.length ? ids : DEFAULT_CUSTOM_ROUTINE.exerciseIds,
     routines: routines.length ? routines : DEFAULT_CUSTOM_ROUTINE.routines,
     activeRoutineId:source.activeRoutineId || (routines[0]?.id || DEFAULT_CUSTOM_ROUTINE.activeRoutineId),
-    favoriteExerciseIds: Array.isArray(source.favoriteExerciseIds) ? [...new Set(source.favoriteExerciseIds.filter(id => getExerciseById(id)))] : [],
-    avoidedExerciseIds: Array.isArray(source.avoidedExerciseIds) ? [...new Set(source.avoidedExerciseIds.filter(id => getExerciseById(id)))] : [],
+    favoriteExerciseIds: Array.isArray(source.favoriteExerciseIds) ? preserveOrFilterIds(source.favoriteExerciseIds, exerciseLibrary, validateIds) : [],
+    avoidedExerciseIds: Array.isArray(source.avoidedExerciseIds) ? preserveOrFilterIds(source.avoidedExerciseIds, exerciseLibrary, validateIds) : [],
     schedule: normalizeRoutineSchedule(source.schedule, routines.length ? routines : DEFAULT_CUSTOM_ROUTINE.routines),
     programs,
   };
@@ -208,17 +215,18 @@ export function buildPersonalizedDefault(userProfile = {}, settings = {}) {
 
 // ─── WORKOUT HELPERS ─────────────────────────────────────────────────────────
 
-export function customRoutineWorkout(routine = DEFAULT_CUSTOM_ROUTINE, day = null) {
-  const safe = normalizeCustomRoutine(routine);
+export function customRoutineWorkout(routine = DEFAULT_CUSTOM_ROUTINE, day = null, options = {}) {
+  const { exerciseLibrary = null } = options;
+  const safe = normalizeCustomRoutine(routine, options);
   const dayRoutineId = day ? safe.schedule?.[day] : null;
   const active = safe.routines.find(item => item.id === dayRoutineId) || safe.routines.find(item => item.id === safe.activeRoutineId);
-  const ids = active?.exerciseIds?.length ? active.exerciseIds : safe.exerciseIds;
+  const ids = active ? (active.exerciseIds || []) : safe.exerciseIds;
   return {
     label:active?.name || safe.name || "Custom Routine",
     days:day || "Custom",
     color:"#fbbf24",
     custom:true,
-    exercises:ids.map(id => getExerciseById(id)).filter(Boolean).map(ex => ({
+    exercises:ids.map(id => getExerciseById(id, exerciseLibrary)).filter(Boolean).map(ex => ({
       ...ex,
       folder: exerciseFolder(ex),
     })),
@@ -226,13 +234,14 @@ export function customRoutineWorkout(routine = DEFAULT_CUSTOM_ROUTINE, day = nul
 }
 
 // Union of every exercise across every routine — for week-level balance/coverage.
-export function allRoutineExercises(routine = DEFAULT_CUSTOM_ROUTINE) {
-  const safe = normalizeCustomRoutine(routine);
+export function allRoutineExercises(routine = DEFAULT_CUSTOM_ROUTINE, options = {}) {
+  const { exerciseLibrary = null } = options;
+  const safe = normalizeCustomRoutine(routine, options);
   const ids = new Set();
   (safe.routines || []).forEach(r => (r.exerciseIds || []).forEach(id => ids.add(id)));
   if (!ids.size) (safe.exerciseIds || []).forEach(id => ids.add(id));
   return [...ids]
-    .map(id => getExerciseById(id))
+    .map(id => getExerciseById(id, exerciseLibrary))
     .filter(Boolean)
     .map(ex => ({ ...ex, folder: exerciseFolder(ex) }));
 }

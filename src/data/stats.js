@@ -45,12 +45,18 @@ export const XP_VALUES = {
 };
 
 export const LEVELS = [
-  { min:0,    name:"Apprentice",   badge:"hammer",       color:"#7a6d5d"  },
-  { min:80,   name:"Journeyman",   badge:"cross-hammer", color:"#94a3b8"  },
-  { min:220,  name:"Smith",        badge:"flame",        color:"#dd6518"  },
-  { min:480,  name:"Blacksmith",   badge:"bolt",         color:"#fb923c"  },
-  { min:900,  name:"Iron Master",  badge:"swords",       color:"#fbbf24"  },
-  { min:1600, name:"Forge Master", badge:"crown",        color:"#fbbf24"  },
+  { min:0,     name:"Ore",      badge:"hammer",       color:"#6b6b6b"  },
+  { min:120,   name:"Heated",   badge:"flame",        color:"#b45309"  },
+  { min:300,   name:"Struck",   badge:"cross-hammer", color:"#dd6518"  },
+  { min:600,   name:"Bent",     badge:"bolt",         color:"#f97316"  },
+  { min:1100,  name:"Shaped",   badge:"shield",       color:"#fbbf24"  },
+  { min:1800,  name:"Quenched", badge:"moon",         color:"#64748b"  },
+  { min:2800,  name:"Tempered", badge:"thermometer",  color:"#60a5fa"  },
+  { min:4200,  name:"Hardened", badge:"sword",        color:"#38bdf8"  },
+  { min:6200,  name:"Honed",    badge:"swords",       color:"#cbd5e1"  },
+  { min:9000,  name:"Forged",   badge:"trophy",       color:"#fbbf24"  },
+  { min:13000, name:"Wrought",  badge:"crown",        color:"#f59e0b"  },
+  { min:20000, name:"Eternal",  badge:"sparkle",      color:"#f0f4ff"  },
 ];
 
 export function getLevel(xp) {
@@ -63,18 +69,18 @@ export function getLevel(xp) {
 
 // ─── ACHIEVEMENTS ────────────────────────────────────────────────────────────
 export const ACHIEVEMENTS = [
-  { id:"first_lift",   name:"First Lift",       desc:"Complete your first session",              icon:"target",    check:s=>s.totalSessions>=1  },
-  { id:"week_one",     name:"Week One",          desc:"3 sessions completed",                     icon:"calendar",  check:s=>s.totalSessions>=3  },
-  { id:"ten_sessions", name:"Double Digits",     desc:"10 sessions logged",                       icon:"medal",     check:s=>s.totalSessions>=10 },
-  { id:"quarter",      name:"Quarter Century",   desc:"25 sessions logged",                       icon:"bolt",      check:s=>s.totalSessions>=25 },
-  { id:"halfway",      name:"Halfway There",     desc:"50 sessions logged",                       icon:"swords",    check:s=>s.totalSessions>=50 },
-  { id:"centurion",    name:"Centurion",          desc:"100 sessions logged",                      icon:"crown",     check:s=>s.totalSessions>=100},
-  { id:"first_prog",   name:"Onwards",           desc:"First rep increase unlocked",              icon:"trend-up",  check:s=>s.totalProgressions>=1},
-  { id:"five_progs",   name:"Adapt & Overcome",  desc:"5 progressions unlocked",                  icon:"muscle",    check:s=>s.totalProgressions>=5},
-  { id:"all_maxed",    name:"Topped Out",        desc:"Every exercise at max",                    icon:"trophy",    check:s=>s.allMaxed         },
-  { id:"streak_3",     name:"Building Habit",    desc:"3 sessions in a row",                      icon:"flame",     check:s=>s.streak>=3        },
-  { id:"streak_10",    name:"Unstoppable",       desc:"10 sessions in a row",                     icon:"bolt",      check:s=>s.streak>=10       },
-  { id:"perfect_week", name:"Perfect Week",      desc:"All 3 scheduled days in a week",           icon:"sparkle",   check:s=>s.perfectWeeks>=1  },
+  { id:"first_lift",   name:"First Strike",      desc:"Complete your first session",              icon:"target",    check:s=>s.totalSessions>=1  },
+  { id:"week_one",     name:"First Heat",        desc:"3 sessions in the forge",                  icon:"calendar",  check:s=>s.totalSessions>=3  },
+  { id:"ten_sessions", name:"Ten Strikes",       desc:"10 sessions forged",                       icon:"medal",     check:s=>s.totalSessions>=10 },
+  { id:"quarter",      name:"Veteran",           desc:"25 sessions in the forge",                 icon:"bolt",      check:s=>s.totalSessions>=25 },
+  { id:"halfway",      name:"Half Forged",       desc:"50 sessions forged",                       icon:"swords",    check:s=>s.totalSessions>=50 },
+  { id:"centurion",    name:"Iron Century",      desc:"100 sessions in the forge",                icon:"crown",     check:s=>s.totalSessions>=100},
+  { id:"first_prog",   name:"First Progression", desc:"First rep increase earned",                icon:"trend-up",  check:s=>s.totalProgressions>=1},
+  { id:"five_progs",   name:"Five Progressions", desc:"5 progressions earned",                    icon:"muscle",    check:s=>s.totalProgressions>=5},
+  { id:"all_maxed",    name:"Fully Tempered",    desc:"Every movement at peak reps",              icon:"trophy",    check:s=>s.allMaxed         },
+  { id:"streak_3",     name:"The Fire Holds",    desc:"3 sessions in a row",                      icon:"flame",     check:s=>s.streak>=3        },
+  { id:"streak_10",    name:"Unquenchable",      desc:"10 sessions in a row",                     icon:"bolt",      check:s=>s.streak>=10       },
+  { id:"perfect_week", name:"Flawless Heat",     desc:"All 3 forge days hit in a week",           icon:"sparkle",   check:s=>s.perfectWeeks>=1  },
 ];
 
 // ─── PERIODIZATION ───────────────────────────────────────────────────────────

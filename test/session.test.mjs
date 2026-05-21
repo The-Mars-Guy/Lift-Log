@@ -8,6 +8,7 @@ import {
   remainingSeconds,
 } from "../src/session.js";
 import { BENCHMARK_TESTS_V2, ROUTINE_TEMPLATES, assessmentTargetForProfile, benchmarkModeForProfile, customRoutineWorkout, getExerciseHistory, normalizeCustomRoutine, profileFitnessEstimate, profileRisk, routineBalanceScore, routineCoverage } from "../src/data.js";
+import { FULL_EXERCISE_LIBRARY } from "../src/data/exerciseLibrary.js";
 
 test("completionKey includes the scheduled ISO date and weekday", () => {
   const monday = new Date("2026-05-04T12:00:00");
@@ -139,6 +140,21 @@ test("custom routine schedule picks the planned day routine", () => {
   assert.equal(customRoutineWorkout(routine, "Wednesday").label, "Bands");
   assert.equal(customRoutineWorkout(routine, "Monday").label, "Easy");
   assert.deepEqual(routine.avoidedExerciseIds, ["plank"]);
+});
+
+test("extended exercise ids survive core normalization and resolve with full library", () => {
+  const extendedId = "3_4_sit_up";
+  const routine = normalizeCustomRoutine({
+    enabled: true,
+    exerciseIds: [extendedId],
+    routines: [{ id:"extended", name:"Extended", exerciseIds:[extendedId] }],
+    activeRoutineId:"extended",
+    schedule:{ Monday:"extended", Wednesday:"extended", Friday:"extended" },
+  });
+
+  assert.deepEqual(routine.routines[0].exerciseIds, [extendedId]);
+  assert.equal(customRoutineWorkout(routine, "Monday").exercises.length, 0);
+  assert.equal(customRoutineWorkout(routine, "Monday", { exerciseLibrary: FULL_EXERCISE_LIBRARY }).exercises[0].id, extendedId);
 });
 
 test("profile fitness estimate uses age sex height and weight", () => {

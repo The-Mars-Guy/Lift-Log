@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import {
-  EXERCISE_LIBRARY, DEFAULT_GOALS,
+  DEFAULT_GOALS,
   goalProgress, makeGoal, mesocyclePhase, shouldDeload,
 } from "../data.js";
+import { FULL_EXERCISE_LIBRARY as EXERCISE_LIBRARY } from "../data/exerciseLibrary.js";
 import { surface, text, status } from "../theme.js";
 
 export default function GoalsView({ goals = DEFAULT_GOALS, setGoals, history = [], exConfig = {}, checkIns = [], accent, totalSessions = 0 }) {

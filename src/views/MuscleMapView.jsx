@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { WORKOUTS, MUSCLE_LABELS, customRoutineWorkout } from "../data.js";
+import { FULL_EXERCISE_LIBRARY } from "../data/exerciseLibrary.js";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
 import { muscleRecoveryStats, latestMuscleSoreness } from "../coach.js";
 import { surface, text, status } from "../theme.js";
@@ -49,7 +50,7 @@ const SORE_LEVELS = [
 
 export default function MuscleMapView({ history, accent, checkIns = [], setCheckIns, customRoutine }) {
   const [filter, setFilter] = useState("all");
-  const exercises       = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises, ...(customRoutine?.enabled ? customRoutineWorkout(customRoutine).exercises : [])];
+  const exercises       = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises, ...(customRoutine?.enabled ? customRoutineWorkout(customRoutine, null, { exerciseLibrary: FULL_EXERCISE_LIBRARY }).exercises : [])];
   const currentSoreness = latestMuscleSoreness(checkIns);
   const muscleStatus    = buildMuscleStatus({ history, exercises, soreness: currentSoreness });
   const fatigued        = muscleStatus.rows.filter(r => r.fatigue >= 55 || r.soreness === "sore");

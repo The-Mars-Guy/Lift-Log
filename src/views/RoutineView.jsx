@@ -1,11 +1,12 @@
 import { useState, useMemo, useRef } from "react";
 import {
-  EXERCISE_LIBRARY, MUSCLE_COVERAGE_GROUPS, MUSCLE_LABELS,
+  MUSCLE_COVERAGE_GROUPS, MUSCLE_LABELS,
   FORGE_WORKOUT_NAMES, FORGE_WORKOUT_COLORS,
-  normalizeCustomRoutine, getExerciseById, DEFAULT_CUSTOM_ROUTINE,
-  allRoutineExercises, routineBalanceScore, routineCoverage,
+  normalizeCustomRoutine, DEFAULT_CUSTOM_ROUTINE,
+  routineBalanceScore, routineCoverage,
   ROUTINE_TEMPLATES, buildPersonalizedDefault,
 } from "../data.js";
+import { FULL_EXERCISE_LIBRARY as EXERCISE_LIBRARY, getFullExerciseById as getExerciseById } from "../data/exerciseLibrary.js";
 import { routineEditSuggestions, generateCoachRoutine, generateCoachProgram } from "../coach.js";
 import { surface, text, status } from "../theme.js";
 import { Icon } from "../components/Icons.jsx";
@@ -13,6 +14,13 @@ import { Card, Disp, Caps, Bar } from "../components/Primitives.jsx";
 
 const CAT_COLORS = { push: "#dd6518", pull: "#60a5fa", legs: "#fbbf24", core: "#4ade80" };
 const EQUIP_LABELS = { all: "All", dumbbells: "Dumbbells", bodyweight: "Bodyweight", machines: "Machines", bands: "Bands" };
+
+function allRoutineExercises(routine = DEFAULT_CUSTOM_ROUTINE) {
+  const ids = routine.enabled && Array.isArray(routine.programs) && routine.programs.length
+    ? routine.programs.flatMap(day => day.exerciseIds || [])
+    : routine.exerciseIds || [];
+  return ids.map(id => getExerciseById(id)).filter(Boolean);
+}
 
 function catOf(ex) {
   const muscles = [...(ex.primary || []), ...(ex.secondary || [])];
@@ -138,7 +146,7 @@ export default function RoutineView({
   customRoutine, setCustomRoutine, accent,
   userProfile, settings = {}, history = [], checkIns = [], goals = [], exConfig = {},
 }) {
-  const routine = normalizeCustomRoutine(customRoutine);
+  const routine = normalizeCustomRoutine(customRoutine, { exerciseLibrary: EXERCISE_LIBRARY, validateIds: true });
 
   const [activeDayId,    setActiveDayId]    = useState(null);
   const [pickerDayId,    setPickerDayId]    = useState(null);
@@ -152,7 +160,7 @@ export default function RoutineView({
   const [coachRationale, setCoachRationale] = useState(null);
 
   const save = (patch) =>
-    setCustomRoutine(prev => normalizeCustomRoutine({ ...prev, ...patch }));
+    setCustomRoutine(prev => normalizeCustomRoutine({ ...prev, ...patch }, { exerciseLibrary: EXERCISE_LIBRARY, validateIds: true }));
 
   // ── Program name / day name rename ────────────────────────────────────────
   const renameProgramName = (name) => save({ name });
@@ -231,6 +239,7 @@ export default function RoutineView({
         const result = generateCoachProgram({
           userProfile, settings, history, checkIns, goals, exConfig,
           numDays: routine.routines.length || null,
+          exerciseLibrary: EXERCISE_LIBRARY,
         });
         save({ name: result.name, routines: result.routines, schedule: result.schedule, enabled: true });
         setCoachRationale(result.rationale || []);
@@ -256,7 +265,7 @@ export default function RoutineView({
   const coverage      = useMemo(() => routineCoverage(weekExercises), [weekExercises]);
   const balance       = useMemo(() => routineBalanceScore(weekExercises), [weekExercises]);
   const suggestions   = useMemo(() =>
-    routineEditSuggestions({ routine, exercises: weekExercises, allExercises: weekExercises, history, checkIns, userProfile }),
+    routineEditSuggestions({ routine, exercises: weekExercises, allExercises: weekExercises, history, checkIns, userProfile, exerciseLibrary: EXERCISE_LIBRARY }),
     [routine, weekExercises, history, checkIns, userProfile]
   );
 
@@ -284,7 +293,7 @@ export default function RoutineView({
       <div style={{ padding: "48px 16px 12px", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
         <div>
           <Caps color={text.muted} size={10} style={{ display: "block", marginBottom: 4 }}>TRAINING</Caps>
-          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 52, letterSpacing: ".06em", lineHeight: .88, color: "#fafafa" }}>
+          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 30, letterSpacing: ".06em", lineHeight: 1, color: "#fafafa" }}>
             Routine
           </div>
         </div>
@@ -415,7 +424,7 @@ export default function RoutineView({
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Icon name="robot" size={18} color={accent} />
             <div>
-              <div style={{ color: text.primary, fontWeight: 700, fontSize: 14 }}>Coach</div>
+              <div style={{ color: text.primary, fontWeight: 700, fontSize: 14 }}>Smith</div>
               <div style={{ color: text.tertiary, fontSize: 11, marginTop: 1 }}>
                 Balance {balance}% · {coverage.filter(c => !c.ok).length} gap{coverage.filter(c => !c.ok).length !== 1 ? "s" : ""}
               </div>
@@ -497,7 +506,7 @@ export default function RoutineView({
             {/* Coach AI rationale */}
             {coachRationale && coachRationale.length > 0 && (
               <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,.05)" }}>
-                <Caps color={text.muted} style={{ display: "block", marginBottom: 8 }}>Coach Notes</Caps>
+                <Caps color={text.muted} style={{ display: "block", marginBottom: 8 }}>Smith's Notes</Caps>
                 {coachRationale.map((line, i) => (
                   <div key={i} style={{ color: text.tertiary, fontSize: 11, lineHeight: 1.5, marginBottom: 4 }}>{line}</div>
                 ))}

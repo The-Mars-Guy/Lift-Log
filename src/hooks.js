@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 
+function reportStorageError(key, action, err) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("lift-log-storage-error", {
+    detail: { key, action, message: err?.message || String(err) },
+  }));
+}
+
 export function useLocalStorage(key, initial) {
   const [value, setValue] = useState(() => {
     try {
@@ -7,12 +14,16 @@ export function useLocalStorage(key, initial) {
       return v ? JSON.parse(v) : initial;
     } catch (err) {
       console.warn(`useLocalStorage: failed to read "${key}"`, err);
+      reportStorageError(key, "read", err);
       return initial;
     }
   });
   useEffect(() => {
     try { localStorage.setItem(key, JSON.stringify(value)); }
-    catch (err) { console.warn(`useLocalStorage: failed to write "${key}"`, err); }
+    catch (err) {
+      console.warn(`useLocalStorage: failed to write "${key}"`, err);
+      reportStorageError(key, "write", err);
+    }
   }, [key, value]);
   return [value, setValue];
 }

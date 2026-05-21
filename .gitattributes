@@ -1,5 +1,8 @@
 * text=auto
 
+# Generated files — excluded from diffs and language stats
+src/data/exercisedb.js linguist-generated=true
+
 *.js text eol=lf
 *.jsx text eol=lf
 *.mjs text eol=lf

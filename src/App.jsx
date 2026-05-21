@@ -1,11 +1,10 @@
 import { useState, useEffect, lazy, Suspense, startTransition } from "react";
-import { WORKOUTS, SCHEDULE, DEFAULT_SETTINGS, DEFAULT_WEIGHTS, ACHIEVEMENTS, computeStats, todayName, DAYS, getLevel, XP_VALUES, DEFAULT_CUSTOM_ROUTINE, DEFAULT_GOALS, IMG_BASE, normalizeCustomRoutine, customRoutineWorkout, DEFAULT_USER_PROFILE, normalizeUserProfile, assessmentTargetForProfile } from "./data.js";
+import { WORKOUTS, SCHEDULE, DEFAULT_SETTINGS, DEFAULT_WEIGHTS, ACHIEVEMENTS, computeStats, todayName, DAYS, getLevel, DEFAULT_CUSTOM_ROUTINE, DEFAULT_GOALS, IMG_BASE, normalizeCustomRoutine, customRoutineWorkout, DEFAULT_USER_PROFILE, normalizeUserProfile, assessmentTargetForProfile } from "./data.js";
 import { useLocalStorage } from "./hooks.js";
 import { makePlay, vibrate as vib } from "./audio.js";
 import { BottomNav, Toast } from "./components/shared.jsx";
-import WorkoutView  from "./views/WorkoutView.jsx";
-// Non-default views lazy-load on first navigation (smaller initial bundle).
-// Thunks shared by lazy() + idle prefetch so chunks warm during the splash window.
+// View chunks load on demand so the startup shell stays small.
+const loadWorkout = () => import("./views/WorkoutView.jsx");
 const loadStats    = () => import("./views/StatsView.jsx");
 const loadMuscles  = () => import("./views/MuscleMapView.jsx");
 const loadCalendar = () => import("./views/CalendarView.jsx");
@@ -13,6 +12,7 @@ const loadSettings = () => import("./views/SettingsView.jsx");
 const loadRoutine  = () => import("./views/RoutineView.jsx");
 const loadGoals    = () => import("./views/GoalsView.jsx");
 const loadProfile  = () => import("./views/ProfileView.jsx");
+const WorkoutView  = lazy(loadWorkout);
 const StatsView    = lazy(loadStats);
 const MuscleMapView = lazy(loadMuscles);
 const CalendarView = lazy(loadCalendar);
@@ -25,7 +25,8 @@ import OnboardingView from "./views/OnboardingView.jsx";
 import { nukeAndReload } from "./nuke.js";
 
 export default function App() {
-  const [activeView, setActiveView] = useState("workout");
+  const [activeView,      setActiveView]      = useState("workout");
+  const [settingsSection, setSettingsSection] = useState(null);
   // Navigate via transition so lazy view chunks suspend without crashing on sync input
   const navigate = (v) => startTransition(() => setActiveView(v));
 
@@ -50,6 +51,7 @@ export default function App() {
   const [achievementToast, setAchievementToast] = useState(null);
   const [assessmentDone, setAssessmentDone] = useLocalStorage("wt_assessment_done", false);
   const [updateReady, setUpdateReady] = useState(null);
+  const [storageWarning, setStorageWarning] = useState(null);
   const [benchmarkEditorOpen, setBenchmarkEditorOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installDismissed, setInstallDismissed] = useLocalStorage("wt_install_dismissed", false);
@@ -89,7 +91,9 @@ export default function App() {
     if (data.userProfile && data.userProfile !== userProfile) setUserProfile(normalizeUserProfile(data.userProfile));
   }, []); // eslint-disable-line
 
-  // Seed exercise weights if not set
+  // Seed exercise weights if not set. Uses core library only — extended-only
+  // custom exercises are not in scope here and will get default weights on
+  // first use (exConfig falls back to safeSettings.dumbbellWeight for unknown keys).
   useEffect(() => {
     const seed = {};
     let changed = false;
@@ -116,19 +120,28 @@ export default function App() {
 
   useEffect(() => {
     const onUpdate = (event) => setUpdateReady(event.detail?.registration || null);
-    window.addEventListener("forged-update", onUpdate);
-    return () => window.removeEventListener("forged-update", onUpdate);
+    window.addEventListener("lift-log-update", onUpdate);
+    return () => window.removeEventListener("lift-log-update", onUpdate);
   }, []);
 
-  // Warm lazy view chunks during browser idle so tab switches are instant.
-  // Runs after first paint; won't compete with the critical initial load.
   useEffect(() => {
-    const warm = () => { loadRoutine(); loadStats(); loadSettings(); loadMuscles(); loadCalendar(); loadGoals(); loadProfile(); };
-    const ric = window.requestIdleCallback;
-    if (ric) { const id = ric(warm, { timeout: 2000 }); return () => window.cancelIdleCallback?.(id); }
-    const t = setTimeout(warm, 1200);
-    return () => clearTimeout(t);
+    const onStorageError = (event) => {
+      const key = event.detail?.key ? ` (${event.detail.key})` : "";
+      setStorageWarning({ icon:"alert", title:"SAVE WARNING", msg:`This device could not save local data${key}. Export a backup before closing.`, accent:"#fbbf24" });
+    };
+    window.addEventListener("lift-log-storage-error", onStorageError);
+    return () => window.removeEventListener("lift-log-storage-error", onStorageError);
   }, []);
+
+  // Warm likely next tabs later, after startup settles.
+  useEffect(() => {
+    if (!safeSettings.onboardingDone) return undefined;
+    const warm = () => { loadRoutine(); loadStats(); loadSettings(); };
+    const ric = window.requestIdleCallback;
+    if (ric) { const id = ric(warm, { timeout: 5000 }); return () => window.cancelIdleCallback?.(id); }
+    const t = setTimeout(warm, 3500);
+    return () => clearTimeout(t);
+  }, [safeSettings.onboardingDone]);
 
   useEffect(() => {
     const onBeforeInstall = (event) => {
@@ -182,11 +195,12 @@ export default function App() {
 
   const resetAllData = () => {
     // Full nuke: localStorage, sessionStorage, IndexedDB, Cache API, service workers.
-    // No backup is preserved — this is a 100% clean slate by user request.
-    nukeAndReload();
+    createBackupSnapshot("before_full_reset");
+    nukeAndReload({ preserveLocalStorageKeys:["wt_last_backup"] });
   };
 
   const repairSavedData = () => {
+    createBackupSnapshot("before_repair_saved_data");
     const data = normalizeLiftLogData({ sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, bodyMetrics, assessmentDone, customRoutine:safeCustomRoutine, userProfile:safeUserProfile });
     setSets(data.sets);
     setHistory(data.history);
@@ -312,8 +326,10 @@ export default function App() {
   const appBackground = lightMode
     ? `radial-gradient(circle at 18% 0%, ${accent}30 0%, transparent 28%), linear-gradient(180deg,#f8fffb 0%,#eef7ff 52%,#ffffff 100%)`
     : `radial-gradient(ellipse 110% 55% at 50% -5%, ${accent}28 0%, transparent 65%), radial-gradient(ellipse 60% 20% at 50% 105%, rgba(221,101,24,.08) 0%, transparent 70%), linear-gradient(180deg, #100d09 0%, #030201 100%)`;
+  // Image preload uses core-only lookup; extended-only exercises skip this early
+  // preload and load normally once WorkoutView resolves the full DB.
   const preloadWorkout = safeCustomRoutine.enabled ? customRoutineWorkout(safeCustomRoutine, scheduledDay) : WORKOUTS[scheduledKey];
-  const preloadFolders = [...new Set((preloadWorkout?.exercises || []).map(ex => ex.folder).filter(Boolean))].slice(0, 8).join("|");
+  const preloadFolders = [...new Set((preloadWorkout?.exercises || []).map(ex => ex.folder).filter(Boolean))].slice(0, 2).join("|");
 
   useEffect(() => {
     if (!safeSettings.onboardingDone || !preloadFolders || typeof Image === "undefined") return;
@@ -373,30 +389,31 @@ export default function App() {
       paddingBottom:"calc(82px + env(safe-area-inset-bottom))",
     }}>
       <div className="app-shell">
-        {activeView === "workout" && (
-          <WorkoutView
-            sets={normalized.sets} setSets={setSets}
-            history={normalized.history} setHistory={setHistory}
-            completed={normalized.completed} setCompleted={setCompleted}
-            progression={normalized.progression} setProgression={setProgression}
-            settings={safeSettings}
-            setSettings={setSettings}
-            exConfig={normalized.exConfig} setExConfig={setExConfig}
-            xp={normalized.xp} addXp={addXp} level={level}
-            checkIns={normalized.checkIns} setCheckIns={setCheckIns}
-            assessmentDone={normalized.assessmentDone} setAssessmentDone={setAssessmentDone}
-            benchmarkEditorOpen={benchmarkEditorOpen} setBenchmarkEditorOpen={setBenchmarkEditorOpen}
-            customRoutine={safeCustomRoutine}
-            userProfile={safeUserProfile}
-            goals={Array.isArray(goals) ? goals : DEFAULT_GOALS}
-            bodyMetrics={normalized.bodyMetrics}
-            playSound={playSound} vibrate={vibrate}
-            setActiveView={navigate}
-            theme={visualTheme}
-          />
-        )}
-        {activeView !== "workout" && (
-          <Suspense fallback={<div style={{padding:"60px 20px",textAlign:"center",color:"#928574",fontSize:13}}>Loading…</div>}>
+        <Suspense fallback={<div style={{padding:"60px 20px",textAlign:"center",color:"#928574",fontSize:13}}>Loading...</div>}>
+          {activeView === "workout" && (
+            <WorkoutView
+              sets={normalized.sets} setSets={setSets}
+              history={normalized.history} setHistory={setHistory}
+              completed={normalized.completed} setCompleted={setCompleted}
+              progression={normalized.progression} setProgression={setProgression}
+              settings={safeSettings}
+              setSettings={setSettings}
+              exConfig={normalized.exConfig} setExConfig={setExConfig}
+              xp={normalized.xp} addXp={addXp} level={level}
+              checkIns={normalized.checkIns} setCheckIns={setCheckIns}
+              assessmentDone={normalized.assessmentDone} setAssessmentDone={setAssessmentDone}
+              benchmarkEditorOpen={benchmarkEditorOpen} setBenchmarkEditorOpen={setBenchmarkEditorOpen}
+              customRoutine={safeCustomRoutine}
+              userProfile={safeUserProfile}
+              goals={Array.isArray(goals) ? goals : DEFAULT_GOALS}
+              bodyMetrics={normalized.bodyMetrics}
+              playSound={playSound} vibrate={vibrate}
+              setActiveView={navigate}
+              theme={visualTheme}
+            />
+          )}
+          {activeView !== "workout" && (
+            <>
             {activeView === "routine" && (
               <RoutineView customRoutine={safeCustomRoutine} setCustomRoutine={setCustomRoutine} userProfile={safeUserProfile} setUserProfile={setUserProfile} history={normalized.history} accent={accent} setActiveView={navigate} checkIns={normalized.checkIns} settings={safeSettings} goals={Array.isArray(goals) ? goals : DEFAULT_GOALS} exConfig={normalized.exConfig} />
             )}
@@ -436,7 +453,7 @@ export default function App() {
                 accent={accent}
                 theme={visualTheme}
                 level={level}
-                onSettings={() => navigate("settings")}
+                onSettings={(section) => { setSettingsSection(section || null); navigate("settings"); }}
               />
             )}
             {activeView === "settings" && (
@@ -446,10 +463,11 @@ export default function App() {
                 repairSavedData={repairSavedData} clearWorkoutState={clearWorkoutState}
                 refreshAppCache={refreshAppCache} exportLastBackup={exportLastBackup}
                 createBackupSnapshot={createBackupSnapshot} editBenchmarkTest={editBenchmarkTest}
-                accent={accent} theme={visualTheme} />
+                accent={accent} theme={visualTheme} initialSection={settingsSection} />
             )}
-          </Suspense>
-        )}
+            </>
+          )}
+        </Suspense>
       </div>
 
       <BottomNav active={activeView} onSelect={navigate} accent={accent} level={level} theme={visualTheme} />
@@ -458,6 +476,12 @@ export default function App() {
         <Toast icon={achievementToast.icon} title={achievementToast.title}
           msg={achievementToast.msg} accent={achievementToast.accent}
           onClose={() => setAchievementToast(null)} duration={5000} />
+      )}
+
+      {storageWarning && (
+        <Toast icon={storageWarning.icon} title={storageWarning.title}
+          msg={storageWarning.msg} accent={storageWarning.accent}
+          onClose={() => setStorageWarning(null)} duration={7000} />
       )}
 
       {installPrompt && !installDismissed && (
