@@ -1,5 +1,5 @@
 // src/views/OnboardingView.jsx
-// Redesigned onboarding wizard — 7 steps matching app's UX direction
+// Gym Forged onboarding — original questions, forge theme
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -9,48 +9,54 @@ import {
   onboardingTokens,
 } from "./onboarding/OnboardingPrimitives.jsx";
 
-const ALL_DAYS    = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const ALL_DAYS     = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const DEFAULT_DAYS = ["Mon", "Wed", "Fri"];
 
-const STEPS = ["location", "goal", "results", "experience", "profile", "mode", "days", "coach"];
+const STEPS = ["forge", "ambition", "drives", "iron", "profile", "intensity", "plan", "days", "ready"];
 
 // ─── Data ──────────────────────────────────────────────────────────────────────
 
-const LOCATION_OPTIONS = [
-  { k: "gym",  label: "Gym",  icon: "🏋️", desc: "Full equipment, barbells, and machines" },
-  { k: "home", label: "Home", icon: "🏠", desc: "Dumbbells, bands, and bodyweight" },
-  { k: "both", label: "Both", icon: "⚡", desc: "Switch between gym and home" },
+const FORGE_OPTIONS = [
+  { k: "gym",  label: "Full Gym",     icon: "🏋️", desc: "Barbells, machines, cables — the full iron room" },
+  { k: "home", label: "Home Setup",   icon: "🔨", desc: "Dumbbells, bands, and bodyweight essentials" },
+  { k: "both", label: "Both",         icon: "⚡", desc: "Flexible — train wherever the session lands" },
 ];
 
-const GOAL_OPTIONS = [
-  { k: "hypertrophy",      icon: "💪", label: "Build Muscle & Size",      desc: "Volume-focused training with compound and isolation exercises." },
-  { k: "strength",         icon: "🏆", label: "Increase Strength",        desc: "Low reps, heavy weight, maximizing strength on big lifts." },
-  { k: "fatigue_friendly", icon: "🔥", label: "Lose Weight & Tone",       desc: "Resistance training and metabolic work to burn fat while building muscle." },
-  { k: "general",          icon: "💚", label: "Get Fitter & Feel Healthy", desc: "Balance mobility, cardiovascular health, and functional strength." },
+const AMBITION_OPTIONS = [
+  { k: "hypertrophy",      icon: "🔥", label: "Forge Mass",       desc: "Volume-driven training to build size and density." },
+  { k: "strength",         icon: "⚒️", label: "Raw Power",        desc: "Heavy iron, low reps, maximum strength on the big lifts." },
+  { k: "fatigue_friendly", icon: "🗡️", label: "Lean & Sharp",     desc: "Cut fat and build definition through resistance and metabolic work." },
+  { k: "general",          icon: "🛡️", label: "Stay in the Game", desc: "Long-term health, mobility, and functional strength." },
 ];
 
-const RESULTS_OPTIONS = [
-  "Relieve Stress",
-  "Improve Sleep Quality",
-  "Increase Energy",
-  "Active Aging / Longevity",
-  "Increase Confidence",
-  "Aesthetics",
-  "Improve Balance",
-  "Improve Posture",
-  "Increase Agility",
+const DRIVES_OPTIONS = [
+  "Burn off stress",
+  "Sleep deeper",
+  "More energy through the day",
+  "Long-term health & longevity",
+  "Build self-confidence",
+  "Transform my physique",
+  "Move better, stay injury-free",
+  "Improve my posture",
+  "Gain a competitive edge",
 ];
 
-const EXPERIENCE_OPTIONS = [
-  { k: "new",       label: "New to lifting",   desc: "Just starting — I want guidance on form and basics." },
-  { k: "returning", label: "Coming back",      desc: "I've trained before but took time off." },
-  { k: "trained",   label: "Trained 1+ year", desc: "Consistent training, know the fundamentals." },
+const IRON_OPTIONS = [
+  { k: "new",       label: "Just starting out", desc: "New to the weight room — I want to learn movement first." },
+  { k: "returning", label: "Getting back in",   desc: "I've trained before but stepped away for a while." },
+  { k: "trained",   label: "Battle-tested",     desc: "Consistent training for a year or more — I know my way around." },
 ];
 
-const MODE_OPTIONS = [
-  { k: "guided", icon: "🤖", label: "Plan everything for me",      desc: "Coach auto-plans workouts and applies suggestions. Just show up." },
-  { k: "hybrid", icon: "⚙️", label: "Plan the workouts I don't",  desc: "Coach fills gaps in your plan and gives recommendations." },
-  { k: "manual", icon: "🎮", label: "I'll plan all my workouts",   desc: "Full access: routine builder, all coach settings, manual control." },
+const INTENSITY_OPTIONS = [
+  { k: "easy",   icon: "🌡️", label: "Build the habit", desc: "Consistency first, intensity second." },
+  { k: "steady", icon: "⚙️", label: "Steady grind",    desc: "Progressive challenge — push when ready, recover when needed." },
+  { k: "hard",   icon: "🔥", label: "No mercy",        desc: "High output every session. Max effort, max adaptation." },
+];
+
+const PLAN_OPTIONS = [
+  { k: "guided", icon: "🤖", label: "Forge it for me",    desc: "Coach builds and adjusts everything automatically. Just show up and lift." },
+  { k: "hybrid", icon: "⚙️", label: "Fill my gaps",       desc: "You plan what you know, coach handles the rest." },
+  { k: "manual", icon: "🎮", label: "I run my forge",     desc: "Full manual control. Routine builder and all settings unlocked." },
 ];
 
 const GOAL_MAP = {
@@ -66,10 +72,16 @@ const EQUIP_MAP = {
   both: "adjustable_dumbbells",
 };
 
+const INTENSITY_MAP = {
+  easy:   "balanced",
+  steady: "balanced",
+  hard:   "aggressive",
+};
+
 const MODE_SETTINGS_MAP = {
-  guided: { scienceCoach: true, beginnerFormMode: true,  coachStyle: "balanced"   },
-  hybrid: { scienceCoach: true, beginnerFormMode: false, coachStyle: "balanced"   },
-  manual: { scienceCoach: true, beginnerFormMode: false, coachStyle: "aggressive" },
+  guided: { scienceCoach: true, beginnerFormMode: true  },
+  hybrid: { scienceCoach: true, beginnerFormMode: false },
+  manual: { scienceCoach: true, beginnerFormMode: false },
 };
 
 // ─── Main ──────────────────────────────────────────────────────────────────────
@@ -80,34 +92,36 @@ export default function OnboardingView({ onComplete }) {
   // Step states
   const [location,   setLocation]   = useState("");
   const [goal,       setGoal]       = useState("");
-  const [results,    setResults]    = useState([]);
+  const [drives,     setDrives]     = useState([]);
   const [experience, setExperience] = useState("");
   const [age,        setAge]        = useState("");
   const [feet,       setFeet]       = useState("");
   const [inches,     setInches]     = useState("");
   const [weight,     setWeight]     = useState("");
   const [sex,        setSex]        = useState("");
+  const [intensity,  setIntensity]  = useState("");
   const [mode,       setMode]       = useState("");
   const [days,       setDays]       = useState(DEFAULT_DAYS);
-  const [coachCard,  setCoachCard]  = useState(0);
+  const [readyCard,  setReadyCard]  = useState(0);
 
   const heightIn = useMemo(() => (
     feet || inches ? (Number(feet) || 0) * 12 + (Number(inches) || 0) : ""
   ), [feet, inches]);
 
-  const total  = STEPS.length;
-  const key    = STEPS[step];
-  useEffect(() => { if (key === "coach") setCoachCard(0); }, [key]);
+  const total = STEPS.length;
+  const key   = STEPS[step];
+  useEffect(() => { if (key === "ready") setReadyCard(0); }, [key]);
 
   const canContinue = (() => {
-    if (key === "location")   return !!location;
-    if (key === "goal")       return !!goal;
-    if (key === "results")    return results.length > 0;
-    if (key === "experience") return !!experience;
-    if (key === "profile")    return !!(age && heightIn && weight);
-    if (key === "mode")       return !!mode;
-    if (key === "days")  return days.length > 0;
-    if (key === "coach") return true;
+    if (key === "forge")     return !!location;
+    if (key === "ambition")  return !!goal;
+    if (key === "drives")    return drives.length > 0;
+    if (key === "iron")      return !!experience;
+    if (key === "profile")   return !!(age && heightIn && weight);
+    if (key === "intensity") return !!intensity;
+    if (key === "plan")      return !!mode;
+    if (key === "days")      return days.length > 0;
+    if (key === "ready")     return true;
     return true;
   })();
 
@@ -117,7 +131,6 @@ export default function OnboardingView({ onComplete }) {
   };
   const back = () => setStep(s => Math.max(0, s - 1));
 
-  // Auto-advance after selection on single-choice steps
   const chooseThenNext = (fn) => {
     fn();
     window.setTimeout(() => setStep(s => Math.min(total - 1, s + 1)), 160);
@@ -133,36 +146,37 @@ export default function OnboardingView({ onComplete }) {
         trainingExperience: experience,
         mobility: "normal",
         limitations: [],
-        focusAreas: results,
+        focusAreas: drives,
       },
       workoutDays: days,
       selfTest: null,
       settingsOverrides: {
-        trainingGoal:     GOAL_MAP[goal]  || "general",
-        equipmentProfile: EQUIP_MAP[location] || "fixed_dumbbells",
+        trainingGoal:     GOAL_MAP[goal]          || "general",
+        equipmentProfile: EQUIP_MAP[location]     || "fixed_dumbbells",
+        coachStyle:       INTENSITY_MAP[intensity] || "balanced",
         ...(MODE_SETTINGS_MAP[mode] || {}),
       },
     });
   };
 
-  const ctaLabel = key === "coach" && coachCard === 2 ? "Start training" : "Continue";
+  const ctaLabel = key === "ready" && readyCard === 2 ? "Enter the forge" : "Continue";
 
   const common = {
     step,
     total,
     onBack: back,
     canBack: step > 0,
-    cta: ["location", "goal", "experience", "mode"].includes(key) ? null : ctaLabel,
+    cta: ["forge", "ambition", "iron", "intensity", "plan"].includes(key) ? null : ctaLabel,
     ctaDisabled: !canContinue,
     onCta: next,
   };
 
-  // ── Location ──────────────────────────────────────────────────────────────
-  if (key === "location") {
+  // ── Forge (location) ──────────────────────────────────────────────────────
+  if (key === "forge") {
     return (
-      <OnboardingScreen {...common} title="Where do you exercise?">
+      <OnboardingScreen {...common} title="Where do you train?">
         <div style={{ display: "grid", gap: 14 }}>
-          {LOCATION_OPTIONS.map(opt => (
+          {FORGE_OPTIONS.map(opt => (
             <LocationCard
               key={opt.k}
               icon={opt.icon}
@@ -177,12 +191,12 @@ export default function OnboardingView({ onComplete }) {
     );
   }
 
-  // ── Goal ──────────────────────────────────────────────────────────────────
-  if (key === "goal") {
+  // ── Ambition (goal) ───────────────────────────────────────────────────────
+  if (key === "ambition") {
     return (
-      <OnboardingScreen {...common} title="What is your primary goal?">
+      <OnboardingScreen {...common} title="What are you forging?">
         <div style={{ display: "grid", gap: 14 }}>
-          {GOAL_OPTIONS.map(opt => (
+          {AMBITION_OPTIONS.map(opt => (
             <GoalCard
               key={opt.k}
               icon={opt.icon}
@@ -197,17 +211,17 @@ export default function OnboardingView({ onComplete }) {
     );
   }
 
-  // ── Results ───────────────────────────────────────────────────────────────
-  if (key === "results") {
+  // ── Drives (focusAreas) ───────────────────────────────────────────────────
+  if (key === "drives") {
     return (
-      <OnboardingScreen {...common} title="What results do you want to achieve?" subtitle="Select any that are important to you">
+      <OnboardingScreen {...common} title="What drives you to train?" subtitle="Pick as many as apply">
         <div style={{ display: "grid", gap: 12 }}>
-          {RESULTS_OPTIONS.map(label => (
+          {DRIVES_OPTIONS.map(label => (
             <MultiSelectCard
               key={label}
               label={label}
-              selected={results.includes(label)}
-              onClick={() => setResults(prev =>
+              selected={drives.includes(label)}
+              onClick={() => setDrives(prev =>
                 prev.includes(label) ? prev.filter(r => r !== label) : [...prev, label]
               )}
             />
@@ -217,12 +231,12 @@ export default function OnboardingView({ onComplete }) {
     );
   }
 
-  // ── Experience ────────────────────────────────────────────────────────────
-  if (key === "experience") {
+  // ── Iron (experience) ─────────────────────────────────────────────────────
+  if (key === "iron") {
     return (
-      <OnboardingScreen {...common} title="What's your training experience?">
+      <OnboardingScreen {...common} title="How long under the iron?">
         <div style={{ display: "grid", gap: 14 }}>
-          {EXPERIENCE_OPTIONS.map(opt => (
+          {IRON_OPTIONS.map(opt => (
             <GoalCard
               key={opt.k}
               label={opt.label}
@@ -239,7 +253,7 @@ export default function OnboardingView({ onComplete }) {
   // ── Profile ───────────────────────────────────────────────────────────────
   if (key === "profile") {
     return (
-      <OnboardingScreen {...common} title="Tell us a bit about yourself">
+      <OnboardingScreen {...common} title="Set your baseline">
         <div style={{ background: onboardingTokens.surface, border: `1px solid ${onboardingTokens.border}`, borderRadius: 24, boxShadow: onboardingTokens.shadow, overflow: "hidden" }}>
           <ProfileRow label="Height">
             <NumberInput value={feet}   onChange={setFeet}   placeholder="5"   suffix="ft" />
@@ -271,18 +285,38 @@ export default function OnboardingView({ onComplete }) {
           </div>
         </div>
         <HelperText>
-          Age, height, and weight help calibrate starting targets. You can edit this later.
+          Used to calibrate starting load targets. You can edit this anytime.
         </HelperText>
       </OnboardingScreen>
     );
   }
 
-  // ── Mode ──────────────────────────────────────────────────────────────────
-  if (key === "mode") {
+  // ── Intensity ─────────────────────────────────────────────────────────────
+  if (key === "intensity") {
     return (
-      <OnboardingScreen {...common} title="How do you want your workouts planned?">
+      <OnboardingScreen {...common} title="How hard do you want to push?">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 18, marginTop: 8 }}>
-          {MODE_OPTIONS.map(opt => (
+          {INTENSITY_OPTIONS.map(opt => (
+            <ModeCircle
+              key={opt.k}
+              icon={opt.icon}
+              label={opt.label}
+              selected={intensity === opt.k}
+              onClick={() => chooseThenNext(() => setIntensity(opt.k))}
+            />
+          ))}
+        </div>
+        <HelperText>Sets how aggressively the coach pushes load and volume. Adjustable later.</HelperText>
+      </OnboardingScreen>
+    );
+  }
+
+  // ── Plan (mode) ───────────────────────────────────────────────────────────
+  if (key === "plan") {
+    return (
+      <OnboardingScreen {...common} title="How hands-on do you want to be?">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 18, marginTop: 8 }}>
+          {PLAN_OPTIONS.map(opt => (
             <ModeCircle
               key={opt.k}
               icon={opt.icon}
@@ -297,72 +331,72 @@ export default function OnboardingView({ onComplete }) {
     );
   }
 
-  // ── Coach reveal (carousel, 3 cards in 1 step) ───────────────────────────
-  if (key === "coach") {
-    const COACH_CARDS = [
+  // ── Ready (feature carousel) ──────────────────────────────────────────────
+  if (key === "ready") {
+    const READY_CARDS = [
       {
-        title: "Your workout adapts to recovery.",
+        title: "The iron bends to your recovery.",
         preview: (
           <DarkPreview>
-            <PreviewLabel>Session</PreviewLabel>
-            <div style={{fontSize:13,color:"#fbbf24",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>Recovery Session</div>
-            <div style={{fontSize:12,color:"#777",marginBottom:14}}>Energy is limited today — volume adjusted.</div>
+            <PreviewLabel>Today's Session</PreviewLabel>
+            <div style={{fontSize:13,color:onboardingTokens.accent,fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>Recovery Session</div>
+            <div style={{fontSize:12,color:onboardingTokens.muted,marginBottom:14}}>Energy is low — volume adjusted automatically.</div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-              {[{m:"Quads",s:"✗",c:"#fb7185"},{m:"Chest",s:"~",c:"#fbbf24"},{m:"Back",s:"✓",c:"#4ade80"}].map(({m,s,c})=>(
+              {[{m:"Quads",s:"✗",c:"#fb7185"},{m:"Chest",s:"~",c:"#dd6518"},{m:"Back",s:"✓",c:"#4ade80"}].map(({m,s,c})=>(
                 <span key={m} style={{fontSize:11,color:c,border:`1px solid ${c}44`,borderRadius:20,padding:"3px 9px",background:`${c}10`,letterSpacing:".08em",textTransform:"uppercase"}}>{m} {s}</span>
               ))}
             </div>
           </DarkPreview>
         ),
-        helper: "Rep targets, set counts, and load all shift automatically based on your recovery — no manual configuration needed.",
+        helper: "Rep targets, set counts, and load shift automatically based on your recovery — no manual config needed.",
       },
       {
-        title: "Every target explains itself.",
+        title: "Every target has a reason behind it.",
         preview: (
           <DarkPreview>
             <PreviewLabel>Set 1 of 3</PreviewLabel>
-            <div style={{fontSize:15,color:"#e0e0e0",fontWeight:600,marginBottom:2}}>Bench Press</div>
-            <div style={{fontSize:12,color:"#666",marginBottom:10}}>Target · 10 reps</div>
-            <div style={{fontSize:12,color:"#a78bfa",lineHeight:1.45}}>Reduced target — recent sets were marked hard.</div>
+            <div style={{fontSize:15,color:onboardingTokens.text,fontWeight:600,marginBottom:2}}>Bench Press</div>
+            <div style={{fontSize:12,color:onboardingTokens.muted,marginBottom:10}}>Target · 10 reps</div>
+            <div style={{fontSize:12,color:"#b4cae8",lineHeight:1.45}}>Reduced — recent sets were logged as hard effort.</div>
           </DarkPreview>
         ),
-        helper: "Every rep recommendation has a one-line reason. You always know why, not just what.",
+        helper: "Every rep recommendation includes a one-line explanation. You always know why, not just what.",
       },
       {
-        title: "After each session, your coach summarizes what changed.",
+        title: "After each session, the forge reports back.",
         preview: (
           <DarkPreview>
             <PreviewLabel>Session Debrief</PreviewLabel>
             {[
-              { icon:"↑", col:"#a78bfa", text:"Strength improved on Bench Press." },
-              { icon:"↓", col:"#fbbf24", text:"Fatigue accumulated quickly on Squat." },
-              { icon:"✓", col:"#4ade80", text:"Session stayed within target recovery range." },
+              { icon:"↑", col:"#b4cae8", text:"Strength trending up on Bench Press." },
+              { icon:"↓", col:"#dd6518", text:"Fatigue built fast on Squat — watch volume." },
+              { icon:"✓", col:"#4ade80", text:"Session stayed within recovery targets." },
             ].map((b,i)=>(
               <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:i<2?8:0}}>
                 <span style={{fontSize:12,color:b.col,fontWeight:700,minWidth:14,lineHeight:1.55}}>{b.icon}</span>
-                <span style={{fontSize:13,color:"#999",lineHeight:1.55}}>{b.text}</span>
+                <span style={{fontSize:13,color:onboardingTokens.muted,lineHeight:1.55}}>{b.text}</span>
               </div>
             ))}
           </DarkPreview>
         ),
-        helper: "Strength gains, fatigue patterns, and recovery signals — summarized automatically after every workout.",
+        helper: "Strength gains, fatigue signals, and recovery patterns — summarized automatically after every workout.",
       },
     ];
 
-    const card = COACH_CARDS[coachCard];
-    const coachCta  = () => { if (coachCard < 2) setCoachCard(c => c + 1); else next(); };
-    const coachBack = () => { if (coachCard > 0) setCoachCard(c => c - 1); else back(); };
+    const card      = READY_CARDS[readyCard];
+    const readyCta  = () => { if (readyCard < 2) setReadyCard(c => c + 1); else next(); };
+    const readyBack = () => { if (readyCard > 0) setReadyCard(c => c - 1); else back(); };
 
     return (
-      <OnboardingScreen {...common} title={card.title} onBack={coachBack} cta={ctaLabel} onCta={coachCta}>
+      <OnboardingScreen {...common} title={card.title} onBack={readyBack} cta={ctaLabel} onCta={readyCta}>
         {card.preview}
         <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:4}}>
-          {COACH_CARDS.map((_,i) => (
+          {READY_CARDS.map((_,i) => (
             <div key={i} style={{
-              width: i === coachCard ? 20 : 8,
+              width: i === readyCard ? 20 : 8,
               height: 8,
               borderRadius: 4,
-              background: i === coachCard ? onboardingTokens.accent : onboardingTokens.faint,
+              background: i === readyCard ? onboardingTokens.accent : onboardingTokens.faint,
               transition: "all .2s",
             }} />
           ))}
@@ -374,7 +408,7 @@ export default function OnboardingView({ onComplete }) {
 
   // ── Days ──────────────────────────────────────────────────────────────────
   return (
-    <OnboardingScreen {...common} title="When can you exercise?">
+    <OnboardingScreen {...common} title="Which days do you train?">
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", paddingBottom: 20 }}>
         {ALL_DAYS.map(day => (
           <DayPill
@@ -387,7 +421,7 @@ export default function OnboardingView({ onComplete }) {
         ))}
       </div>
       <HelperText>
-        Pick any days that work. We'll use this to shape your weekly plan.
+        Pick any days that work — your weekly plan shapes around them.
       </HelperText>
     </OnboardingScreen>
   );
@@ -493,7 +527,7 @@ function ModeCircle({ icon, label, selected, onClick }) {
   );
 }
 
-function ProfileRow({ label, children, last = false }) {
+function ProfileRow({ label, children }) {
   return (
     <div style={{
       display: "grid",
@@ -502,7 +536,7 @@ function ProfileRow({ label, children, last = false }) {
       alignItems: "center",
       minHeight: 72,
       padding: "0 16px",
-      borderBottom: last ? "none" : `1px solid ${onboardingTokens.border}`,
+      borderBottom: `1px solid ${onboardingTokens.border}`,
     }}>
       <div style={{ fontSize: 18, fontWeight: 700, color: onboardingTokens.text }}>{label}</div>
       <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", alignItems: "center" }}>{children}</div>
@@ -538,11 +572,11 @@ function NumberInput({ value, onChange, placeholder, suffix }) {
 function DarkPreview({ children }) {
   return (
     <div style={{
-      background:onboardingTokens.surfaceHi,
-      borderRadius:16,
-      padding:"16px 18px",
-      marginBottom:28,
-      border:`1px solid ${onboardingTokens.border}`,
+      background: onboardingTokens.surfaceHi,
+      borderRadius: 16,
+      padding: "16px 18px",
+      marginBottom: 28,
+      border: `1px solid ${onboardingTokens.border}`,
     }}>
       {children}
     </div>
