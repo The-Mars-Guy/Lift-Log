@@ -140,7 +140,7 @@ export default function RoutineView({
 }) {
   const routine = normalizeCustomRoutine(customRoutine);
 
-  const [expandedDays,   setExpandedDays]   = useState(new Set());
+  const [activeDayId,    setActiveDayId]    = useState(null);
   const [pickerDayId,    setPickerDayId]    = useState(null);
   const [exCat,          setExCat]          = useState("all");
   const [query,          setQuery]          = useState("");
@@ -189,13 +189,6 @@ export default function RoutineView({
       ),
     });
   };
-
-  const toggleExpand = (id) =>
-    setExpandedDays(prev => {
-      const s = new Set(prev);
-      s.has(id) ? s.delete(id) : s.add(id);
-      return s;
-    });
 
   // ── Saved programs ────────────────────────────────────────────────────────
   const saveAsNewProgram = () => {
@@ -528,74 +521,130 @@ export default function RoutineView({
       </div>
 
       {/* DAYS ACCORDION */}
+      {/* DAY LIST — collapsed rows */}
       <div style={{ padding: "0 16px" }}>
         <Caps color={text.secondary} style={{ paddingLeft: 2, display: "block", marginBottom: 10 }}>WORKOUT DAYS</Caps>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {routine.routines.map((day, di) => {
-            const expanded     = expandedDays.has(day.id);
             const dayColor     = fc(di);
             const dayExercises = day.exerciseIds.map(id => getExerciseById(id)).filter(Boolean);
             return (
-              <div key={day.id} style={{ background: surface.bg0, borderRadius: 12, overflow: "hidden", border: expanded ? `1px solid ${dayColor}33` : "1px solid rgba(255,255,255,.06)" }}>
-                <div onClick={() => toggleExpand(day.id)} style={{ width: "100%", padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, background: "transparent", borderBottom: expanded ? "1px solid rgba(255,255,255,.06)" : "none", cursor: "pointer" }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0, background: expanded ? dayColor : surface.bg3, color: expanded ? "#050505" : text.secondary, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue',sans-serif", fontWeight: 700, fontSize: 15 }}>
-                    {String.fromCharCode(65 + di)}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }} onClick={e => e.stopPropagation()}>
-                    <div style={{ color: text.primary, fontWeight: 600, fontSize: 14 }}>
-                      <InlineEdit value={day.name} onSave={(name) => renameDayName(day.id, name)} />
-                    </div>
-                    <div style={{ color: dayExercises.length === 0 ? dayColor : text.tertiary, fontSize: 11, marginTop: 1 }}>
-                      {dayExercises.length === 0 ? "Tap to add exercises" : `${dayExercises.length} exercise${dayExercises.length !== 1 ? "s" : ""}`}
-                    </div>
-                  </div>
-                  {routine.routines.length > 1 && (
-                    <button onClick={e => { e.stopPropagation(); removeDay(day.id); }} style={{ color: text.ghost, fontSize: 14, background: "none", border: "none", padding: "4px 8px", cursor: "pointer" }}>✕</button>
-                  )}
-                  <span style={{ color: text.ghost, fontSize: 14, display: "inline-block", transform: expanded ? "rotate(90deg)" : "none", transition: "transform .15s", pointerEvents: "none" }}>›</span>
+              <button key={day.id} onClick={() => setActiveDayId(day.id)}
+                style={{ width: "100%", background: surface.bg0, borderRadius: 12, border: `1px solid ${dayColor}33`,
+                  padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left" }}>
+                <div style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0, background: dayColor, color: "#050505",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontFamily: "'Bebas Neue',sans-serif", fontWeight: 700, fontSize: 15 }}>
+                  {String.fromCharCode(65 + di)}
                 </div>
-
-                {expanded && (
-                  <div>
-                    {dayExercises.length === 0 && (
-                      <div style={{ padding: "14px 16px", color: text.ghost, fontSize: 13, textAlign: "center" }}>No exercises yet</div>
-                    )}
-                    {dayExercises.map((ex, ei) => {
-                      const cc = CAT_COLORS[catOf(ex)] || accent;
-                      return (
-                        <div key={ex.id} style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, borderBottom: ei < dayExercises.length - 1 ? "1px solid rgba(255,255,255,.04)" : "none" }}>
-                          <div style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, background: `${cc}20`, color: cc, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, textTransform: "uppercase" }}>
-                            {catOf(ex).slice(0, 2)}
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ color: text.primary, fontWeight: 600, fontSize: 13 }}>{ex.name}</div>
-                            <div style={{ color: text.tertiary, fontSize: 11, marginTop: 1 }}>{ex.primary?.slice(0, 2).join(" · ")}</div>
-                          </div>
-                          <button onClick={() => removeExercise(day.id, ex.id)} style={{ color: text.ghost, fontSize: 20, background: "none", border: "none", padding: "0 4px", cursor: "pointer", lineHeight: 1 }}>−</button>
-                        </div>
-                      );
-                    })}
-                    <button onClick={() => { setPickerDayId(day.id); setExCat("all"); setEquipment("all"); setQuery(""); }} style={{ width: "100%", padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, borderTop: dayExercises.length > 0 ? "1px solid rgba(255,255,255,.04)" : "none", background: "none", border: "none", color: dayColor, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", cursor: "pointer" }}>
-                      <div style={{ width: 22, height: 22, borderRadius: 6, background: `${dayColor}22`, color: dayColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700 }}>+</div>
-                      ADD EXERCISE
-                    </button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ color: text.primary, fontWeight: 700, fontSize: 15 }}>{day.name}</div>
+                  <div style={{ color: text.tertiary, fontSize: 11, marginTop: 2 }}>
+                    {dayExercises.length === 0 ? "No exercises yet" : `${dayExercises.length} exercise${dayExercises.length !== 1 ? "s" : ""}`}
                   </div>
+                </div>
+                {routine.routines.length > 1 && (
+                  <div onClick={e => { e.stopPropagation(); removeDay(day.id); }}
+                    style={{ color: text.tertiary, fontSize: 13, background: "rgba(255,255,255,.07)",
+                      width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>✕</div>
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
       </div>
 
-      {/* EXERCISE PICKER BOTTOM SHEET */}
-      {pickerDayId && (
-        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200, background: "#111", borderTop: "2px solid rgba(255,255,255,.12)", borderRadius: "16px 16px 0 0", boxShadow: "0 -16px 48px rgba(0,0,0,.6)", maxHeight: "78vh", display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 0" }}>
-            <div style={{ width: 36, height: 3, borderRadius: 99, background: "#333" }} />
+      {/* FULL-SCREEN DAY EDITOR */}
+      {activeDayId && (() => {
+        const di  = routine.routines.findIndex(d => d.id === activeDayId);
+        const day = routine.routines[di];
+        if (!day) return null;
+        const dayColor     = fc(di);
+        const dayExercises = day.exerciseIds.map(id => getExerciseById(id)).filter(Boolean);
+        return (
+          <div style={{ position: "fixed", inset: 0, zIndex: 180, background: "#0a0a0a", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+            {/* Header */}
+            <div style={{ padding: "16px 16px 12px", display: "flex", alignItems: "center", gap: 12,
+              borderBottom: "1px solid rgba(255,255,255,.07)", background: "#0e0e0e", flexShrink: 0,
+              paddingTop: "max(16px, env(safe-area-inset-top))" }}>
+              <button onClick={() => setActiveDayId(null)}
+                style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,.07)", border: "none",
+                  color: text.secondary, fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>←</button>
+              <div style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0, background: dayColor, color: "#050505",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontFamily: "'Bebas Neue',sans-serif", fontWeight: 700, fontSize: 15 }}>
+                {String.fromCharCode(65 + di)}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Caps color={text.muted} size={9}>WORKOUT DAY</Caps>
+                <div style={{ color: text.primary, fontWeight: 700, fontSize: 17, marginTop: 1 }}>
+                  <InlineEdit value={day.name} onSave={(name) => renameDayName(day.id, name)} />
+                </div>
+              </div>
+              {routine.routines.length > 1 && (
+                <button onClick={() => { removeDay(day.id); setActiveDayId(null); }}
+                  style={{ color: text.tertiary, fontSize: 13, background: "rgba(255,255,255,.07)", border: "none",
+                    width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>✕</button>
+              )}
+            </div>
+
+            {/* Exercise list */}
+            <div style={{ flex: 1, padding: "12px 16px 0" }}>
+              {dayExercises.length === 0 && (
+                <div style={{ padding: "32px 0", textAlign: "center", color: text.ghost, fontSize: 13 }}>
+                  No exercises yet — add one below
+                </div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {dayExercises.map((ex) => {
+                  const cc = CAT_COLORS[catOf(ex)] || accent;
+                  return (
+                    <div key={ex.id} style={{ background: surface.bg0, borderRadius: 10, padding: "12px 14px",
+                      display: "flex", alignItems: "center", gap: 12, border: "1px solid rgba(255,255,255,.06)" }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0, background: `${cc}20`, color: cc,
+                        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, textTransform: "uppercase" }}>
+                        {catOf(ex).slice(0, 2)}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ color: text.primary, fontWeight: 600, fontSize: 14 }}>{ex.name}</div>
+                        <div style={{ color: text.tertiary, fontSize: 11, marginTop: 1 }}>{ex.primary?.slice(0, 2).join(" · ")}</div>
+                      </div>
+                      <button onClick={() => removeExercise(day.id, ex.id)}
+                        style={{ color: text.ghost, fontSize: 20, background: "none", border: "none", padding: "4px 8px", cursor: "pointer", lineHeight: 1 }}>−</button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button onClick={() => { setPickerDayId(day.id); setExCat("all"); setEquipment("all"); setQuery(""); }}
+                style={{ width: "100%", marginTop: 12, padding: "16px", borderRadius: 12,
+                  background: `${dayColor}18`, border: `1.5px dashed ${dayColor}55`,
+                  color: dayColor, fontSize: 13, fontWeight: 700, letterSpacing: ".08em",
+                  textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <span style={{ fontSize: 18, fontWeight: 700 }}>+</span> ADD EXERCISE
+              </button>
+            </div>
           </div>
-          <div style={{ padding: "8px 16px 6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <Caps color={text.secondary} size={11}>ADD EXERCISE</Caps>
-            <button onClick={() => { setPickerDayId(null); setQuery(""); }} style={{ color: text.tertiary, fontSize: 24, lineHeight: 1, padding: "0 4px", background: "none", border: "none", cursor: "pointer" }}>×</button>
+        );
+      })()}
+
+      {/* EXERCISE PICKER — full screen, stacks on top of day editor */}
+      {pickerDayId && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "#111", display: "flex", flexDirection: "column" }}>
+          <div style={{ padding: "16px 16px 12px", display: "flex", alignItems: "center", gap: 12,
+            borderBottom: "1px solid rgba(255,255,255,.07)", background: "#0e0e0e", flexShrink: 0,
+            paddingTop: "max(16px, env(safe-area-inset-top))" }}>
+            <button onClick={() => { setPickerDayId(null); setQuery(""); }}
+              style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,.07)", border: "none",
+                color: text.secondary, fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>←</button>
+            <div style={{ flex: 1 }}>
+              <Caps color={text.secondary} size={11}>ADD EXERCISE</Caps>
+              <div style={{ color: text.primary, fontWeight: 700, fontSize: 15, marginTop: 1 }}>
+                {routine.routines.find(d => d.id === pickerDayId)?.name || "Day"}
+              </div>
+            </div>
           </div>
           <div style={{ padding: "0 16px 8px" }}>
             <input
