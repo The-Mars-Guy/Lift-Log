@@ -12,12 +12,14 @@ const loadCalendar = () => import("./views/CalendarView.jsx");
 const loadSettings = () => import("./views/SettingsView.jsx");
 const loadRoutine  = () => import("./views/RoutineView.jsx");
 const loadGoals    = () => import("./views/GoalsView.jsx");
+const loadProfile  = () => import("./views/ProfileView.jsx");
 const StatsView    = lazy(loadStats);
 const MuscleMapView = lazy(loadMuscles);
 const CalendarView = lazy(loadCalendar);
 const SettingsView = lazy(loadSettings);
 const RoutineView  = lazy(loadRoutine);
 const GoalsView    = lazy(loadGoals);
+const ProfileView  = lazy(loadProfile);
 import { normalizeLiftLogData } from "./session.js";
 import OnboardingView from "./views/OnboardingView.jsx";
 import { nukeAndReload } from "./nuke.js";
@@ -121,7 +123,7 @@ export default function App() {
   // Warm lazy view chunks during browser idle so tab switches are instant.
   // Runs after first paint; won't compete with the critical initial load.
   useEffect(() => {
-    const warm = () => { loadRoutine(); loadStats(); loadSettings(); loadMuscles(); loadCalendar(); loadGoals(); };
+    const warm = () => { loadRoutine(); loadStats(); loadSettings(); loadMuscles(); loadCalendar(); loadGoals(); loadProfile(); };
     const ric = window.requestIdleCallback;
     if (ric) { const id = ric(warm, { timeout: 2000 }); return () => window.cancelIdleCallback?.(id); }
     const t = setTimeout(warm, 1200);
@@ -420,6 +422,21 @@ export default function App() {
                 checkIns={normalized.checkIns}
                 accent={accent}
                 totalSessions={normalized.history?.length || 0}
+              />
+            )}
+            {activeView === "profile" && (
+              <ProfileView
+                userProfile={safeUserProfile}
+                settings={safeSettings}
+                history={normalized.history}
+                achievements={normalized.achievements}
+                goals={Array.isArray(goals) ? goals : DEFAULT_GOALS}
+                setGoals={setGoals}
+                exConfig={normalized.exConfig}
+                accent={accent}
+                theme={visualTheme}
+                level={level}
+                onSettings={() => navigate("settings")}
               />
             )}
             {activeView === "settings" && (

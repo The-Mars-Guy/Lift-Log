@@ -28,6 +28,42 @@ export const WORKOUTS = {
 export const SCHEDULE = { Monday:"A", Wednesday:"B", Friday:"A" };
 export const DAYS = ["Monday","Wednesday","Friday"];
 
+// Forge-themed workout session names — positional (0-based), independent of workout type
+// Strike → first heat · Temper → hardening · Hone → sharpening · Forge → full shaping
+// Anneal → controlled cool · Quench → rapid finish · Draw → final draw temper
+export const FORGE_WORKOUT_NAMES  = ["Strike", "Temper", "Hone",    "Forge",  "Anneal", "Quench", "Draw"  ];
+export const FORGE_WORKOUT_COLORS = ["#dd6518","#b4cae8","#4ade80","#f59e0b","#e879f9","#38bdf8","#a78bfa"];
+
+const DAY_ORDER = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
+// Returns the forge name for a given day based on its position in the schedule.
+// schedule = { Monday: truthy, Wednesday: truthy, ... } — any day-keyed object.
+function forgeIdx(day, schedule) {
+  const scheduled = Object.keys(schedule || {})
+    .filter(d => schedule[d])
+    .sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b));
+  const idx = scheduled.indexOf(day);
+  return Math.max(0, idx) % FORGE_WORKOUT_NAMES.length;
+}
+
+export function forgeWorkoutName(day, schedule) {
+  return FORGE_WORKOUT_NAMES[forgeIdx(day, schedule)];
+}
+
+export function forgeWorkoutColor(day, schedule) {
+  return FORGE_WORKOUT_COLORS[forgeIdx(day, schedule)];
+}
+
+// Returns the forge name of the NEXT scheduled day after the given day.
+export function nextForgeWorkoutName(day, schedule) {
+  const scheduled = Object.keys(schedule || {})
+    .filter(d => schedule[d])
+    .sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b));
+  const idx = scheduled.indexOf(day);
+  if (idx < 0 || scheduled.length === 0) return null;
+  return FORGE_WORKOUT_NAMES[((idx + 1) % scheduled.length)];
+}
+
 export const MUSCLE_LABELS = {
   chest:"Chest", triceps:"Triceps", biceps:"Biceps", forearms:"Forearms",
   frontDelts:"Front Delts", sideDelts:"Side Delts", rearDelts:"Rear Delts",

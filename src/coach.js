@@ -604,28 +604,28 @@ export function buildCoachPlan({ workout, history, checkIns = [], exConfig, sett
   })).find(item => item.enabled && item.note) : null);
 
   cards.push({
-    icon: score >= 2 ? "⚡" : score <= -2 ? "🎯" : "🧠",
+    icon: score >= 2 ? "bolt" : score <= -2 ? "target" : "robot",
     cat: "Coach",
     msg: `${readinessLabel(readiness)}. ${focus}`,
   });
 
-  adjustments.slice(0, 2).forEach(msg => cards.push({ icon: "🧭", cat: "Plan", msg }));
-  if (science) cards.push({ icon:"🔬", cat:"Science", msg:`${science.label}: ${science.note}${science.est1RM ? ` Est. 1RM: ${science.est1RM}lbs.` : ""}` });
-  jointNotes.slice(0, 1).forEach(msg => cards.push({ icon:"🛡️", cat:"Joints", msg }));
-  behavior.notes.slice(0, 2).forEach(msg => cards.push({ icon:"⏱️", cat:"Habits", msg }));
-  if (deload.recommended) cards.push({ icon:"↓", cat:"Deload", msg:`${deload.reason} Keep reps smooth and leave extra reps in reserve.` });
-  substitutions.forEach(sub => cards.push({ icon: "🔁", cat: "Swap", msg: `${sub.exercise}: use ${sub.substitute} if ${sub.reason}.` }));
-  blockedToday.slice(0, 2).forEach(name => cards.push({ icon:"🛡️", cat:"Safety", msg:`${name}: repeated pain flags. Avoid loading this until pain-free.` }));
-  watch.forEach(msg => cards.push({ icon: "👁️", cat: "Watch", msg }));
+  adjustments.slice(0, 2).forEach(msg => cards.push({ icon: "compass", cat: "Plan", msg }));
+  if (science) cards.push({ icon:"flask", cat:"Science", msg:`${science.label}: ${science.note}${science.est1RM ? ` Est. 1RM: ${science.est1RM}lbs.` : ""}` });
+  jointNotes.slice(0, 1).forEach(msg => cards.push({ icon:"shield", cat:"Joints", msg }));
+  behavior.notes.slice(0, 2).forEach(msg => cards.push({ icon:"clock", cat:"Habits", msg }));
+  if (deload.recommended) cards.push({ icon:"arrow-down", cat:"Deload", msg:`${deload.reason} Keep reps smooth and leave extra reps in reserve.` });
+  substitutions.forEach(sub => cards.push({ icon: "refresh", cat: "Swap", msg: `${sub.exercise}: use ${sub.substitute} if ${sub.reason}.` }));
+  blockedToday.slice(0, 2).forEach(name => cards.push({ icon:"shield", cat:"Safety", msg:`${name}: repeated pain flags. Avoid loading this until pain-free.` }));
+  watch.forEach(msg => cards.push({ icon: "eye", cat: "Watch", msg }));
 
   // Age-tier coaching tone
   if (tier.coachFocus === "joint_health") {
-    cards.push({ icon:"🦴", cat:"Longevity", msg:"Prioritize full range of motion and clean eccentric control over load. Joint health compounds like interest." });
-    if (!deload.recommended) cards.push({ icon:"🔄", cat:"Recovery", msg:`At ${tier.label} recovery takes longer. Full rest between sets pays back in session quality.` });
+    cards.push({ icon:"heart", cat:"Longevity", msg:"Prioritize full range of motion and clean eccentric control over load. Joint health compounds like interest." });
+    if (!deload.recommended) cards.push({ icon:"refresh", cat:"Recovery", msg:`At ${tier.label} recovery takes longer. Full rest between sets pays back in session quality.` });
   } else if (tier.coachFocus === "consistency") {
-    cards.push({ icon:"📈", cat:"Build", msg:"Consistency over intensity. Three quality sessions beats six grind sessions every time." });
+    cards.push({ icon:"trend-up", cat:"Build", msg:"Consistency over intensity. Three quality sessions beats six grind sessions every time." });
   } else if (tier.coachFocus === "pr" && score >= 1) {
-    cards.push({ icon:"🏋️", cat:"Push", msg:"Energy is high — push the top set on your best movement today and chase the rep PR." });
+    cards.push({ icon:"barbell", cat:"Push", msg:"Energy is high — push the top set on your best movement today and chase the rep PR." });
   }
 
   // Goal alignment — flag if today's exercises match an active goal
@@ -638,20 +638,20 @@ export function buildCoachPlan({ workout, history, checkIns = [], exConfig, sett
         ? Math.round((exConfig[goal.exerciseName].weight / goal.targetValue) * 100)
         : null;
       const pctStr = pct != null ? ` (${pct}% of goal)` : "";
-      cards.push({ icon:"🎯", cat:"Goal", msg:`${goal.exerciseName} is in today's session — goal target: ${goal.targetValue}${goal.type==="weight"?"lb":goal.type==="reps"?" reps":" sessions"}${pctStr}.` });
+      cards.push({ icon:"target", cat:"Goal", msg:`${goal.exerciseName} is in today's session — goal target: ${goal.targetValue}${goal.type==="weight"?"lb":goal.type==="reps"?" reps":" sessions"}${pctStr}.` });
     }
   });
 
   // Mesocycle phase context
   const phase = mesocyclePhase(history);
-  cards.push({ icon:"📅", cat:"Phase", msg:`${phase.label} — ${phase.hint}` });
+  cards.push({ icon:"calendar", cat:"Phase", msg:`${phase.label} — ${phase.hint}` });
 
   // Body weight note (if tracked)
   const sortedMetrics = [...(Array.isArray(bodyMetrics) ? bodyMetrics : [])].filter(m => m.weight).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
   if (sortedMetrics.length >= 2) {
     const trend = Math.round((sortedMetrics[0].weight - sortedMetrics[sortedMetrics.length-1].weight) * 10) / 10;
     if (trend !== 0) {
-      cards.push({ icon:"⚖️", cat:"Body", msg:`Weight ${trend > 0 ? "up" : "down"} ${Math.abs(trend)}lb since you started tracking. ${trend < 0 ? "Maintain protein to protect muscle." : "Normal during a gaining phase."}` });
+      cards.push({ icon:"scale", cat:"Body", msg:`Weight ${trend > 0 ? "up" : "down"} ${Math.abs(trend)}lb since you started tracking. ${trend < 0 ? "Maintain protein to protect muscle." : "Normal during a gaining phase."}` });
     }
   }
 
@@ -1261,11 +1261,13 @@ export function routineEditSuggestions({ routine, exercises = [], allExercises =
     }
   }
 
-  // 4. Not-logged exercises
-  const used = new Set(history.slice(0, 6).flatMap(h => h.exercises || []).map(ex => ex.id || ex.plannedId || exerciseId(ex.name)));
-  exercises.filter(ex => !used.has(ex.id)).slice(0, 1).forEach(ex => {
-    suggestions.push({ type:"practice", priority:1, title:`Practice ${ex.name}`, detail:"In routine but not logged recently.", actionType:null, actionId:null });
-  });
+  // 4. Not-logged exercises — only meaningful when there's enough history to compare against
+  if (history.length >= 4) {
+    const used = new Set(history.slice(0, 6).flatMap(h => h.exercises || []).map(ex => ex.id || ex.plannedId || exerciseId(ex.name)));
+    exercises.filter(ex => !used.has(ex.id)).slice(0, 1).forEach(ex => {
+      suggestions.push({ type:"practice", priority:1, title:`Log ${ex.name}`, detail:"Not recorded in your last 4 sessions — log a set next time to track progress.", actionType:null, actionId:null });
+    });
+  }
 
   if (balance < 80) suggestions.push({ type:"balance", priority:2, title:"Improve balance", detail:`Balance ${balance}/100 — cover push, pull, legs, and core.`, actionType:null, actionId:null });
   if (routine?.avoidedExerciseIds?.length) suggestions.push({ type:"avoid", priority:1, title:"Avoid list active", detail:`${routine.avoidedExerciseIds.length} movement${routine.avoidedExerciseIds.length===1?"":"s"} hidden from picker.`, actionType:null, actionId:null });
@@ -1765,5 +1767,228 @@ export function buildSessionIntent({ readiness = DEFAULT_READINESS, history = []
     label:"Balanced Session",
     note:"Energy and recovery are both stable. Targets set to match.",
     tone:"neutral",
+  };
+}
+
+/**
+ * generateCoachProgram
+ * Builds a complete multi-day program using the user's full profile, history, and goals.
+ * Returns { name, routines, schedule, rationale }
+ */
+export function generateCoachProgram({
+  userProfile = null,
+  settings = {},
+  history = [],
+  checkIns = [],
+  goals = [],
+  exConfig = {},
+  numDays = null,
+}) {
+  const profile    = normalizeUserProfile(userProfile);
+  const experience = profile.trainingExperience || "new";
+  const goal       = settings.trainingGoal || "general";
+  const age        = Number(profile.age) || 30;
+  const sex        = profile.sex || "";
+  const weightLb   = Number(profile.weightLb) || 0;
+  const mobility   = profile.mobilityLevel || "normal";
+  const tier       = ageTier(profile);
+  const limitations = profile.limitations || [];
+
+  // Auto-determine training days from profile
+  if (!numDays) {
+    if (experience === "trained")   numDays = 4;
+    else if (experience === "returning") numDays = 3;
+    else numDays = 3;
+    if (goal === "fatigue_friendly") numDays = Math.min(numDays, 3);
+    if (tier.ageFriendly)           numDays = Math.min(numDays, 3);
+    if (mobility === "limited")      numDays = Math.min(numDays, 3);
+  }
+  numDays = Math.max(1, Math.min(7, numDays));
+
+  // Import FORGE names from data (already available in coach.js scope via data.js)
+  const NAMES = ["Strike","Temper","Hone","Forge","Anneal","Quench","Draw"];
+
+  // Day-split templates keyed by numDays
+  // Each day has a focal muscle priority that overrides the goal bias
+  const SPLIT_TEMPLATES = {
+    1: [
+      { name:NAMES[0], muscles:[["chest","triceps"],["lats","upperBack"],["quads","glutes"],["core"],["hamstrings"],["biceps"]] },
+    ],
+    2: [
+      { name:NAMES[0], muscles:[["chest","triceps","frontDelts"],["sideDelts"],["lats","upperBack","biceps"],["core"]] },
+      { name:NAMES[1], muscles:[["quads","glutes"],["hamstrings"],["calves"],["core","lowerBack"]] },
+    ],
+    3: [
+      { name:NAMES[0], muscles:[["chest","triceps"],["frontDelts","sideDelts"],["core"]] },
+      { name:NAMES[1], muscles:[["lats","upperBack"],["biceps"],["rearDelts"]] },
+      { name:NAMES[2], muscles:[["quads","glutes"],["hamstrings"],["calves","core"]] },
+    ],
+    4: [
+      { name:NAMES[0], muscles:[["chest","triceps"],["frontDelts","sideDelts"]] },
+      { name:NAMES[1], muscles:[["quads","glutes"],["hamstrings","calves"]] },
+      { name:NAMES[2], muscles:[["lats","upperBack"],["biceps","rearDelts"],["core"]] },
+      { name:NAMES[3], muscles:[["chest","triceps"],["quads","glutes"],["core","lowerBack"]] },
+    ],
+    5: [
+      { name:NAMES[0], muscles:[["chest","triceps"],["frontDelts"]] },
+      { name:NAMES[1], muscles:[["lats","upperBack"],["biceps","rearDelts"]] },
+      { name:NAMES[2], muscles:[["quads","glutes"],["hamstrings"]] },
+      { name:NAMES[3], muscles:[["chest","sideDelts"],["frontDelts","triceps"]] },
+      { name:NAMES[4], muscles:[["lats","upperBack"],["quads","glutes"],["core"]] },
+    ],
+  };
+
+  const splitDays = SPLIT_TEMPLATES[Math.min(numDays, 5)] || SPLIT_TEMPLATES[3];
+
+  // Schedule: spread days evenly across the week
+  const WEEK_SLOTS = {
+    1: ["Monday"],
+    2: ["Monday","Thursday"],
+    3: ["Monday","Wednesday","Friday"],
+    4: ["Monday","Tuesday","Thursday","Friday"],
+    5: ["Monday","Tuesday","Wednesday","Thursday","Friday"],
+    6: ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
+    7: ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+  };
+  const daySlots = WEEK_SLOTS[numDays] || WEEK_SLOTS[3];
+
+  // Build per-day scoring context shared with generateCoachRoutine
+  const load       = recentTrainingLoad(history);
+  const behavior   = behaviorMemory(checkIns);
+  const blocked    = new Set([...painBlockedExercises(checkIns)]);
+  const RECENCY_MS = 5 * 86400000;
+  const recentSessions = history.filter(h => (Date.now() - (h.timestamp || 0)) < RECENCY_MS);
+  const recentMuscles  = new Set(
+    recentSessions.flatMap(h => h.exercises || []).flatMap(ex => {
+      const lib = EXERCISE_LIBRARY.find(e => e.name === ex.name || e.id === (ex.id || exerciseId(ex.name)));
+      return [...(lib?.primary || []), ...(lib?.secondary || [])];
+    })
+  );
+  const recentExIds = new Set(
+    history.slice(0, 2).flatMap(h => h.exercises || []).map(ex => ex.id || exerciseId(ex.name))
+  );
+  const activeGoals = (goals || []).filter(g => !g.achieved && g.exerciseName);
+  const goalExerciseIds = new Set(activeGoals.map(g => exerciseId(g.exerciseName)));
+  const goalExerciseNames = new Set(activeGoals.map(g => g.exerciseName));
+  const equip = settings.equipmentProfile || "fixed_dumbbells";
+  const EQUIP_PREF = {
+    gym_access:           ["barbell","machines","dumbbells","bodyweight","bands"],
+    adjustable_dumbbells: ["dumbbells","bodyweight","bands","kettlebell"],
+    fixed_dumbbells:      ["dumbbells","bodyweight","bands"],
+  };
+  const equipPref = EQUIP_PREF[equip] || EQUIP_PREF.fixed_dumbbells;
+  const shortRester = behavior.avgRestSeconds > 0 && behavior.avgRestSeconds < 40;
+  const overreaching = load.sessions >= 5;
+  const fatigued = (history[0] && (Date.now() - (history[0].timestamp || 0)) / 3600000 < 18) || overreaching;
+  const allLibMuscles = [...new Set(EXERCISE_LIBRARY.flatMap(ex => ex.primary || []))];
+  const undertrained  = allLibMuscles.filter(m => !recentMuscles.has(m));
+  const isNewUser     = history.length < 5;
+
+  const diffOk = (d) => {
+    if (experience === "trained")   return ["beginner","novice","intermediate"].includes(d);
+    if (experience === "returning") return ["beginner","novice"].includes(d);
+    return d === "beginner";
+  };
+
+  const scoreExercise = (ex) => {
+    const ei = equipPref.indexOf(ex.equipment);
+    let score = ei === -1 ? 99 : ei;
+    if (!ex.ageFriendly)                                    score += tier.ageFriendly ? 6 : 2;
+    if (ex.difficulty !== "beginner")                       score += 1;
+    if (recentExIds.has(ex.id))                             score += 5;
+    if (ex.primary?.some(m => undertrained.includes(m)))    score -= 4;
+    if (isNewUser && ex.difficulty === "beginner")          score -= 1;
+    if (mobility === "limited" && ex.ageFriendly)           score -= 1;
+    if (goalExerciseIds.has(ex.id) || goalExerciseNames.has(ex.name)) score -= 6;
+    if (shortRester && ex.difficulty === "intermediate")    score += 1;
+    return score;
+  };
+
+  // Per-day selection: pick best exercises for a given muscle focus, avoid cross-day repeats
+  const usedIds   = new Set();
+  const routines  = splitDays.slice(0, numDays).map((dayTpl, i) => {
+    let count = experience === "trained" ? 6 : experience === "returning" ? 5 : 5;
+    if (fatigued)                      count = Math.max(3, count - 1);
+    if (tier.ageFriendly && count > 5) count = 5;
+    if (goal === "fatigue_friendly")   count = Math.min(count, 4);
+
+    const selectedIds = new Set();
+    const selected    = [];
+
+    const pick = (muscles) => {
+      let candidates = EXERCISE_LIBRARY.filter(ex =>
+        ex.primary?.some(m => muscles.includes(m)) &&
+        !selectedIds.has(ex.id) &&
+        !usedIds.has(ex.id) &&
+        !blocked.has(ex.name) &&
+        diffOk(ex.difficulty) &&
+        !limitations.some(lim => (ex.joints || []).includes(lim))
+      );
+      if (tier.ageFriendly && experience !== "trained") {
+        const safe = candidates.filter(ex => ex.ageFriendly);
+        if (safe.length >= 2) candidates = safe;
+      }
+      candidates.sort((a, b) => scoreExercise(a) - scoreExercise(b));
+      return candidates[0] || null;
+    };
+
+    // Fill from day's focal muscle groups
+    for (const muscles of dayTpl.muscles) {
+      if (selected.length >= count) break;
+      const ex = pick(muscles);
+      if (ex) { selected.push(ex); selectedIds.add(ex.id); }
+    }
+
+    // Fill remaining slots from general pools
+    const fillPools = [["quads","glutes"],["chest","frontDelts"],["lats","upperBack"],["core"],["biceps"],["triceps"],["hamstrings"],["sideDelts","rearDelts"]];
+    for (const muscles of fillPools) {
+      if (selected.length >= count) break;
+      const ex = pick(muscles);
+      if (ex) { selected.push(ex); selectedIds.add(ex.id); }
+    }
+
+    // Add selected IDs to cross-day used set
+    selected.forEach(ex => usedIds.add(ex.id));
+
+    return {
+      id: `day_${Date.now()}_${i}`,
+      name: dayTpl.name,
+      exerciseIds: selected.map(ex => ex.id),
+    };
+  });
+
+  const schedule = {};
+  daySlots.slice(0, numDays).forEach((day, i) => {
+    if (routines[i]) schedule[day] = routines[i].id;
+  });
+
+  // Build rationale summary
+  const goalLabel = { strength:"Strength", hypertrophy:"Muscle", fatigue_friendly:"Tone", general:"General Fitness" }[goal] || "General Fitness";
+  const splitLabel = { 1:"Full Body", 2:"2-Day Split", 3:"Push/Pull/Legs", 4:"4-Day Split", 5:"5-Day Split" }[numDays] || `${numDays}-Day`;
+  const date = new Date().toLocaleDateString("en-US", { month:"short", day:"numeric" });
+  const profileSummary = [
+    age && `age ${age}`,
+    sex && sex,
+    weightLb && `${weightLb} lb`,
+    experience !== "new" && experience,
+    mobility !== "normal" && `mobility: ${mobility}`,
+    limitations.length && `limitations: ${limitations.join(", ")}`,
+  ].filter(Boolean).join(", ");
+
+  const rationale = [
+    `${splitLabel} · ${goalLabel} · ${numDays} day${numDays !== 1 ? "s" : ""}/week.`,
+    profileSummary ? `Profile: ${profileSummary}.` : null,
+    activeGoals.length ? `Goals considered: ${activeGoals.slice(0,2).map(g => g.exerciseName).join(", ")}.` : null,
+    undertrained.length ? `Targeting undertrained areas: ${undertrained.slice(0,3).map(m => MUSCLE_LABELS[m]||m).join(", ")}.` : null,
+    fatigued ? "Recent load detected — volume trimmed slightly for recovery." : null,
+    tier.ageFriendly ? `Age-safe selection (${tier.label}) applied.` : null,
+    blocked.size ? `${blocked.size} pain-flagged movement${blocked.size===1?"":"s"} excluded.` : null,
+  ].filter(Boolean);
+
+  return {
+    name:      `Coach Program · ${goalLabel} · ${date}`,
+    routines,
+    schedule,
+    rationale,
   };
 }

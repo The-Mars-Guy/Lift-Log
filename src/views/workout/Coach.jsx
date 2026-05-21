@@ -3,6 +3,7 @@ import { WORKOUTS, pushPullRatio } from "../../data.js";
 import { buildCoachInsights } from "../../coach.js";
 import { surface, text, status } from "../../theme.js";
 import { Caps, Disp } from "../../components/Primitives.jsx";
+import { Icon } from "../../components/Icons.jsx";
 
 // ─── Insight constants ────────────────────────────────────────────────────────
 const MUSCLE_SHORT = {
@@ -199,9 +200,9 @@ export function CoachDrawer({ open, onClose, memory, plan, accent, exercises = [
               )}
               {(memory?.profileNote || memory?.goalNote || memory?.weightNote) && (
                 <div style={{marginTop:10, paddingTop:10, borderTop:`1px solid rgba(255,255,255,.06)`, display:"grid", gap:5}}>
-                  {memory.profileNote && <div style={{fontSize:12, color:text.tertiary, lineHeight:1.45}}>👤 {memory.profileNote}</div>}
-                  {memory.goalNote    && <div style={{fontSize:12, color:status.good, lineHeight:1.45}}>🎯 {memory.goalNote}</div>}
-                  {memory.weightNote  && <div style={{fontSize:12, color:"#a78bfa", lineHeight:1.45}}>⚖️ {memory.weightNote}</div>}
+                  {memory.profileNote && <div style={{fontSize:12, color:text.tertiary, lineHeight:1.45, display:"flex", gap:6, alignItems:"flex-start"}}><Icon name="muscle" size={14} color={text.tertiary} /> {memory.profileNote}</div>}
+                  {memory.goalNote    && <div style={{fontSize:12, color:status.good, lineHeight:1.45, display:"flex", gap:6, alignItems:"flex-start"}}><Icon name="target" size={14} color={status.good} /> {memory.goalNote}</div>}
+                  {memory.weightNote  && <div style={{fontSize:12, color:"#a78bfa", lineHeight:1.45, display:"flex", gap:6, alignItems:"flex-start"}}><Icon name="scale" size={14} color="#a78bfa" /> {memory.weightNote}</div>}
                 </div>
               )}
             </Section>

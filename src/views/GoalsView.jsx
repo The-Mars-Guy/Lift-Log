@@ -178,7 +178,7 @@ function GoalCard({ goal, history, exConfig, totalSessions, accent, onAchieve, o
       </div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{fontSize:11,color:text.tertiary}}>
-          {prog.pct >= 1 ? "🎯 Target reached!" : `${Math.round(prog.pct*100)}% · ${prog.weeklyRate > 0 ? `+${prog.weeklyRate.toFixed(1)}/wk pace` : "no pace yet"}`}
+          {prog.pct >= 1 ? "Target reached!" : `${Math.round(prog.pct*100)}% · ${prog.weeklyRate > 0 ? `+${prog.weeklyRate.toFixed(1)}/wk pace` : "no pace yet"}`}
           {prog.weeklyNeeded && prog.weeklyRate > 0 && (
             <span style={{color:prog.onTrack?status.good:status.warn,marginLeft:6}}>
               ({prog.onTrack?"on track":"need +"+prog.weeklyNeeded.toFixed(1)+"/wk"})

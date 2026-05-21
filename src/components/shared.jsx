@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { IMG_BASE, VIDEO_BASE, WORKOUTS, isoDate, isoWeek, dateStr } from "../data.js";
 import { remainingSeconds } from "../session.js";
 import { surface, text, status } from "../theme.js";
+import { Icon } from "./Icons.jsx";
 
 // ── Exercise Animation ───────────────────────────────────────────────────────
 export function ExerciseAnimation({ folder, accent, video, compact=false, bare=false }) {
@@ -157,7 +158,7 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent, fullscre
 }
 
 // ── Toast ────────────────────────────────────────────────────────────────────
-export function Toast({ icon="🎯", title, msg, accent, onClose, duration=4000 }) {
+export function Toast({ icon="target", title, msg, accent, onClose, duration=4000 }) {
   useEffect(() => { const id=setTimeout(onClose,duration); return ()=>clearTimeout(id); }, [onClose,duration]);
   return (
     <div style={{ position:"fixed",top:16,left:16,right:16,zIndex:200, animation:"slideDown .3s ease-out", pointerEvents:"none" }}>
@@ -168,7 +169,7 @@ export function Toast({ icon="🎯", title, msg, accent, onClose, duration=4000 
         boxShadow:`0 0 40px ${accent}7a,0 4px 24px rgba(0,0,0,.6)`,
         display:"flex", alignItems:"center", gap:14, pointerEvents:"auto",
       }}>
-        <div style={{ fontSize:28 }}>{icon}</div>
+        <Icon name={icon} size={28} color={accent} />
         <div style={{ flex:1 }}>
           <div style={{ fontSize:11, color:accent, letterSpacing:"0.14em", fontWeight:500 }}>{title}</div>
           <div style={{ fontSize:14, color:"#f5f5f5", marginTop:3 }}>{msg}</div>
@@ -260,13 +261,21 @@ function IconGoals({ color, size=22 }) {
   );
 }
 
+function IconPerson({ color, size=22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="4"/>
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+    </svg>
+  );
+}
+
 const NAV_ITEMS = [
-  { id:"workout",  label:"Train",    Icon:IconDumbbell },
-  { id:"routine",  label:"Routine",  Icon:IconRoutine  },
-  { id:"stats",    label:"Stats",    Icon:IconStats    },
-  { id:"goals",    label:"Goals",    Icon:IconGoals    },
-  { id:"muscles",  label:"Muscles",  Icon:IconMuscles  },
-  { id:"settings", label:"Settings", Icon:IconGear     },
+  { id:"workout", label:"Train",   Icon:IconDumbbell },
+  { id:"stats",   label:"Stats",   Icon:IconStats    },
+  { id:"routine", label:"Routine", Icon:IconRoutine  },
+  { id:"muscles", label:"Muscles", Icon:IconMuscles  },
+  { id:"profile", label:"Profile", Icon:IconPerson   },
 ];
 
 export function BottomNav({ active, onSelect, accent, level, theme="dark" }) {

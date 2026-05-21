@@ -2,6 +2,7 @@
 // Gym Forged onboarding — original questions, forge theme
 
 import { useEffect, useMemo, useState } from "react";
+import { Icon } from "../components/Icons.jsx";
 import {
   DayPill,
   MultiSelectCard,
@@ -17,16 +18,16 @@ const STEPS = ["forge", "ambition", "drives", "iron", "profile", "intensity", "p
 // ─── Data ──────────────────────────────────────────────────────────────────────
 
 const FORGE_OPTIONS = [
-  { k: "gym",  label: "Full Gym",     icon: "🏋️", desc: "Barbells, machines, cables — the full iron room" },
-  { k: "home", label: "Home Setup",   icon: "🔨", desc: "Dumbbells, bands, and bodyweight essentials" },
-  { k: "both", label: "Both",         icon: "⚡", desc: "Flexible — train wherever the session lands" },
+  { k: "gym",  label: "Full Gym",     icon: "barbell", desc: "Barbells, machines, cables — the full iron room" },
+  { k: "home", label: "Home Setup",   icon: "hammer",  desc: "Dumbbells, bands, and bodyweight essentials" },
+  { k: "both", label: "Both",         icon: "bolt",    desc: "Flexible — train wherever the session lands" },
 ];
 
 const AMBITION_OPTIONS = [
-  { k: "hypertrophy",      icon: "🔥", label: "Forge Mass",       desc: "Volume-driven training to build size and density." },
-  { k: "strength",         icon: "⚒️", label: "Raw Power",        desc: "Heavy iron, low reps, maximum strength on the big lifts." },
-  { k: "fatigue_friendly", icon: "🗡️", label: "Lean & Sharp",     desc: "Cut fat and build definition through resistance and metabolic work." },
-  { k: "general",          icon: "🛡️", label: "Stay in the Game", desc: "Long-term health, mobility, and functional strength." },
+  { k: "hypertrophy",      icon: "flame",        label: "Forge Mass",       desc: "Volume-driven training to build size and density." },
+  { k: "strength",         icon: "cross-hammer", label: "Raw Power",        desc: "Heavy iron, low reps, maximum strength on the big lifts." },
+  { k: "fatigue_friendly", icon: "sword",        label: "Lean & Sharp",     desc: "Cut fat and build definition through resistance and metabolic work." },
+  { k: "general",          icon: "shield",       label: "Stay in the Game", desc: "Long-term health, mobility, and functional strength." },
 ];
 
 const DRIVES_OPTIONS = [
@@ -48,15 +49,15 @@ const IRON_OPTIONS = [
 ];
 
 const INTENSITY_OPTIONS = [
-  { k: "easy",   icon: "🌡️", label: "Build the habit", desc: "Consistency first, intensity second." },
-  { k: "steady", icon: "⚙️", label: "Steady grind",    desc: "Progressive challenge — push when ready, recover when needed." },
-  { k: "hard",   icon: "🔥", label: "No mercy",        desc: "High output every session. Max effort, max adaptation." },
+  { k: "easy",   icon: "thermometer", label: "Build the habit", desc: "Consistency first, intensity second." },
+  { k: "steady", icon: "gear",        label: "Steady grind",    desc: "Progressive challenge — push when ready, recover when needed." },
+  { k: "hard",   icon: "flame",       label: "No mercy",        desc: "High output every session. Max effort, max adaptation." },
 ];
 
 const PLAN_OPTIONS = [
-  { k: "guided", icon: "🤖", label: "Forge it for me",    desc: "Coach builds and adjusts everything automatically. Just show up and lift." },
-  { k: "hybrid", icon: "⚙️", label: "Fill my gaps",       desc: "You plan what you know, coach handles the rest." },
-  { k: "manual", icon: "🎮", label: "I run my forge",     desc: "Full manual control. Routine builder and all settings unlocked." },
+  { k: "guided", icon: "robot",   label: "Forge it for me",    desc: "Coach builds and adjusts everything automatically. Just show up and lift." },
+  { k: "hybrid", icon: "gear",    label: "Fill my gaps",       desc: "You plan what you know, coach handles the rest." },
+  { k: "manual", icon: "gamepad", label: "I run my forge",     desc: "Full manual control. Routine builder and all settings unlocked." },
 ];
 
 const GOAL_MAP = {
@@ -450,9 +451,8 @@ function LocationCard({ icon, label, desc, selected, onClick }) {
         background: selected ? onboardingTokens.accent : onboardingTokens.surfaceHi,
         display: "grid",
         placeItems: "center",
-        fontSize: 24,
         flexShrink: 0,
-      }}>{icon}</span>
+      }}><Icon name={icon} size={24} color={selected ? onboardingTokens.accentFg : onboardingTokens.text} /></span>
       <div>
         <div style={{ fontSize: 18, fontWeight: 700, color: onboardingTokens.text, lineHeight: 1.18 }}>{label}</div>
         <div style={{ fontSize: 16, color: onboardingTokens.muted, marginTop: 4, lineHeight: 1.35 }}>{desc}</div>
@@ -483,9 +483,8 @@ function GoalCard({ icon, label, desc, selected, onClick }) {
           background: selected ? onboardingTokens.accent : onboardingTokens.surfaceHi,
           display: "grid",
           placeItems: "center",
-          fontSize: 24,
           flexShrink: 0,
-        }}>{icon}</span>
+        }}><Icon name={icon} size={24} color={selected ? onboardingTokens.accentFg : onboardingTokens.text} /></span>
       )}
       <div style={{ flex: 1, borderLeft: `4px solid ${selected ? onboardingTokens.accent : onboardingTokens.border}`, paddingLeft: 14 }}>
         <div style={{ fontSize: 18, fontWeight: 700, color: onboardingTokens.text, lineHeight: 1.2 }}>{label}</div>
@@ -517,7 +516,7 @@ function ModeCircle({ icon, label, selected, onClick }) {
         fontSize: "min(8vw, 34px)",
         boxShadow: selected ? `0 12px 28px ${onboardingTokens.accent}55` : "0 8px 18px rgba(0,0,0,.12)",
         transition: "all 0.2s",
-      }}>{icon}</span>
+      }}><Icon name={icon} size={32} color={selected ? onboardingTokens.accentFg : onboardingTokens.text} /></span>
       <span style={{
         fontSize: 15, lineHeight: 1.2,
         fontWeight: 900,

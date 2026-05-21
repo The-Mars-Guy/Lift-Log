@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { WORKOUTS, getExerciseHistory } from "../../data.js";
 import { MiniGraph } from "../../components/shared.jsx";
+import { Icon } from "../../components/Icons.jsx";
 
 export const FEEDBACK_OPTIONS = [
-  { key:"easy",     label:"Easy",      emoji:"😴", desc:"+2 reps next session" },
-  { key:"good",     label:"Good",      emoji:"👍", desc:"+1 rep next session"  },
-  { key:"hard",     label:"Hard",      emoji:"💪", desc:"Keep same target"     },
-  { key:"pain",     label:"Pain",      emoji:"🛑", desc:"Lower target + bias swaps"  },
+  { key:"easy",     label:"Easy",      icon:"moon",      desc:"+2 reps next session" },
+  { key:"good",     label:"Good",      icon:"thumbs-up", desc:"+1 rep next session"  },
+  { key:"hard",     label:"Hard",      icon:"muscle",    desc:"Keep same target"     },
+  { key:"pain",     label:"Pain",      icon:"alert",     desc:"Lower target + bias swaps"  },
 ];
 
 export default function PostWorkoutFeedback({ exercises, sessionLogs, getLogKey, exConfig, history, onComplete, accent }) {
@@ -34,7 +35,7 @@ export default function PostWorkoutFeedback({ exercises, sessionLogs, getLogKey,
             {FEEDBACK_OPTIONS.map(opt=>(
               <button key={opt.key} onClick={()=>submitFeedback(opt.key)}
                 style={{padding:"16px 12px",background:"#141414",border:"1.5px solid #2a2a2a",borderRadius:13,cursor:"pointer",textAlign:"center"}}>
-                <div style={{fontSize:30,marginBottom:6}}>{opt.emoji}</div>
+                <div style={{fontSize:30,marginBottom:6}}><Icon name={opt.icon} size={30} /></div>
                 <div style={{fontSize:14,color:"#f0f0f0",fontWeight:500,marginBottom:3}}>{opt.label}</div>
                 <div style={{fontSize:11,color:"#888"}}>{opt.key==="easy"?"small push next time":opt.key==="hard"?"slightly less volume":opt.key==="pain"?"protect and swap sooner":"steady plan"}</div>
               </button>
@@ -88,7 +89,7 @@ export default function PostWorkoutFeedback({ exercises, sessionLogs, getLogKey,
               onMouseDown={e=>{ e.currentTarget.style.background="#1e1e1e"; e.currentTarget.style.borderColor=accent; }}
               onMouseUp={e=>{ e.currentTarget.style.background="#141414"; e.currentTarget.style.borderColor="#2a2a2a"; }}
             >
-              <div style={{fontSize:30,marginBottom:6}}>{opt.emoji}</div>
+              <div style={{fontSize:30,marginBottom:6}}><Icon name={opt.icon} size={30} /></div>
               <div style={{fontSize:14,color:"#f0f0f0",fontWeight:500,marginBottom:3}}>{opt.label}</div>
               <div style={{fontSize:11,color:"#888"}}>{opt.desc}</div>
             </button>

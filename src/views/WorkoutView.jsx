@@ -4,7 +4,7 @@ import {
   EXERCISE_GUIDES, todayName, dateStr, calcDynamicTarget, assessmentTargetForProfile,
   getExerciseHistory, XP_VALUES, getLevel, customRoutineWorkout,
   ageTier, ageAdjustedRestSeconds, EXERCISE_LIBRARY, exerciseFolder,
-  cleanAvailableWeights, snapWeight,
+  cleanAvailableWeights, snapWeight, forgeWorkoutName, forgeWorkoutColor, nextForgeWorkoutName,
 } from "../data.js";
 import { useSessionTimer, fmtDuration } from "../hooks.js";
 import { ExerciseAnimation, RestTimer, Toast } from "../components/shared.jsx";
@@ -344,7 +344,7 @@ function WorkoutSummary({ summary, accent, onClose }) {
               ))}
             </div>
           )}
-          {summary.nextWorkout&&<div style={{fontSize:13,color:text.tertiary,marginTop:10}}>Next up: Workout {summary.nextWorkout}</div>}
+          {summary.nextWorkout&&<div style={{fontSize:13,color:text.tertiary,marginTop:10}}>Next up: {summary.nextWorkout}</div>}
         </Card>
         <button onClick={onClose}
           style={{width:"100%",padding:19,background:accent,border:"none",borderRadius:14,color:"#050505",fontFamily:"'Bebas Neue',sans-serif",fontSize:26,letterSpacing:".12em",boxShadow:`0 0 42px ${accent}5c`}}>
@@ -469,13 +469,13 @@ function ThisWeek({ completed, setActiveTab }) {
       <div style={{fontSize:13,color:text.tertiary,fontWeight:600,marginBottom:14}}>This Week</div>
       <div style={{display:"flex",gap:10}}>
         {DAYS.map(day=>{
-          const wk=WORKOUTS[SCHEDULE[day]]; const isDone=!!completed[completionKey(day)],isToday=day===today;
+          const fc=forgeWorkoutColor(day,SCHEDULE); const isDone=!!completed[completionKey(day)],isToday=day===today;
           return(
             <button key={day} onClick={()=>setActiveTab(day)}
-              style={{flex:1,padding:"16px 8px",borderRadius:13,border:"none",background:isDone?`${wk.color}22`:isToday?surface.bg3:surface.bg1,outline:isToday?`2px solid ${wk.color}99`:isDone?`1px solid ${wk.color}44`:`1px solid rgba(255,140,50,.10)`,cursor:"pointer",textAlign:"center"}}>
-              <div style={{fontSize:12,color:isToday?wk.color:isDone?wk.color:text.muted,letterSpacing:".1em",fontWeight:600,textTransform:"uppercase",marginBottom:6}}>{day.slice(0,3)}</div>
-              <Disp size={20} color={isDone?wk.color:isToday?text.primary:text.muted}>{wk.label.slice(0,3).toUpperCase()}</Disp>
-              <div style={{fontSize:20,marginTop:5}}>{isDone?<span style={{color:wk.color}}>✓</span>:isToday?<span style={{color:wk.color}}>→</span>:<span style={{color:text.ghost}}>·</span>}</div>
+              style={{flex:1,padding:"16px 8px",borderRadius:13,border:"none",background:isDone?`${fc}22`:isToday?surface.bg3:surface.bg1,outline:isToday?`2px solid ${fc}99`:isDone?`1px solid ${fc}44`:`1px solid rgba(255,140,50,.10)`,cursor:"pointer",textAlign:"center"}}>
+              <div style={{fontSize:12,color:isToday?fc:isDone?fc:text.muted,letterSpacing:".1em",fontWeight:600,textTransform:"uppercase",marginBottom:6}}>{day.slice(0,3)}</div>
+              <Disp size={20} color={isDone?fc:isToday?text.primary:text.muted}>{forgeWorkoutName(day, SCHEDULE).slice(0,3).toUpperCase()}</Disp>
+              <div style={{fontSize:20,marginTop:5}}>{isDone?<span style={{color:fc}}>✓</span>:isToday?<span style={{color:fc}}>→</span>:<span style={{color:text.ghost}}>·</span>}</div>
             </button>
           );
         })}
@@ -708,7 +708,7 @@ function LogbookPanel({ accent, onClose, onSave }) {
         {/* Finish */}
         <button onClick={finish} disabled={!hasEntries}
           style={{width:"100%",padding:"18px",borderRadius:13,border:hasEntries?"none":`1px solid rgba(255,140,50,.12)`,background:hasEntries?accent:surface.bg2,color:hasEntries?"#050505":text.muted,fontFamily:"'Bebas Neue',sans-serif",fontSize:24,letterSpacing:".12em",boxShadow:hasEntries?`0 0 36px ${accent}4d`:"none",cursor:hasEntries?"pointer":"default"}}>
-          {hasEntries ? "💾 SAVE SESSION" : "ADD AN EXERCISE TO BEGIN"}
+          {hasEntries ? "SAVE SESSION" : "ADD AN EXERCISE TO BEGIN"}
         </button>
 
         {hasEntries && (
@@ -782,7 +782,9 @@ export default function WorkoutView({
   const customWorkout = customRoutine?.enabled ? customRoutineWorkout(customRoutine, activeTab) : null;
   const wKey    = customWorkout ? "CUSTOM" : SCHEDULE[activeTab];
   const workout = customWorkout || WORKOUTS[wKey];
-  const accent  = workout.color;
+  const effectiveSchedule = customRoutine?.enabled ? customRoutine.schedule : SCHEDULE;
+  const forgeName = forgeWorkoutName(activeTab, effectiveSchedule);
+  const accent    = forgeWorkoutColor(activeTab, effectiveSchedule);
   const workoutPlan = useMemo(() => {
     const applySubstitution = (ex) => {
       const sub = substitutions[ex.name];
@@ -982,7 +984,7 @@ export default function WorkoutView({
   const useSubstitution = (sub, option) => {
     const chosen = option || sub.alternatives?.find(item => item.name === sub.substitute) || { name: sub.substitute, reason: sub.reason };
     setSubstitutions(p => ({ ...p, [sub.exercise]: { name: chosen.name, reason: chosen.reason || sub.reason } }));
-    setToast({ icon:"🔁", title:"SWAP ACTIVE", msg:`${sub.exercise} swapped for ${chosen.name} today.`, accent });
+    setToast({ icon:"refresh", title:"SWAP ACTIVE", msg:`${sub.exercise} swapped for ${chosen.name} today.`, accent });
   };
 
   const removeSubstitution = (exerciseName) => {
@@ -1111,7 +1113,7 @@ export default function WorkoutView({
     };
     setCheckIns(p=>[...(p||[]).filter(ci=>ci.kind!=="set_feedback"||ci.setKey!==undoSet.setKey),entry]);
     setToast({
-      icon:feeling==="pain"?"🛑":"🧠",
+      icon:feeling==="pain"?"alert":"robot",
       title:"COACH NOTE SAVED",
       msg:feeling==="pain" ? `${ex.name} flagged for discomfort.` : `${ex.name} set ${undoSet.setIdx+1}: ${feeling}.`,
       accent:feeling==="pain"?status.caution:accent,
@@ -1201,7 +1203,7 @@ export default function WorkoutView({
       duration:sessionElapsed,
       readiness:effectiveReadiness,
       prs,
-      nextWorkout:wKey==="A"?"B":customWorkout?"Custom":"A",
+      nextWorkout: nextForgeWorkoutName(activeTab, effectiveSchedule),
     }));
     setHistory(p=>[{day:activeTab,workout:wKey,date:dateStr(scheduledDate(activeTab)),timestamp:scheduledDate(activeTab).getTime(),duration:sessionElapsed,exercises:exSnap,readiness:effectiveReadiness,note:workoutNote.trim()||undefined,warmup:"Easy movement + light first set",cooldown:"Slow breathing + gentle mobility"} ,...p].slice(0,120));
     setCompleted(p=>({...p,[sessionKey]:dateStr(scheduledDate(activeTab))}));
@@ -1210,7 +1212,7 @@ export default function WorkoutView({
     setConfetti(true);
     spawnXp(XP_VALUES.workout);
 
-    if(prs.length) setTimeout(()=>{playSound("achievement");setToast({icon:"🏆",title:"PERSONAL RECORD",msg:prs.map(p=>`${p.name}: ${p.val}lbs`).join(", "),accent:status.warn});},600);
+    if(prs.length) setTimeout(()=>{playSound("achievement");setToast({icon:"trophy",title:"PERSONAL RECORD",msg:prs.map(p=>`${p.name}: ${p.val}lbs`).join(", "),accent:status.warn});},600);
   };
 
   const handleFeedback = (feedbackPayload) => {
@@ -1375,7 +1377,7 @@ export default function WorkoutView({
       <div style={{padding:"22px 16px 18px",borderBottom:`1px solid rgba(255,140,50,.07)`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:accent,letterSpacing:".06em",filter:`drop-shadow(0 0 10px ${accent}5c)`}}>{workout.label}</span>
+            <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:accent,letterSpacing:".06em",filter:`drop-shadow(0 0 10px ${accent}5c)`}}>{forgeName}</span>
             {sessionIntent&&(
               <div style={{marginTop:2}}>
                 <span style={{
@@ -1620,7 +1622,7 @@ export default function WorkoutView({
         ):(
           <button onClick={finishWorkout} disabled={!allDone}
             style={{width:"100%",padding:22,borderRadius:15,fontFamily:"'Bebas Neue',sans-serif",fontSize:28,letterSpacing:".12em",border:allDone?"none":`1px solid rgba(255,140,50,.12)`,background:allDone?accent:surface.bg2,color:allDone?"#050505":text.muted,boxShadow:allDone?`0 0 56px ${accent}7a`:"none",transition:"all .2s"}}>
-            {allDone?"🏁 FINISH WORKOUT":`${totalSets-doneSets} SETS REMAINING`}
+            {allDone?"FINISH WORKOUT":`${totalSets-doneSets} SETS REMAINING`}
           </button>
         )}
       </div>
@@ -1650,7 +1652,7 @@ export default function WorkoutView({
             <div key={i} style={{padding:"13px 0",borderBottom:"1px solid rgba(255,140,50,.08)"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                  <span style={{fontSize:12,padding:"4px 10px",borderRadius:6,background:WORKOUTS[h.workout]?.color+"22",color:WORKOUTS[h.workout]?.color,letterSpacing:".06em",fontWeight:500}}>{WORKOUTS[h.workout]?.label||h.workout}</span>
+                  <span style={{fontSize:12,padding:"4px 10px",borderRadius:6,background:forgeWorkoutColor(h.day,effectiveSchedule)+"22",color:forgeWorkoutColor(h.day,effectiveSchedule),letterSpacing:".06em",fontWeight:500}}>{forgeWorkoutName(h.day, effectiveSchedule)}</span>
                   <span style={{fontSize:15,color:text.primary}}>{h.day}</span>
                   {h.duration&&<span style={{fontSize:12,color:text.tertiary}}>{fmtDuration(h.duration)}</span>}
                 </div>
