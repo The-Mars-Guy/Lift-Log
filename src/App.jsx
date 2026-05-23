@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense, startTransition } from "react";
-import { WORKOUTS, SCHEDULE, DEFAULT_SETTINGS, DEFAULT_WEIGHTS, ACHIEVEMENTS, computeStats, todayName, DAYS, getLevel, DEFAULT_CUSTOM_ROUTINE, DEFAULT_GOALS, IMG_BASE, normalizeCustomRoutine, customRoutineWorkout, DEFAULT_USER_PROFILE, normalizeUserProfile, assessmentTargetForProfile } from "./data.js";
+import { WORKOUTS, SCHEDULE, DEFAULT_SETTINGS, DEFAULT_WEIGHTS, ACHIEVEMENTS, computeStats, todayName, DAYS, getLevel, DEFAULT_CUSTOM_ROUTINE, DEFAULT_GOALS, IMG_BASE, normalizeCustomRoutine, customRoutineWorkout, DEFAULT_USER_PROFILE, normalizeUserProfile, assessmentTargetForProfile, exerciseConfigKey } from "./data.js";
 import { useLocalStorage } from "./hooks.js";
 import { makePlay, vibrate as vib } from "./audio.js";
 import { BottomNav, Toast } from "./components/shared.jsx";
@@ -20,7 +20,7 @@ const SettingsView = lazy(loadSettings);
 const RoutineView  = lazy(loadRoutine);
 const GoalsView    = lazy(loadGoals);
 const ProfileView  = lazy(loadProfile);
-import { normalizeLiftLogData } from "./session.js";
+import { createLiftLogSnapshot, normalizeLiftLogData, normalizeLiftLogSnapshot } from "./session.js";
 import OnboardingView from "./views/OnboardingView.jsx";
 import { nukeAndReload } from "./nuke.js";
 
@@ -56,7 +56,7 @@ export default function App() {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installDismissed, setInstallDismissed] = useLocalStorage("wt_install_dismissed", false);
 
-  const normalized = normalizeLiftLogData({ sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, bodyMetrics, assessmentDone, customRoutine, userProfile });
+  const normalized = normalizeLiftLogData({ sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, bodyMetrics, assessmentDone, customRoutine, userProfile, goals });
   const safeSettings = { ...DEFAULT_SETTINGS, ...normalized.settings };
   const safeCustomRoutine = normalizeCustomRoutine(normalized.customRoutine || customRoutine);
   const safeUserProfile = normalizeUserProfile(normalized.userProfile || userProfile);
@@ -89,6 +89,7 @@ export default function App() {
     if (data.assessmentDone !== assessmentDone) setAssessmentDone(data.assessmentDone);
     if (data.customRoutine && data.customRoutine !== customRoutine) setCustomRoutine(normalizeCustomRoutine(data.customRoutine));
     if (data.userProfile && data.userProfile !== userProfile) setUserProfile(normalizeUserProfile(data.userProfile));
+    if (data.goals !== goals) setGoals(data.goals);
   }, []); // eslint-disable-line
 
   // Seed exercise weights if not set. Uses core library only — extended-only
@@ -99,7 +100,8 @@ export default function App() {
     let changed = false;
     const allEx = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises, ...customRoutineWorkout(safeCustomRoutine).exercises];
     allEx.forEach(ex => {
-      if (!normalized.exConfig[ex.name]) { seed[ex.name] = { weight: DEFAULT_WEIGHTS[ex.name] ?? safeSettings.dumbbellWeight }; changed = true; }
+      const key = exerciseConfigKey(ex);
+      if (!normalized.exConfig[key]) { seed[key] = { weight: DEFAULT_WEIGHTS[ex.name] ?? safeSettings.dumbbellWeight }; changed = true; }
     });
     if (changed) setExConfig(p => ({ ...p, ...seed }));
   }, []); // eslint-disable-line
@@ -176,14 +178,16 @@ export default function App() {
     assessmentDone: normalized.assessmentDone,
     customRoutine: safeCustomRoutine,
     userProfile: safeUserProfile,
+    goals: normalized.goals,
   });
 
   const createBackupSnapshot = (reason = "manual") => {
     try {
+      const createdAt = new Date().toISOString();
       const backup = {
-        ...currentData(),
+        ...createLiftLogSnapshot(currentData(), { reason, createdAt }),
         backupReason: reason,
-        backedUpAt: new Date().toISOString(),
+        backedUpAt: createdAt,
       };
       localStorage.setItem("wt_last_backup", JSON.stringify(backup));
       return true;
@@ -201,7 +205,7 @@ export default function App() {
 
   const repairSavedData = () => {
     createBackupSnapshot("before_repair_saved_data");
-    const data = normalizeLiftLogData({ sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, bodyMetrics, assessmentDone, customRoutine:safeCustomRoutine, userProfile:safeUserProfile });
+    const data = normalizeLiftLogData({ sets, history, completed, progression, settings, achievements, exConfig, xp, checkIns, bodyMetrics, assessmentDone, customRoutine:safeCustomRoutine, userProfile:safeUserProfile, goals });
     setSets(data.sets);
     setHistory(data.history);
     setCompleted(data.completed);
@@ -213,6 +217,7 @@ export default function App() {
     setCheckIns(data.checkIns);
     setBodyMetrics(data.bodyMetrics);
     setAssessmentDone(data.assessmentDone);
+    setGoals(data.goals);
     if (data.customRoutine) setCustomRoutine(normalizeCustomRoutine(data.customRoutine));
     if (data.userProfile) setUserProfile(normalizeUserProfile(data.userProfile));
     return true;
@@ -249,7 +254,7 @@ export default function App() {
   };
 
   const exportData = () => {
-    const data = { ...currentData(), exportedAt: new Date().toISOString() };
+    const data = createLiftLogSnapshot(currentData(), { reason:"export", createdAt:new Date().toISOString() });
     const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
@@ -258,10 +263,21 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const importData = async (file) => {
+  /** Phase 1 — parse + validate without applying. Returns snapshot or null on error. */
+  const previewImport = async (file) => {
     try {
       const raw = await file.text();
-      const data = normalizeLiftLogData(JSON.parse(raw));
+      return normalizeLiftLogSnapshot(JSON.parse(raw));
+    } catch (err) {
+      console.warn("previewImport failed", err);
+      return null;
+    }
+  };
+
+  /** Phase 2 — apply a pre-parsed snapshot returned by previewImport. */
+  const applyImport = (snapshot) => {
+    try {
+      const { data } = snapshot;
       createBackupSnapshot("before_import");
       setSets(data.sets);
       setHistory(data.history);
@@ -274,11 +290,12 @@ export default function App() {
       setCheckIns(data.checkIns);
       setBodyMetrics(data.bodyMetrics);
       setAssessmentDone(data.assessmentDone);
+      setGoals(data.goals);
       if (data.customRoutine) setCustomRoutine(normalizeCustomRoutine(data.customRoutine));
       if (data.userProfile) setUserProfile(normalizeUserProfile(data.userProfile));
       return true;
     } catch (err) {
-      console.warn("importData failed", err);
+      console.warn("applyImport failed", err);
       return false;
     }
   };
@@ -291,7 +308,7 @@ export default function App() {
       const blob = new Blob([JSON.stringify(backup, null, 2)], { type:"application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const date = backup.backedUpAt?.slice(0,10) || new Date().toISOString().slice(0,10);
+      const date = backup.backedUpAt?.slice(0,10) || backup.createdAt?.slice(0,10) || new Date().toISOString().slice(0,10);
       a.href = url; a.download = `forged-backup-${date}.json`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
@@ -311,7 +328,7 @@ export default function App() {
   const installApp = async () => {
     if (!installPrompt) return;
     installPrompt.prompt();
-    try { await installPrompt.userChoice; } catch {}
+    try { await installPrompt.userChoice; } catch { /* intentional */ }
     setInstallPrompt(null);
     setInstallDismissed(true);
   };
@@ -364,11 +381,12 @@ export default function App() {
                   ? Math.max(3, Math.round((selfTest?.plank || 30) / 5))
                   : null;
             const target = mappedMax ? assessmentTargetForProfile(mappedMax, safeProfile) : ex.baseReps;
-            startingConfig[ex.name] = {
-              ...(exConfig[ex.name] || {}),
+            const key = exerciseConfigKey(ex);
+            startingConfig[key] = {
+              ...(normalized.exConfig[exerciseConfigKey(ex)] || {}),
               maxRepsTest:mappedMax || null,
               targetReps:target,
-              weight:exConfig[ex.name]?.weight ?? DEFAULT_WEIGHTS[ex.name] ?? safeSettings.dumbbellWeight,
+              weight:normalized.exConfig[exerciseConfigKey(ex)]?.weight ?? DEFAULT_WEIGHTS[ex.name] ?? safeSettings.dumbbellWeight,
             };
           });
           setUserProfile(prev => ({ ...prev, ...profile }));
@@ -428,7 +446,7 @@ export default function App() {
               <MuscleMapView history={normalized.history} accent={accent} checkIns={normalized.checkIns} setCheckIns={setCheckIns} customRoutine={safeCustomRoutine} />
             )}
             {activeView === "calendar" && (
-              <CalendarView history={normalized.history} progression={normalized.progression} settings={safeSettings} accent={accent} theme={visualTheme} />
+              <CalendarView history={normalized.history} setHistory={setHistory} completed={normalized.completed} setCompleted={setCompleted} progression={normalized.progression} settings={safeSettings} accent={accent} theme={visualTheme} />
             )}
             {activeView === "goals" && (
               <GoalsView
@@ -459,7 +477,7 @@ export default function App() {
             {activeView === "settings" && (
               <SettingsView settings={safeSettings} setSettings={setSettings}
                 userProfile={safeUserProfile} setUserProfile={setUserProfile}
-                resetAllData={resetAllData} exportData={exportData} importData={importData}
+                resetAllData={resetAllData} exportData={exportData} previewImport={previewImport} applyImport={applyImport}
                 repairSavedData={repairSavedData} clearWorkoutState={clearWorkoutState}
                 refreshAppCache={refreshAppCache} exportLastBackup={exportLastBackup}
                 createBackupSnapshot={createBackupSnapshot} editBenchmarkTest={editBenchmarkTest}

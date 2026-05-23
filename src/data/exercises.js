@@ -73,6 +73,20 @@ export function exerciseId(name) {
   return String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 }
 
+export function exerciseConfigKey(exOrName) {
+  if (exOrName && typeof exOrName === "object") {
+    return exOrName.id || exerciseId(exOrName.configName || exOrName.originalName || exOrName.name);
+  }
+  return exerciseId(exOrName);
+}
+
+export function exerciseConfigFor(exConfig = {}, exOrName) {
+  if (!exConfig || typeof exConfig !== "object") return undefined;
+  const key = exerciseConfigKey(exOrName);
+  const legacyName = typeof exOrName === "string" ? exOrName : (exOrName?.configName || exOrName?.originalName || exOrName?.name);
+  return exConfig[key] || exConfig[legacyName];
+}
+
 const BASE_EXERCISES = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];
 
 export const EXERCISE_LIBRARY = [

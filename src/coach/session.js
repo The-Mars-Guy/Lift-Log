@@ -1,4 +1,4 @@
-import { ageTier, mesocyclePhase, routineBalanceScore, routineCoverage } from "../data.js";
+import { ageTier, exerciseConfigFor, mesocyclePhase, routineBalanceScore, routineCoverage } from "../data.js";
 import {
   JOINT_AREAS,
   DEFAULT_READINESS,
@@ -74,7 +74,7 @@ export function explainExerciseDecision({
   checkIns = [],
 }) {
   const name = exercise?.configName || exercise?.originalName || exercise?.name;
-  const cfg = exConfig[name] || {};
+  const cfg = exerciseConfigFor(exConfig, exercise) || {};
   const latest = [...history]
     .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
     .map(session => session.exercises?.find(ex => (ex.originalName || ex.substitutedFor || ex.name) === name))
@@ -102,7 +102,6 @@ export function explainExerciseDecision({
 }
 
 export function buildCoachNotes({
-  routine = {},
   allExercises = [],
   history = [],
   checkIns = [],
@@ -292,7 +291,7 @@ export function buildCoachPlan({ workout, history, checkIns = [], exConfig, sett
   }
 
   const exerciseNotes = workout.exercises.map(ex => {
-    const target = exConfig[ex.name]?.targetReps ?? ex.baseReps;
+    const target = exerciseConfigFor(exConfig, ex)?.targetReps ?? ex.baseReps;
     const trend = exerciseTrend(history, ex, target);
     if (trend.status === "ready") {
       return { ex: ex.name, priority: 2, note: `${ex.name}: ready to progress if all sets land clean today.` };
@@ -317,7 +316,7 @@ export function buildCoachPlan({ workout, history, checkIns = [], exConfig, sett
     checkIns,
     settings,
     readiness,
-    baseTarget: exConfig[ex.name]?.targetReps ?? ex.baseReps,
+    baseTarget: exerciseConfigFor(exConfig, ex)?.targetReps ?? ex.baseReps,
     exConfig,
   })).find(item => item.enabled && item.note) : null);
 
@@ -352,8 +351,9 @@ export function buildCoachPlan({ workout, history, checkIns = [], exConfig, sett
     if (!goal.exerciseName) return;
     const hit = workout.exercises.some(ex => ex.name === goal.exerciseName || (ex.originalName || ex.name) === goal.exerciseName);
     if (hit) {
-      const pct = exConfig[goal.exerciseName]?.weight
-        ? Math.round((exConfig[goal.exerciseName].weight / goal.targetValue) * 100)
+      const goalConfig = exerciseConfigFor(exConfig, goal.exerciseName);
+      const pct = goalConfig?.weight
+        ? Math.round((goalConfig.weight / goal.targetValue) * 100)
         : null;
       const pctStr = pct != null ? ` (${pct}% of goal)` : "";
       cards.push({ icon:"target", cat:"Goal", msg:`${goal.exerciseName} is in today's session — goal target: ${goal.targetValue}${goal.type==="weight"?"lb":goal.type==="reps"?" reps":" sessions"}${pctStr}.` });

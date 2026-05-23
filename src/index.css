@@ -54,6 +54,10 @@ body:has(.theme-pop_light) {
 
 button { font-family: inherit; cursor: pointer; }
 button { touch-action: manipulation; }
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible { outline: 2px solid #ff8c32; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
 ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #0b0804; } ::-webkit-scrollbar-thumb { background: #3d2a14; border-radius: 3px; }
 
 /* ── KEYFRAMES ── */

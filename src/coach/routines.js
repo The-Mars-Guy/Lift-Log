@@ -1,5 +1,5 @@
 import { EXERCISE_LIBRARY, MUSCLE_COVERAGE_GROUPS, MUSCLE_LABELS, ageTier, exerciseId, exerciseIsRisky, exerciseRiskJoints, normalizeUserProfile, routineBalanceScore, routineCoverage } from "../data.js";
-import { behaviorMemory, exerciseTrend, painBlockedExercises, recentTrainingLoad } from "./progression.js";
+import { behaviorMemory, painBlockedExercises, recentTrainingLoad } from "./progression.js";
 
 function _pickFillExercise(muscleGroupKey, currentIds, userProfile, equipment = "all", exerciseLibrary = EXERCISE_LIBRARY) {
   const safe = normalizeUserProfile(userProfile);
@@ -348,7 +348,6 @@ export function generateCoachProgram({
   history = [],
   checkIns = [],
   goals = [],
-  exConfig = {},
   numDays = null,
   exerciseLibrary = EXERCISE_LIBRARY,
 }) {

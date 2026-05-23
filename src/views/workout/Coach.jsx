@@ -52,7 +52,7 @@ export function CoachDrawer({ open, onClose, memory, plan, accent, exercises = [
     : 50;
 
   return (
-    <div style={{position:"fixed",inset:0,zIndex:240,pointerEvents:"none"}}>
+    <div role="dialog" aria-modal="true" aria-label="Smith coach" style={{position:"fixed",inset:0,zIndex:240,pointerEvents:"none"}}>
       <button aria-label="Close coach" onClick={onClose}
         style={{position:"absolute",inset:0,border:"none",background:"rgba(0,0,0,.52)",pointerEvents:"auto"}} />
       <div className="mobile-shell" style={{position:"absolute",left:0,right:0,bottom:"calc(82px + env(safe-area-inset-bottom))",padding:"0 14px",pointerEvents:"auto"}}>
@@ -281,7 +281,7 @@ export function CoachFab({ onClick, accent }) {
     const wasMoved = drag.current.moved;
     const last = drag.current.last;
     drag.current = null;
-    if (last) { try { localStorage.setItem("wt_coach_fab_pos", JSON.stringify(last)); } catch {} }
+    if (last) { try { localStorage.setItem("wt_coach_fab_pos", JSON.stringify(last)); } catch { /* intentional */ } }
     if (!wasMoved) onClick();
   };
 

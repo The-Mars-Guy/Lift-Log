@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { DEFAULT_SETTINGS, LIMITATION_OPTIONS, ageTier, normalizeUserProfile, profileFitnessEstimate, profileRisk, cleanAvailableWeights } from "../data.js";
 import { EQUIPMENT_PROFILES, JOINT_AREAS, TRAINING_GOALS } from "../coach.js";
-import { surface, text, status } from "../theme.js";
+import { status } from "../theme.js";
 
 const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -12,7 +12,8 @@ export default function SettingsView({
   setUserProfile,
   resetAllData,
   exportData,
-  importData,
+  previewImport,
+  applyImport,
   repairSavedData,
   clearWorkoutState,
   refreshAppCache,
@@ -24,7 +25,8 @@ export default function SettingsView({
   initialSection,
 }) {
   const [confirming,     setConfirming]     = useState(false);
-  const [importStatus,   setImportStatus]   = useState(null);
+  const [importStatus,   setImportStatus]   = useState(null); // { ok, msg } | null
+  const [importPreview,  setImportPreview]  = useState(null); // snapshot from previewImport | null
   const [recoveryStatus, setRecoveryStatus] = useState(null);
   const [advancedCoach,  setAdvancedCoach]  = useState(false);
   const [backupOpen,     setBackupOpen]     = useState(false);
@@ -41,10 +43,25 @@ export default function SettingsView({
   const handleImport = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const ok = await importData(file);
-    setImportStatus(ok ? "Import complete." : "Import failed. Choose a Gym Forged JSON export.");
     e.target.value = "";
+    const snapshot = await previewImport(file);
+    if (!snapshot) {
+      setImportStatus({ ok: false, msg: "Could not read file. Choose a Gym Forged JSON export." });
+      return;
+    }
+    setImportPreview(snapshot);
   };
+
+  const confirmImport = () => {
+    const ok = applyImport(importPreview);
+    setImportPreview(null);
+    setImportStatus(ok
+      ? { ok: true,  msg: "Import complete. Your data has been restored." }
+      : { ok: false, msg: "Import failed while applying data. Your previous data is unchanged." }
+    );
+  };
+
+  const cancelImport = () => setImportPreview(null);
 
   return (
     <div style={{ color: ui.text }}>
@@ -214,7 +231,35 @@ export default function SettingsView({
           <Action label="Download Last Backup" desc="Download the latest automatic safety snapshot" onClick={() => setRecoveryStatus(exportLastBackup?.() ? "Backup downloaded." : "No backup snapshot found yet.")} ui={ui} />
           <Action label="Import Data" desc="Restore from a Gym Forged JSON export" onClick={() => fileInput.current?.click()} ui={ui} />
           <input ref={fileInput} type="file" accept="application/json,.json" onChange={handleImport} style={{ display:"none" }} />
-          {importStatus && <div style={{ fontSize:13, color:importStatus.startsWith("Import complete") ? accent : "#ff8888", padding:"4px 2px 8px" }}>{importStatus}</div>}
+          {importStatus && <div style={{ fontSize:13, color:importStatus.ok ? accent : "#ff8888", padding:"4px 2px 8px" }}>{importStatus.msg}</div>}
+          {importPreview && (
+            <div style={{ padding:14, background:"#0d0a06", border:`1px solid ${accent}55`, borderRadius:10, marginTop:6 }}>
+              <div style={{ fontSize:12, color:accent, fontWeight:700, marginBottom:8 }}>CONFIRM IMPORT</div>
+              <div style={{ display:"grid", gap:4, marginBottom:10 }}>
+                <InfoRow label="Version" value={importPreview.version > 0 ? `v${importPreview.version}` : "legacy"} accent={accent} />
+                {importPreview.createdAt && <InfoRow label="Created" value={new Date(importPreview.createdAt).toLocaleDateString()} accent={accent} />}
+                <InfoRow label="Sessions" value={importPreview.sessionCount} accent={accent} />
+                <InfoRow label="Goals" value={importPreview.goalsCount} accent={accent} />
+                <InfoRow label="Profile" value={importPreview.hasProfile ? "yes" : "none"} accent={accent} />
+                <InfoRow label="Settings" value={importPreview.hasSettings ? "yes" : "defaults"} accent={accent} />
+              </div>
+              {importPreview.warnings.length > 0 && (
+                <div style={{ marginBottom:10 }}>
+                  {importPreview.warnings.map((w, i) => (
+                    <div key={i} style={{ fontSize:12, color:"#fb923c", lineHeight:1.4, padding:"5px 8px", background:"#fb923c12", borderRadius:6, marginBottom:4 }}>⚠ {w}</div>
+                  ))}
+                </div>
+              )}
+              {importPreview.isEmpty && (
+                <div style={{ fontSize:12, color:"#ff8888", marginBottom:10 }}>This file contains no workout data. Importing will overwrite current data.</div>
+              )}
+              <div style={{ fontSize:11, color:"#888", marginBottom:10 }}>A local backup will be created automatically before import.</div>
+              <div style={{ display:"flex", gap:8 }}>
+                <button onClick={confirmImport} style={{ padding:"9px 16px", background:accent, border:"none", borderRadius:8, color:"#050505", fontSize:12, fontWeight:800, cursor:"pointer" }}>IMPORT</button>
+                <button onClick={cancelImport} style={{ padding:"9px 12px", background:"transparent", border:"none", color:"#888", fontSize:12, cursor:"pointer" }}>Cancel</button>
+              </div>
+            </div>
+          )}
           <Action label="Repair Saved Data" desc="Normalize older or broken local data shapes" onClick={() => { repairSavedData?.(); setRecoveryStatus("Saved data repaired."); }} ui={ui} />
           <Action label="Refresh App Cache" desc="Clear cached app files and reload" onClick={async () => setRecoveryStatus(await refreshAppCache?.() ? "Cache refreshed." : "Cache refresh failed.")} ui={ui} />
           <Action label="Clear Workout State" desc="Clear checked sets and completion flags only" onClick={() => { if (!confirm("Clear checked sets and completed workout flags? History stays saved.")) return; clearWorkoutState?.(); setRecoveryStatus("Workout state cleared."); }} ui={ui} />
@@ -297,12 +342,46 @@ export default function SettingsView({
         </>}
       </Accordion>
 
+      {/* ── SIMPLE MODE ─────────────────────────────────────────────── */}
+      <Accordion title="Simple Mode" ui={ui} defaultOpen={initialSection === "Simple Mode"}>
+        <Toggle label="Simple Mode"
+          desc="Hides advanced coach panels and analysis. Just your exercises, sets, and reps."
+          help="Ideal for days when you want zero friction — tap sets, finish, done. Coach, science notes, and plateau analysis are hidden. Disable anytime."
+          value={settings.simpleMode === true} onChange={v => update("simpleMode", v)} accent={accent} ui={ui} />
+        {settings.simpleMode && (
+          <div style={{ padding:"12px 14px", background:`${accent}10`, border:`1px solid ${accent}33`, borderRadius:10, fontSize:13, color:ui.soft, lineHeight:1.55 }}>
+            Simple Mode is on. The workout screen shows only exercises and set tracking. Smith coach, science notes, and plateau analysis are hidden.
+          </div>
+        )}
+      </Accordion>
+
+      {/* ── ABOUT ──────────────────────────────────────────────────── */}
+      <div style={{ margin:"0 16px 8px", padding:"16px", background:ui.card, borderRadius:12, border:`1px solid ${ui.border}`, boxShadow:ui.shadow }}>
+        <div style={{ fontSize:11, color:ui.muted, fontWeight:700, letterSpacing:".07em", marginBottom:10 }}>ABOUT</div>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+          <span style={{ fontSize:13, color:ui.soft }}>Gym Forged</span>
+          <span style={{ fontSize:12, color:accent, fontFamily:"DM Mono, monospace", fontWeight:600 }}>v{__APP_VERSION__}</span>
+        </div>
+        <div style={{ fontSize:12, color:ui.muted, lineHeight:1.55 }}>
+          🔒 All data stays on this device. Nothing is uploaded, synced, or shared. Use Export to back up or move your data.
+        </div>
+      </div>
+
       <div style={{ height: 32 }} />
     </div>
   );
 }
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
+
+function InfoRow({ label, value, accent }) {
+  return (
+    <div style={{ display:"flex", justifyContent:"space-between", fontSize:12 }}>
+      <span style={{ color:"#888" }}>{label}</span>
+      <span style={{ color: accent, fontWeight:600 }}>{String(value)}</span>
+    </div>
+  );
+}
 
 function makeSettingsTheme(theme, accent) {
   const light = theme === "pop_light";

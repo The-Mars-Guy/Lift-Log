@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { IMG_BASE, WORKOUTS, isoDate, isoWeek, dateStr } from "../data.js";
+import { IMG_BASE, WORKOUTS, isoDate, dateStr } from "../data.js";
 import { remainingSeconds } from "../session.js";
-import { surface, text, status } from "../theme.js";
+import { text, status } from "../theme.js";
 import { Icon } from "./Icons.jsx";
 
 // ── Exercise Animation ───────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent, fullscre
     const bigR = 62;
     const bigCirc = 2 * Math.PI * bigR;
     return (
-      <div style={{
+      <div role="dialog" aria-modal="true" aria-label="Rest timer" style={{
         position:"fixed", inset:0, zIndex:180,
         background:"#050505",
         display:"flex", alignItems:"center", justifyContent:"center", padding:"28px 22px",
@@ -112,11 +112,11 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent, fullscre
                 strokeDashoffset={bigCirc*(1-pct/100)}
                 style={{transition:"stroke-dashoffset .25s linear",filter:`drop-shadow(0 0 12px ${accent}e6)`}}/>
             </svg>
-            <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:72,color:accent,letterSpacing:".04em"}}>{remaining}</div>
+            <div aria-live="polite" aria-atomic="true" style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:72,color:accent,letterSpacing:".04em"}}>{remaining}</div>
           </div>
           <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:"#f5f5f5",letterSpacing:".06em",lineHeight:1.05,marginBottom:10}}>{label}</div>
           <div style={{fontSize:13,color:text.tertiary,lineHeight:1.5,marginBottom:30}}>The forge cools between strikes. Breathe, then return harder.</div>
-          <button onClick={onSkip}
+          <button onClick={onSkip} aria-label="Skip rest and continue"
             style={{width:"100%",padding:"18px",background:"transparent",border:`1.5px solid ${accent}77`,borderRadius:13,color:accent,fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:".12em"}}>
             PUSH THROUGH
           </button>
@@ -125,7 +125,7 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent, fullscre
     );
   }
   return (
-    <div style={{
+    <div role="status" aria-label={`Rest timer: ${remaining} seconds remaining`} style={{
       position:"fixed", bottom:64, left:0, right:0, zIndex:100,
       background:"linear-gradient(180deg,#0f0f0f,#050505)",
       borderTop:`1px solid ${accent}66`,
@@ -148,7 +148,7 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent, fullscre
           <div style={{ fontSize:11, color:"#aaa", marginBottom:3 }}>COOLING · {remaining}s</div>
           <div style={{ fontSize:14, color:"#f0f0f0", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{label}</div>
         </div>
-        <button onClick={onSkip}
+        <button onClick={onSkip} aria-label="Skip rest and continue"
           style={{ background:"transparent", border:`1.5px solid ${accent}66`, color:accent, padding:"10px 18px", borderRadius:8, fontSize:12, letterSpacing:"0.12em", flexShrink:0 }}>
           PUSH
         </button>
@@ -161,7 +161,7 @@ export function RestTimer({ seconds, label, onSkip, onComplete, accent, fullscre
 export function Toast({ icon="target", title, msg, accent, onClose, duration=4000 }) {
   useEffect(() => { const id=setTimeout(onClose,duration); return ()=>clearTimeout(id); }, [onClose,duration]);
   return (
-    <div style={{ position:"fixed",top:16,left:16,right:16,zIndex:200, animation:"slideDown .3s ease-out", pointerEvents:"none" }}>
+    <div role="alert" aria-live="assertive" style={{ position:"fixed",top:16,left:16,right:16,zIndex:200, animation:"slideDown .3s ease-out", pointerEvents:"none" }}>
       <div style={{
         width:"100%", maxWidth:488, margin:"0 auto",
         background:"#0c0c0c", border:`1.5px solid ${accent}`,
@@ -200,19 +200,6 @@ function IconStats({ color, size=22 }) {
     </svg>
   );
 }
-function IconCalendar({ color, size=22 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round">
-      <rect x="3" y="4" width="18" height="17" rx="2"/>
-      <line x1="3" y1="9" x2="21" y2="9"/>
-      <line x1="8" y1="2" x2="8" y2="6"/>
-      <line x1="16" y1="2" x2="16" y2="6"/>
-      <circle cx="8.5" cy="14" r="1.3" fill={color} stroke="none"/>
-      <circle cx="12" cy="14" r="1.3" fill={color} stroke="none"/>
-      <circle cx="15.5" cy="14" r="1.3" fill={color} stroke="none"/>
-    </svg>
-  );
-}
 function IconMuscles({ color, size=22 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -238,29 +225,6 @@ function IconRoutine({ color, size=22 }) {
     </svg>
   );
 }
-function IconGear({ color, size=22 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round">
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-    </svg>
-  );
-}
-
-function IconGoals({ color, size=22 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9"/>
-      <circle cx="12" cy="12" r="5"/>
-      <circle cx="12" cy="12" r="1.5" fill={color} stroke="none"/>
-      <line x1="12" y1="2" x2="12" y2="4.5"/>
-      <line x1="12" y1="19.5" x2="12" y2="22"/>
-      <line x1="2" y1="12" x2="4.5" y2="12"/>
-      <line x1="19.5" y1="12" x2="22" y2="12"/>
-    </svg>
-  );
-}
-
 function IconPerson({ color, size=22 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -300,6 +264,8 @@ export function BottomNav({ active, onSelect, accent, level, theme="dark" }) {
           const textColor = isActive ? accent : (light ? "#718096" : "#56575f");
           return (
             <button key={id} onClick={() => onSelect(id)}
+              aria-current={isActive ? "page" : undefined}
+              aria-label={label}
               style={{
                 flex:1, background:"transparent", border:"none",
                 display:"flex", flexDirection:"column", alignItems:"center", gap:4,

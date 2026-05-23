@@ -1,3 +1,4 @@
+dist/
 node_modules/
 .env
 .env.*
@@ -11,3 +12,16 @@ Thumbs.db
 .claude/*.local.json
 .claude/launch.json
 scripts/exercises_raw.json
+
+# Android — Capacitor-generated build artifacts (keep project files, ignore build output)
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+android/app/release/
+
+# Release signing (never commit keystore or passwords)
+*.keystore
+*.jks
+keystore.properties
+android/keystore.properties

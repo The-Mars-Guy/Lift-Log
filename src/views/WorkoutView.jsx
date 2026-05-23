@@ -1,16 +1,18 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
   WORKOUTS, SCHEDULE, DAYS, MUSCLE_LABELS, DEFAULT_WEIGHTS,
-  EXERCISE_GUIDES, todayName, dateStr, calcDynamicTarget, assessmentTargetForProfile,
-  getExerciseHistory, XP_VALUES, getLevel, customRoutineWorkout,
-  ageTier, ageAdjustedRestSeconds, EXERCISE_LIBRARY, exerciseFolder,
-  cleanAvailableWeights, snapWeight, forgeWorkoutName, forgeWorkoutColor, nextForgeWorkoutName,
+  EXERCISE_GUIDES, dateStr, calcDynamicTarget, assessmentTargetForProfile,
+  getExerciseHistory, XP_VALUES, customRoutineWorkout,
+  ageTier, EXERCISE_LIBRARY, exerciseFolder,
+  forgeWorkoutName, forgeWorkoutColor, nextForgeWorkoutName,
 } from "../data.js";
-import { useSessionTimer, fmtDuration } from "../hooks.js";
+import { fmtDuration } from "../hooks.js";
+import { useWorkoutSession } from "./workout/useWorkoutSession.js";
+import { useWorkoutProgression } from "./workout/useWorkoutProgression.js";
 import { ExerciseAnimation, RestTimer, Toast } from "../components/shared.jsx";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
 import { completionKey, defaultWorkoutDay, scheduledDate, logKey as makeLogKey } from "../session.js";
-import { bestEstimated1RM, buildCoachMemory, buildCoachPlan, buildSessionIntent, coachSetCount, coachTargetReps, DEFAULT_READINESS, evaluateProgression, explainExerciseDecision, plateauFixes, sciencePrescription, summarizeWorkout } from "../coach.js";
+import { bestEstimated1RM, evaluateProgression, explainExerciseDecision, plateauFixes, summarizeWorkout } from "../coach.js";
 import { Confetti, XpFloat } from "./workout/Effects.jsx";
 import { FirstRunSetup, AssessmentFlow, ASSESSMENT_EXERCISES } from "./workout/Assessment.jsx";
 import PostWorkoutFeedback from "./workout/PostWorkoutFeedback.jsx";
@@ -19,7 +21,7 @@ import SetLogger from "./workout/SetLogger.jsx";
 import LogbookPanel from "./workout/LogbookPanel.jsx";
 import { CoachWhyPanel, ExerciseGuide, NoteField, PlateauFixPanel, RestReady, SetFeelingButtons, SLabel, SwapLibrary, ThisWeek, WeeklyMusclePlan, WorkoutSummary } from "./workout/WorkoutPanels.jsx";
 import { Icon } from "../components/Icons.jsx";
-import { surface, text, status, T } from "../theme.js";
+import { surface, text, status } from "../theme.js";
 import { Disp, Caps, Bar, Card, Sparkline } from "../components/Primitives.jsx";
 
 function routineNeedsFullLibrary(routine) {
@@ -94,7 +96,7 @@ function FocusWorkoutMode({
   }, [tempoOn, tempoCycle, playSound]);
 
   return (
-    <div style={{position:"fixed",inset:0,zIndex:150,background:surface.bgSolid,overflowY:"auto",padding:"calc(10px + env(safe-area-inset-top)) 16px 18px"}}>
+    <div role="dialog" aria-modal="true" aria-label="Focus workout mode" style={{position:"fixed",inset:0,zIndex:150,background:surface.bgSolid,overflowY:"auto",padding:"calc(10px + env(safe-area-inset-top)) 16px 18px"}}>
       <div className="mobile-shell">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12}}>
           <button onClick={onExit} style={{background:"transparent",border:"none",color:text.faint,padding:"8px 12px",fontSize:12}}>Pause</button>
@@ -160,7 +162,7 @@ function FocusWorkoutMode({
           <div style={{marginTop:10,padding:"10px 12px",background:surface.bg0,border:`1px solid ${accent}`,borderRadius:11,boxShadow:`0 0 22px ${accent}1e`}}>
             <div style={{fontSize:10,color:accent,fontWeight:600,marginBottom:7}}>Tempo Beat · {tempoPhase?.label || "Beat"} {tempoPosition + 1}/{tempoCycle}</div>
             <div style={{display:"grid",gridTemplateColumns:`repeat(${tempoPattern.length},1fr)`,gap:7}}>
-              {tempoPattern.map((part, idx)=>(
+              {tempoPattern.map((part)=>(
                 <div key={part.label} style={{padding:"8px 6px",borderRadius:8,border:`1px solid ${tempoPhase?.label===part.label?accent:"rgba(255,140,50,.10)"}`,background:tempoPhase?.label===part.label?`${accent}24`:surface.bg1,textAlign:"center"}}>
                   <div style={{fontSize:10,color:tempoPhase?.label===part.label?accent:text.muted,fontWeight:600}}>{part.label}</div>
                   <div style={{fontSize:15,color:text.primary,fontFamily:"DM Mono,monospace",marginTop:2}}>{part.seconds}s</div>
@@ -238,7 +240,7 @@ export default function WorkoutView({
   sets, setSets, history, setHistory, completed, setCompleted,
   progression, setProgression, settings,
   setSettings,
-  exConfig, setExConfig, xp, addXp, level,
+  exConfig, setExConfig, addXp, level,
   checkIns, setCheckIns,
   playSound, vibrate, setActiveView, theme="dark",
   assessmentDone, setAssessmentDone,
@@ -248,6 +250,7 @@ export default function WorkoutView({
   goals = [],
   bodyMetrics = [],
 }) {
+  const simpleMode = settings.simpleMode === true;
   const [activeTab,    setActiveTab]   = useState(()=>defaultWorkoutDay());
   const [expanded,     setExpanded]    = useState(null);
   const [restState,    setRestState]   = useState(null);
@@ -257,16 +260,10 @@ export default function WorkoutView({
   const [bounceSets,   setBounceSets]  = useState({});
   const [xpVisible,    setXpVisible]   = useState(false);
   const [xpAmount,     setXpAmount]    = useState(0);
-  const [sessionLogs,  setSessionLogs] = useState({});
-  const [xpAwards,     setXpAwards]    = useState({});
   const [showFeedback, setShowFeedback]= useState(false);
-  const [focusMode,    setFocusMode]   = useState(false);
   const [workoutSummary, setWorkoutSummary] = useState(null);
   const [undoSet,      setUndoSet]      = useState(null);
-  const [substitutions, setSubstitutions] = useState({});
   const [coachOpen,    setCoachOpen]    = useState(false);
-  const [workoutNote,  setWorkoutNote]  = useState("");
-  const [exerciseOrder, setExerciseOrder] = useState([]);
   const [benchmarkDismissed, setBenchmarkDismissed] = useState(false);
   const [logbookMode, setLogbookMode] = useState(false);
   const [coachAlerts, setCoachAlerts] = useState([]);
@@ -291,6 +288,20 @@ export default function WorkoutView({
   const effectiveSchedule = customRoutine?.enabled ? customRoutine.schedule : SCHEDULE;
   const forgeName = forgeWorkoutName(activeTab, effectiveSchedule);
   const accent    = forgeWorkoutColor(activeTab, effectiveSchedule);
+
+  // Derive session identity before the hook (hook needs these; workoutPlan needs hook output)
+  const sessionKey  = completionKey(activeTab);
+  const isCompleted = !!completed[sessionKey];
+
+  const {
+    sessionLogs, setSessionLogs, xpAwards, setXpAwards,
+    workoutNote, setWorkoutNote, focusMode, setFocusMode,
+    substitutions, setSubstitutions, exerciseOrder, setExerciseOrder,
+    activeSession, setActiveSession,
+    pendingRecovery, continueRecovery, discardRecovery,
+    sessionHydrated, skipSessionPersist,
+  } = useWorkoutSession({ sessionKey, isCompleted });
+
   const workoutPlan = useMemo(() => {
     const applySubstitution = (ex) => {
       const sub = substitutions[ex.name];
@@ -312,11 +323,25 @@ export default function WorkoutView({
     return { ...workout, exercises: ordered };
   }, [workout, substitutions, exerciseOrder]);
 
-  const sessionKey = completionKey(activeTab);
+  const {
+    effectiveReadiness, effectiveRest,
+    coachPlan, coachMemory,
+    exerciseKey, exerciseIdFor, configKey, getConfig,
+    getScience, getTargetReps, getSetCount, getWeight, getNextW, getMaxTest,
+    ownedWeights, stepWeight,
+    exDone, totalSets, doneSets, allDone,
+    sessionRunning, sessionElapsed,
+    estimatedRemaining,
+    getPreviousPerformance,
+    streak, muscleReadiness, sessionIntent,
+  } = useWorkoutProgression({
+    workoutPlan, exConfig, sets, history, checkIns, settings, progression,
+    userProfile, goals, bodyMetrics, sessionKey, dbLoading, workout, isCompleted,
+  });
+
   const logKey  = (i,j) => makeLogKey(sessionKey,i,j);
   const setKey  = (i,j) => `${sessionKey}_${i}_${j}`;
   const setDone = (i,j) => !!sets[setKey(i,j)];
-  const isCompleted = !!completed[sessionKey];
   const completedSession = useMemo(() => {
     const scheduled = scheduledDate(activeTab);
     const scheduledTime = scheduled.getTime();
@@ -342,139 +367,33 @@ export default function WorkoutView({
   },[activeTab]); // eslint-disable-line
 
   useEffect(() => {
-    setSubstitutions({});
-    setExerciseOrder([]);
-  }, [sessionKey]);
-
-  const readinessEntry = useMemo(
-    () => (checkIns||[]).find(ci=>ci.kind==="readiness"&&ci.sessionKey===sessionKey),
-    [checkIns, sessionKey]
-  );
-  const readiness = readinessEntry?.readiness;
-  const effectiveReadiness = readiness || DEFAULT_READINESS;
-  const effectiveRest = useMemo(
-    () => ageAdjustedRestSeconds(userProfile, settings.restSeconds || 60),
-    [userProfile, settings.restSeconds]
-  );
-  const coachPlan = useMemo(
-    () => buildCoachPlan({workout,history,checkIns,exConfig,settings,readiness:effectiveReadiness,userProfile,goals,bodyMetrics}),
-    [workout, history, checkIns, exConfig, settings, effectiveReadiness, userProfile, goals, bodyMetrics]
-  );
-  const coachMemory = useMemo(
-    () => buildCoachMemory({ history, checkIns, exercises:workout.exercises, exConfig, userProfile, goals, bodyMetrics }),
-    [history, checkIns, exConfig, workout, userProfile, goals, bodyMetrics]
-  );
-  const exerciseKey = (exOrName) => typeof exOrName === "string" ? exOrName : (exOrName.configName || exOrName.name);
-  const exerciseIdFor = (ex) => ex.id || exerciseKey(ex).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
-  const getBaseTargetReps = (ex) => exConfig[exerciseKey(ex)]?.targetReps ?? (ex.baseReps + (progression[exerciseKey(ex)]?.repBonus||0));
-  const getScience = (ex) => sciencePrescription({ exercise:ex, history, checkIns, settings, readiness:effectiveReadiness, baseTarget:getBaseTargetReps(ex), exConfig });
-  const getTargetReps = (ex) => {
-    const science = getScience(ex);
-    return science.enabled ? science.targetReps : coachTargetReps(getBaseTargetReps(ex), effectiveReadiness);
-  };
-  const getSetCount = (ex) => {
-    const science = getScience(ex);
-    return science.enabled ? science.sets : coachSetCount(ex.sets, effectiveReadiness);
-  };
-  const getWeight     = (n)  => {
-    const configured = exConfig[exerciseKey(n)]?.weight ?? DEFAULT_WEIGHTS[exerciseKey(n)] ?? settings.dumbbellWeight;
-    if (typeof n !== "string") {
-      const science = getScience(n);
-      if (science.suggestedWeight && science.suggestedWeight > 0) return science.suggestedWeight;
+    if (!sessionHydrated.current) return;
+    if (skipSessionPersist.current) {
+      skipSessionPersist.current = false;
+      return;
     }
-    return configured;
-  };
-  const getNextW      = (n)  => exConfig[exerciseKey(n)]?.nextWeight;
-  // Owned fixed-dumbbell weights (only snap when profile is fixed + list non-empty)
-  const ownedWeights = (settings.equipmentProfile || "fixed_dumbbells") === "fixed_dumbbells"
-    ? cleanAvailableWeights(settings.availableWeights)
-    : [];
-  const stepWeight = (current, dir) => {
-    const cur = Math.max(Number(current) || 0, 0);
-    if (ownedWeights.length) return snapWeight(cur, ownedWeights, dir > 0 ? "up" : "down");
-    const inc = settings.weightIncrement || 1;
-    return Math.max(cur + dir * inc, 0);
-  };
-  const getMaxTest    = (n)  => exConfig[exerciseKey(n)]?.maxRepsTest;
-  const exDone  = (i)   => Array.from({length:getSetCount(workoutPlan.exercises[i])},(_,j)=>setDone(i,j)).every(Boolean);
-  const totalSets = workoutPlan.exercises.reduce((a,e)=>a+getSetCount(e),0);
-  const doneSets  = workoutPlan.exercises.reduce((a,ex,i)=>a+Array.from({length:getSetCount(ex)},(_,j)=>setDone(i,j)?1:0).reduce((x,y)=>x+y,0),0);
-  const allDone   = !dbLoading && doneSets===totalSets;
-  const sessionRunning = doneSets>0&&!isCompleted;
-  const sessionElapsed = useSessionTimer(sessionRunning);
-  const remainingSets = Math.max(0, totalSets - doneSets);
-  const estimatedRemaining = remainingSets
-    ? (remainingSets * 35) + (Math.max(0, remainingSets - 1) * effectiveRest)
-    : 0;
-
-  const getPreviousPerformance = (ex) => {
-    const key = exerciseKey(ex);
-    const session = [...history].sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))
-      .find(h => h.exercises?.some(item => (item.originalName || item.substitutedFor || item.name) === key || item.name === key));
-    const logged = session?.exercises?.find(item => (item.originalName || item.substitutedFor || item.name) === key || item.name === key);
-    if (!logged?.setLog?.length) return null;
-    const totalReps = logged.setLog.reduce((s,l)=>s+(l.reps||0),0);
-    const best = [...logged.setLog].sort((a,b)=>(b.reps||0)-(a.reps||0))[0];
-    return { sets: logged.setLog.length, totalReps, bestReps: best?.reps || 0, bestWeight: best?.weight || 0, date: session.date };
-  };
-
-  const progressionPreview = useMemo(() => {
-    return workoutPlan.exercises.flatMap(ex => {
-      const science = getScience(ex);
-      const prev = getPreviousPerformance(ex);
-      const items = [];
-      const curW = getWeight(ex);
-      const nextW = getNextW(ex);
-      if (nextW && nextW > curW) items.push({ icon:"↑", text:`${ex.name}: try ${nextW}lbs if warm-ups feel clean.` });
-      if (science.variation?.level > 1) items.push({ icon:"↗", text:`${ex.name}: use ${science.variation.name} to make fixed weight harder.` });
-      if (science.tempo) items.push({ icon:"T", text:`${ex.name}: tempo ${science.tempo.code} today.` });
-      if (prev) items.push({ icon:"=", text:`${ex.name}: last time ${prev.totalReps} reps total; match or beat cleanly.` });
-      return items.slice(0,1);
-    });
-  }, [workoutPlan, history, exConfig, progression, settings, checkIns, effectiveReadiness]); // eslint-disable-line
-
-  const streak = useMemo(() => {
-    if(!history.length) return 0;
-    const s=[...history].sort((a,b)=>b.timestamp-a.timestamp);
-    let r=1; for(let i=1;i<s.length;i++){if((s[i-1].timestamp-s[i].timestamp)/86400000<=4.5)r++;else break;}
-    return r;
-  }, [history]);
-
-  const muscleReadiness = useMemo(() => {
-    const muscles = [...new Set(workoutPlan.exercises.flatMap(ex => ex.primary || []))];
-    if (!muscles.length) return [];
-    const soreness = {};
-    [...checkIns].filter(ci => ci.kind === "muscle_soreness" && ci.muscle && ci.level)
-      .sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))
-      .forEach(ci => { if (!soreness[ci.muscle]) soreness[ci.muscle] = ci.level; });
-    const now = Date.now();
-    return muscles.slice(0,6).map(m => {
-      const last = [...history].sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))
-        .find(h => h.exercises?.some(ex => (ex.primary||[]).includes(m) || (ex.secondary||[]).includes(m)));
-      const hoursSince = last ? (now - (last.timestamp||0)) / 3600000 : 999;
-      const sore = soreness[m];
-      const state = sore === "sore" ? "sore" : (sore === "mild" || hoursSince < 36) ? "recovering" : "ready";
-      return { muscle: m, state };
-    });
-  }, [workoutPlan, history, checkIns]);
-
-  const sessionIntent = useMemo(() => {
-    const labeled = muscleReadiness.map(m => ({ ...m, label: MUSCLE_LABELS[m.muscle] || m.muscle }));
-    return buildSessionIntent({ readiness: effectiveReadiness, history, checkIns, muscleReadiness: labeled });
-  }, [effectiveReadiness, history, checkIns, muscleReadiness]); // eslint-disable-line
-
-  const saveReadiness = (nextReadiness) => {
-    const entry = {
-      kind:"readiness",
-      sessionKey,
-      day:activeTab,
-      workout:wKey,
-      date:dateStr(scheduledDate(activeTab)),
-      timestamp:Date.now(),
-      readiness:nextReadiness,
-    };
-    setCheckIns(p=>[...(p||[]).filter(ci=>!(ci.kind==="readiness"&&ci.sessionKey===sessionKey)),entry]);
-  };
+    if (isCompleted) {
+      if (activeSession?.sessionKey === sessionKey) setActiveSession(null);
+      return;
+    }
+    if (doneSets > 0) {
+      setActiveSession({
+        version: 1,
+        sessionKey,
+        day: activeTab,
+        workout: wKey,
+        updatedAt: Date.now(),
+        sessionLogs,
+        xpAwards,
+        workoutNote,
+        focusMode,
+        substitutions,
+        exerciseOrder,
+      });
+    } else if (activeSession?.sessionKey === sessionKey) {
+      setActiveSession(null);
+    }
+  }, [sessionKey, activeTab, wKey, doneSets, isCompleted, sessionLogs, xpAwards, workoutNote, focusMode, substitutions, exerciseOrder]); // eslint-disable-line
 
   const logCoachEvent = (entry) => {
     setCheckIns(p => [...(p || []), {
@@ -508,7 +427,7 @@ export default function WorkoutView({
       : 4500;
     const id = setTimeout(() => setUndoSet(null), duration);
     return () => clearTimeout(id);
-  }, [undoSet, restState?.restId, restState?.done, restState?.plannedSeconds, effectiveRest]);
+  }, [undoSet, restState?.restId, restState?.done, restState?.plannedSeconds, effectiveRest]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const spawnXp = (amount) => {
     addXp(amount);
@@ -679,10 +598,11 @@ export default function WorkoutView({
     const prs=[];
     exSnap.forEach((exS,i)=>{
       const ex=workoutPlan.exercises[i];
-      const key=exerciseKey(ex);
+      const key=configKey(ex);
       const curW=getWeight(ex);
-      const rec=evaluateProgression({setLog:exS.setLog,targetReps:getTargetReps(ex),currentWeight:curW,previous:exConfig[key],increment:settings.weightIncrement||2.5,style:settings.coachStyle||ageTier(userProfile).progressStyle,autoDeload:settings.autoDeload!==false,availableWeights:ownedWeights});
-      const curMaxW=exConfig[key]?.maxWeight||0;
+      const prevConfig=getConfig(ex);
+      const rec=evaluateProgression({setLog:exS.setLog,targetReps:getTargetReps(ex),currentWeight:curW,previous:prevConfig,increment:settings.weightIncrement||2.5,style:settings.coachStyle||ageTier(userProfile).progressStyle,autoDeload:settings.autoDeload!==false,availableWeights:ownedWeights});
+      const curMaxW=prevConfig?.maxWeight||0;
       const newMaxW=Math.max(...exS.setLog.map(l=>l.weight));
       if(newMaxW>curMaxW) prs.push({name:ex.name,val:newMaxW});
       newConfig[key]={...newConfig[key],weight:rec.action==="deload"?rec.nextWeight:curW,nextWeight:rec.action==="increase"?rec.nextWeight:undefined,maxWeight:Math.max(newMaxW,curMaxW),cleanSessions:rec.cleanSessions,missSessions:rec.missSessions,lastRec:rec.action,lastRecNote:rec.note};
@@ -713,6 +633,7 @@ export default function WorkoutView({
     }));
     setHistory(p=>[{day:activeTab,workout:wKey,date:dateStr(scheduledDate(activeTab)),timestamp:scheduledDate(activeTab).getTime(),duration:sessionElapsed,exercises:exSnap,readiness:effectiveReadiness,note:workoutNote.trim()||undefined,warmup:"Easy movement + light first set",cooldown:"Slow breathing + gentle mobility"} ,...p].slice(0,120));
     setCompleted(p=>({...p,[sessionKey]:dateStr(scheduledDate(activeTab))}));
+    setActiveSession(null);
     setDebrief(buildDebrief(firedAlertTypes.current));
     playSound("workoutDone"); vibrate([100,60,100]);
     setConfetti(true);
@@ -734,7 +655,7 @@ export default function WorkoutView({
     workoutPlan.exercises.forEach(ex=>{
       const fb=feedbackMap[ex.name];
       if(!fb&&!workoutAdj) return;
-      const key=exerciseKey(ex);
+      const key=configKey(ex);
       const cur=newConfig[key]||{};
       const maxTest=cur.maxRepsTest;
       const baseFeedbackTarget = fb ? calcDynamicTarget(getTargetReps(ex),fb,maxTest) : getTargetReps(ex);
@@ -756,7 +677,7 @@ export default function WorkoutView({
 
   const assessmentExercises = workout.exercises?.length ? workout.exercises : ASSESSMENT_EXERCISES;
   const getAssessmentResults = () => Object.fromEntries(assessmentExercises.map(ex => {
-    const config = exConfig[ex.name] || {};
+    const config = getConfig(ex);
     const fromTarget = config.targetReps ? Math.max(1, Math.round(config.targetReps / 0.65)) : ex.baseReps;
     return [ex.name, config.maxRepsTest || fromTarget];
   }));
@@ -766,11 +687,12 @@ export default function WorkoutView({
     assessmentExercises.forEach(ex=>{
       const maxReps=results?.[ex.name];
       const target=maxReps ? assessmentTargetForProfile(maxReps, userProfile) : ex.baseReps;
-      newConfig[ex.name]={
-        ...newConfig[ex.name],
+      const key=configKey(ex);
+      newConfig[key]={
+        ...newConfig[key],
         maxRepsTest:maxReps||null,
         targetReps:target,
-        weight:newConfig[ex.name]?.weight ?? DEFAULT_WEIGHTS[ex.name] ?? settings.dumbbellWeight,
+        weight:newConfig[key]?.weight ?? DEFAULT_WEIGHTS[ex.name] ?? settings.dumbbellWeight,
       };
     });
     setExConfig(newConfig);
@@ -879,6 +801,21 @@ export default function WorkoutView({
         })}
       </div>
 
+      {/* RECOVERY BANNER */}
+      {pendingRecovery && (
+        <div style={{margin:"8px 16px",padding:"13px 14px",background:`${accent}14`,border:`1px solid ${accent}55`,borderRadius:11,display:"flex",alignItems:"flex-start",gap:12}}>
+          <span style={{fontSize:18,flexShrink:0}}>↺</span>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:13,color:accent,fontWeight:800,marginBottom:2}}>Recovered your in-progress {pendingRecovery.day} workout</div>
+            <div style={{fontSize:12,color:text.tertiary,lineHeight:1.4}}>{Object.keys(pendingRecovery.sessionLogs||{}).length} set{Object.keys(pendingRecovery.sessionLogs||{}).length!==1?"s":""} logged · saved {new Date(pendingRecovery.updatedAt||0).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</div>
+            <div style={{display:"flex",gap:8,marginTop:10}}>
+              <button onClick={continueRecovery} style={{padding:"8px 14px",background:accent,border:"none",borderRadius:8,color:"#050505",fontSize:12,fontWeight:800,cursor:"pointer",letterSpacing:".06em"}}>CONTINUE</button>
+              <button onClick={discardRecovery} style={{padding:"8px 10px",background:"transparent",border:"none",color:text.faint,fontSize:12,cursor:"pointer"}}>Discard</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* WORKOUT META */}
       <div style={{padding:"22px 16px 18px",borderBottom:`1px solid rgba(255,140,50,.07)`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -893,7 +830,7 @@ export default function WorkoutView({
               </div>
             )}
           </div>
-          <button onClick={()=>{if(!confirm("Reset today's sets?"))return;const n={...sets};workoutPlan.exercises.forEach((ex,i)=>Array.from({length:getSetCount(ex)},(_,j)=>{delete n[setKey(i,j)];}));setSets(n);setCompleted(p=>{const n2={...p};delete n2[sessionKey];return n2;});setExpanded(null);setRestState(null);setLoggerState(null);setSessionLogs({});setXpAwards({});setFocusMode(false);setWorkoutSummary(null);setUndoSet(null);}}
+          <button onClick={()=>{if(!confirm("Reset today's sets?"))return;const n={...sets};workoutPlan.exercises.forEach((ex,i)=>Array.from({length:getSetCount(ex)},(_,j)=>{delete n[setKey(i,j)];}));setSets(n);setCompleted(p=>{const n2={...p};delete n2[sessionKey];return n2;});setExpanded(null);setRestState(null);setLoggerState(null);setSessionLogs({});setXpAwards({});setActiveSession(null);setFocusMode(false);setWorkoutSummary(null);setUndoSet(null);}}
             style={{background:"none",border:"none",color:text.ghost,fontSize:12,padding:"8px 10px"}}>Reset</button>
         </div>
         <div style={{marginTop:14}}>
@@ -951,8 +888,8 @@ export default function WorkoutView({
         {workoutPlan.exercises.map((ex,i)=>{
           const open=expanded===i;
           const exKey=exerciseKey(ex);
-          const reps=getTargetReps(ex); const bonus=progression[exKey]?.repBonus||0;
-          const atMax=bonus>=settings.maxRepBonus; const done=exDone(i);
+          const reps=getTargetReps(ex);
+          const done=exDone(i);
           const curW=getWeight(ex); const nextW=getNextW(ex);
           const hasNxtW=nextW&&nextW>curW;
           const maxTest=getMaxTest(ex);
@@ -967,7 +904,7 @@ export default function WorkoutView({
             exConfig,
             targetReps:reps,
             science,
-            progressionRec:exConfig[exKey],
+            progressionRec:getConfig(ex),
             settings,
             checkIns,
           });
@@ -1000,7 +937,7 @@ export default function WorkoutView({
                     const isDone=setDone(i,j); const bk=logKey(i,j); const logged=sessionLogs[logKey(i,j)];
                     return(
                       <button key={j} onClick={()=>toggleSet(i,j)}
-                        style={{width:48,height:48,borderRadius:11,border:`1.5px solid ${isDone?accent:"rgba(255,140,50,.18)"}`,background:isDone?`${accent}22`:surface.bg3,color:isDone?accent:text.muted,fontSize:isDone&&logged?11:14,fontWeight:500,transition:!!bounceSets[bk]?"none":"all .18s",boxShadow:isDone?`0 0 14px ${accent}5c, inset 0 0 10px ${accent}1e`:"none",animation:!!bounceSets[bk]?"setBounce .4s ease-out":"none",lineHeight:1.1}}>
+                        style={{width:48,height:48,borderRadius:11,border:`1.5px solid ${isDone?accent:"rgba(255,140,50,.18)"}`,background:isDone?`${accent}22`:surface.bg3,color:isDone?accent:text.muted,fontSize:isDone&&logged?11:14,fontWeight:500,transition:bounceSets[bk]?"none":"all .18s",boxShadow:isDone?`0 0 14px ${accent}5c, inset 0 0 10px ${accent}1e`:"none",animation:bounceSets[bk]?"setBounce .4s ease-out":"none",lineHeight:1.1}}>
                         {isDone?(logged?`${logged.reps}r`:"✓"):j+1}
                       </button>
                     );
@@ -1053,8 +990,8 @@ export default function WorkoutView({
                   </div>
 
                   <ExerciseGuide guide={guide} accent={accent}/>
-                  <CoachWhyPanel lines={why} accent={accent}/>
-                  <PlateauFixPanel fixes={fixes} accent={accent}/>
+                  {!simpleMode&&<CoachWhyPanel lines={why} accent={accent}/>}
+                  {!simpleMode&&<PlateauFixPanel fixes={fixes} accent={accent}/>}
                   <SwapLibrary
                     exerciseName={exKey}
                     activeName={substitutions[exKey]?.name}
@@ -1063,7 +1000,7 @@ export default function WorkoutView({
                     onRemove={removeSubstitution}
                   />
 
-                  {science.enabled&&(
+                  {!simpleMode&&science.enabled&&(
                     <div style={{marginTop:20}}>
                       <SLabel small>Science coach</SLabel>
                       <div style={{fontSize:14,color:text.secondary,lineHeight:1.6}}>{science.note}</div>
@@ -1094,10 +1031,10 @@ export default function WorkoutView({
                       {hasNxtW&&<span style={{fontSize:12,color:accent,fontWeight:500}}>→ Try {nextW}lbs</span>}
                     </div>
                     <div style={{display:"flex",alignItems:"center",background:surface.bg3,borderRadius:12,overflow:"hidden"}}>
-                      <button onClick={()=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:stepWeight(p[exKey]?.weight||curW,-1)}}))} style={{width:52,height:52,background:"transparent",border:"none",color:text.secondary,fontSize:24}}>−</button>
-                      <input value={curW} onChange={e=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:Math.max(Number(e.target.value)||0,0)}}))} type="number" inputMode="decimal" min="0" step="any" aria-label={`${ex.name} working weight`}
+                      <button onClick={()=>setExConfig(p=>({...p,[configKey(ex)]:{...p[configKey(ex)],weight:stepWeight(p[configKey(ex)]?.weight||curW,-1)}}))} style={{width:52,height:52,background:"transparent",border:"none",color:text.secondary,fontSize:24}}>−</button>
+                      <input value={curW} onChange={e=>setExConfig(p=>({...p,[configKey(ex)]:{...p[configKey(ex)],weight:Math.max(Number(e.target.value)||0,0)}}))} type="number" inputMode="decimal" min="0" step="any" aria-label={`${ex.name} working weight`}
                         style={{flex:1,minWidth:0,textAlign:"center",fontSize:20,fontWeight:500,color:text.primary,background:"transparent",border:"none",outline:"none",fontFamily:"DM Mono, monospace"}}/>
-                      <button onClick={()=>setExConfig(p=>({...p,[exKey]:{...p[exKey],weight:stepWeight(p[exKey]?.weight||curW,1)}}))} style={{width:52,height:52,background:"transparent",border:"none",color:text.secondary,fontSize:24}}>+</button>
+                      <button onClick={()=>setExConfig(p=>({...p,[configKey(ex)]:{...p[configKey(ex)],weight:stepWeight(p[configKey(ex)]?.weight||curW,1)}}))} style={{width:52,height:52,background:"transparent",border:"none",color:text.secondary,fontSize:24}}>+</button>
                     </div>
                     <div style={{fontSize:11,color:text.muted,lineHeight:1.45,marginTop:8}}>{ownedWeights.length ? `Snapping to your dumbbells: ${ownedWeights.join(", ")} lbs. Type any number to override.` : "Type any number, including 5, 7.5, 12, or 15. The +/- buttons use your progression increment."}</div>
                   </div>
@@ -1222,7 +1159,7 @@ export default function WorkoutView({
           playSound("restEnd");vibrate([200,60,200]);focusMode?setRestState(p=>p?{...p,done:true}:null):setRestState(null);
         }}/>}
       {showFeedback&&<PostWorkoutFeedback exercises={workoutPlan.exercises} sessionLogs={sessionLogs} getLogKey={logKey} exConfig={exConfig} history={history} onComplete={handleFeedback} accent={accent}/>}
-      {coachAlerts.length > 0 && (
+      {!simpleMode&&coachAlerts.length > 0 && (
         <div style={{position:"fixed",bottom:"calc(88px + env(safe-area-inset-bottom))",left:16,right:16,zIndex:270,pointerEvents:"none"}}>
           <div className="mobile-shell" style={{background:surface.bg1,border:`1px solid ${accent}55`,borderRadius:12,padding:"11px 14px",boxShadow:`0 0 24px ${accent}1e`,animation:"slideDown .2s ease-out"}}>
             <div style={{fontSize:10,color:accent,fontWeight:600,marginBottom:4}}>Smith</div>
@@ -1232,10 +1169,10 @@ export default function WorkoutView({
       )}
       {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}
       <Confetti active={confetti} accent={accent} onDone={()=>setConfetti(false)}/>
-      <CoachFab onClick={()=>setCoachOpen(true)} accent={accent}/>
-      <CoachDrawer open={coachOpen} onClose={()=>setCoachOpen(false)} memory={coachMemory} plan={coachPlan} accent={accent}
+      {!simpleMode&&<CoachFab onClick={()=>setCoachOpen(true)} accent={accent}/>}
+      {!simpleMode&&<CoachDrawer open={coachOpen} onClose={()=>setCoachOpen(false)} memory={coachMemory} plan={coachPlan} accent={accent}
         exercises={workout.exercises} history={history} checkIns={checkIns} exConfig={exConfig}
-        userProfile={userProfile} goals={goals} bodyMetrics={bodyMetrics}/>
+        userProfile={userProfile} goals={goals} bodyMetrics={bodyMetrics}/>}
     </div>
   );
 }

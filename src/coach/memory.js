@@ -1,4 +1,4 @@
-import { ageTier, normalizeUserProfile } from "../data.js";
+import { ageTier, exerciseConfigFor, normalizeUserProfile } from "../data.js";
 import { behaviorMemory, exerciseTrend, latestMuscleSoreness, muscleRecoveryStats } from "./progression.js";
 
 export function buildCoachMemory({ history = [], checkIns = [], exercises = [], exConfig = {}, userProfile = null, goals = [], bodyMetrics = [] }) {
@@ -15,7 +15,7 @@ export function buildCoachMemory({ history = [], checkIns = [], exercises = [], 
   const exerciseStats = exercises.map(ex => {
     const sessions = history.filter(h => h.exercises?.some(item => item.name === ex.name));
     const latest = sessions[0]?.exercises?.find(item => item.name === ex.name);
-    const target = exConfig[ex.name]?.targetReps ?? ex.baseReps;
+    const target = exerciseConfigFor(exConfig, ex)?.targetReps ?? ex.baseReps;
     const trend = exerciseTrend(history, ex, target);
     const maxWeight = Math.max(0, ...(sessions.flatMap(h => {
       const item = h.exercises.find(e => e.name === ex.name);
@@ -185,7 +185,7 @@ export function detectWeakPoints({ history = [], exercises = [], exConfig = {} }
     });
   });
   const exerciseFlags = exercises.map(ex => {
-    const target = exConfig[ex.name]?.targetReps ?? ex.baseReps;
+    const target = exerciseConfigFor(exConfig, ex)?.targetReps ?? ex.baseReps;
     const trend = exerciseTrend(history, ex, target);
     return { name: ex.name, trend: trend.status };
   }).filter(ex => ex.trend === "stalling" || ex.trend === "building");

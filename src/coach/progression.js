@@ -1,4 +1,4 @@
-import { cleanAvailableWeights, snapWeight } from "../data.js";
+import { cleanAvailableWeights, exerciseConfigFor, snapWeight } from "../data.js";
 
 export const READINESS = {
   energy: {
@@ -207,7 +207,7 @@ export function bestEstimated1RM(history = [], exerciseName, exConfig = {}) {
     .filter(Boolean);
   if (estimates.length >= 2) return Math.max(...estimates);
   // Seed from onboarding assessment when history is sparse
-  const cfg = exConfig[exerciseName];
+  const cfg = exerciseConfigFor(exConfig, exerciseName);
   const assessed1RM = cfg?.maxRepsTest && cfg?.weight
     ? estimated1RM(cfg.weight, cfg.maxRepsTest)
     : null;
@@ -322,12 +322,16 @@ export function sciencePrescription({ exercise, history = [], checkIns = [], set
 
   const canLoad = equipment.canLoad && est1RM;
   const repRange = repRangeFor({ goal, fixedLoad, baseTarget, score });
+  // eslint-disable-next-line no-useless-assignment
   let tempo = null;
+  // eslint-disable-next-line no-useless-assignment
   let variation = null;
+  // eslint-disable-next-line no-useless-assignment
   let targetReps = baseTarget;
   let sets = exercise.sets;
   let pct = null;
   let label = "Science";
+  // eslint-disable-next-line no-useless-assignment
   let note = "Progressive overload with logged reps, load, and readiness.";
 
   if (goal === "strength" && canLoad) {
@@ -523,7 +527,7 @@ export function suggestSubstitutions({ workout, history = [], exConfig = {}, rea
   const cautious = settings.cautiousJoints || [];
   return workout.exercises
     .map(ex => {
-      const target = exConfig[ex.name]?.targetReps ?? ex.baseReps;
+      const target = exerciseConfigFor(exConfig, ex)?.targetReps ?? ex.baseReps;
       const trend = exerciseTrend(history, ex, target);
       const swaps = SUBSTITUTIONS[ex.name] || [];
       const swap = swaps[0];

@@ -4,6 +4,18 @@ import App from './App.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import './index.css'
 
+// Local font bundles — no Google Fonts network request; works fully offline + in Capacitor WebView
+import '@fontsource/oswald/500.css'
+import '@fontsource/oswald/600.css'
+import '@fontsource/oswald/700.css'
+import '@fontsource/barlow/400.css'
+import '@fontsource/barlow/500.css'
+import '@fontsource/barlow/600.css'
+import '@fontsource/barlow/700.css'
+import '@fontsource/bebas-neue/400.css'
+import '@fontsource/geist-mono/400.css'
+import '@fontsource/geist-mono/500.css'
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>

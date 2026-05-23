@@ -120,7 +120,7 @@ function BodyChartPanel({ view, bodyState, label, levelColors }) {
       chartRef.current = null;
       svgRef.current = null;
     };
-  }, [label, view]);
+  }, [label, view]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     chartRef.current?.update({ bodyState });

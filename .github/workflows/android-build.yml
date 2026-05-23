@@ -1,0 +1,155 @@
+name: Android Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      build_release:
+        description: 'Build signed release AAB (requires keystore secrets)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  # ── Web build + existing checks ───────────────────────────────────────────────
+  web-checks:
+    name: Web checks (lint + test + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Bundle size gate (main JS < 100 KB gzip)
+        run: node scripts/check-bundle-size.mjs
+      - name: Verify exercise-db not preloaded
+        run: |
+          if grep -q "exercise-db" dist/index.html; then
+            echo "FAIL: exercise-db referenced in index.html (must stay lazy)"
+            exit 1
+          fi
+          echo "OK: exercise-db not preloaded"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  # ── Debug APK build ───────────────────────────────────────────────────────────
+  android-debug:
+    name: Android debug APK
+    needs: web-checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install deps + build web
+        run: npm ci && npm run build
+
+      - name: Capacitor sync
+        run: npx cap sync android
+
+      - name: Verify metadata
+        run: |
+          # applicationId "com.gymforged.app"  ← space-separated, quoted, no =
+          APP_ID=$(grep '^\s*applicationId\s' android/app/build.gradle | grep -o '"[^"]*"' | tr -d '"')
+          VERSION=$(grep '^\s*versionName\s' android/app/build.gradle | grep -o '"[^"]*"' | tr -d '"')
+          echo "applicationId: $APP_ID"
+          echo "versionName:   $VERSION"
+          [ "$APP_ID" = "com.gymforged.app" ] || { echo "FAIL: wrong applicationId ($APP_ID)"; exit 1; }
+          [ -n "$VERSION" ] || { echo "FAIL: versionName empty"; exit 1; }
+          echo "OK: metadata verified"
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: gym-forged-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
+  # ── Release AAB (signed) — manual trigger or tag ──────────────────────────────
+  android-release:
+    name: Android release AAB (signed)
+    needs: web-checks
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_release == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install deps + build web
+        run: npm ci && npm run build
+
+      - name: Capacitor sync
+        run: npx cap sync android
+
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
+
+      - name: Build release AAB
+        working-directory: android
+        env:
+          KEYSTORE_PATH: keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew bundleRelease --no-daemon
+
+      - name: Verify release AAB
+        run: |
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          ls -lh "$AAB"
+          echo "AAB size: $(du -sh $AAB | cut -f1)"
+
+      - name: Upload release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: gym-forged-release
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+  # ── GitHub Pages deploy ───────────────────────────────────────────────────────
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: web-checks
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci && npm run build
+      - uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist

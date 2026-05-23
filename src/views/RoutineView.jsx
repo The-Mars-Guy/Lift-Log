@@ -1,13 +1,13 @@
 import { useState, useMemo, useRef } from "react";
 import {
-  MUSCLE_COVERAGE_GROUPS, MUSCLE_LABELS,
+  MUSCLE_COVERAGE_GROUPS,
   FORGE_WORKOUT_NAMES, FORGE_WORKOUT_COLORS,
   normalizeCustomRoutine, DEFAULT_CUSTOM_ROUTINE,
   routineBalanceScore, routineCoverage,
-  ROUTINE_TEMPLATES, buildPersonalizedDefault,
+  ROUTINE_TEMPLATES,
 } from "../data.js";
 import { FULL_EXERCISE_LIBRARY as EXERCISE_LIBRARY, getFullExerciseById as getExerciseById } from "../data/exerciseLibrary.js";
-import { routineEditSuggestions, generateCoachRoutine, generateCoachProgram } from "../coach.js";
+import { routineEditSuggestions, generateCoachProgram } from "../coach.js";
 import { surface, text, status } from "../theme.js";
 import { Icon } from "../components/Icons.jsx";
 import { Card, Disp, Caps, Bar } from "../components/Primitives.jsx";

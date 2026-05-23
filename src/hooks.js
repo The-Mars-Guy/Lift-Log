@@ -7,13 +7,25 @@ function reportStorageError(key, action, err) {
   }));
 }
 
+function preserveCorruptStorageValue(key, raw) {
+  if (typeof window === "undefined" || raw == null) return;
+  try {
+    const backupKey = `wt_corrupt_${key}_${Date.now()}`;
+    localStorage.setItem(backupKey, raw);
+  } catch (err) {
+    console.warn(`useLocalStorage: failed to preserve corrupt value for "${key}"`, err);
+  }
+}
+
 export function useLocalStorage(key, initial) {
   const [value, setValue] = useState(() => {
+    let raw = null;
     try {
-      const v = localStorage.getItem(key);
-      return v ? JSON.parse(v) : initial;
+      raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : initial;
     } catch (err) {
       console.warn(`useLocalStorage: failed to read "${key}"`, err);
+      preserveCorruptStorageValue(key, raw);
       reportStorageError(key, "read", err);
       return initial;
     }

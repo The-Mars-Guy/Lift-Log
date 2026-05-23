@@ -7,16 +7,35 @@
     "dev": "vite",
     "build": "vite build",
     "size": "node scripts/check-bundle-size.mjs",
+    "lint": "eslint src",
     "test": "node --test",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "icons": "node scripts/generate-icons.mjs",
+    "android:sync": "npm run build && npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:run": "npx cap run android"
   },
   "dependencies": {
+    "@fontsource/barlow": "^5.2.8",
+    "@fontsource/bebas-neue": "^5.2.7",
+    "@fontsource/geist-mono": "^5.2.8",
+    "@fontsource/oswald": "^5.2.8",
     "body-muscles": "^1.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
+    "@eslint/js": "^10.0.1",
     "@vitejs/plugin-react": "^4.2.0",
+    "eslint": "^10.4.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.6.0",
+    "sharp": "^0.34.5",
+    "typescript": "^6.0.3",
     "vite": "^5.1.0"
   }
 }

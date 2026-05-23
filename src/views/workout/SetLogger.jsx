@@ -12,7 +12,7 @@ export default function SetLogger({ exerciseName, setNum, defaultWeight, default
   const cleanReps = Number.isFinite(Number(reps)) ? Math.max(Math.round(Number(reps)), 0) : 0;
   const step = Number.isFinite(Number(increment)) && Number(increment) > 0 ? Number(increment) : 1;
   return (
-    <div style={{position:"fixed",bottom:82,left:0,right:0,zIndex:220,background:surface.bg1,borderTop:`1.5px solid ${accent}99`,padding:"14px 18px 12px",boxShadow:`0 -8px 32px ${accent}3d`,animation:"slideUp .22s ease-out"}}>
+    <div role="dialog" aria-modal="true" aria-label={`Log set ${setNum} for ${exerciseName}`} style={{position:"fixed",bottom:82,left:0,right:0,zIndex:220,background:surface.bg1,borderTop:`1.5px solid ${accent}99`,padding:"14px 18px 12px",boxShadow:`0 -8px 32px ${accent}3d`,animation:"slideUp .22s ease-out"}}>
       <div className="mobile-shell">
         <div style={{fontSize:12,color:accent,fontWeight:600,marginBottom:12}}>Log Set {setNum} · {exerciseName}</div>
         <div style={{display:"grid",gap:10}}>

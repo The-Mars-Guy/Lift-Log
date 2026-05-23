@@ -146,7 +146,7 @@ export function NoteField({ value, onChange }) {
 
 export function RestReady({ label, accent, onNext }) {
   return (
-    <div style={{position:"fixed",inset:0,zIndex:185,background:surface.bgSolid,display:"flex",alignItems:"center",justifyContent:"center",padding:"28px 22px"}}>
+    <div role="dialog" aria-modal="true" aria-label="Rest complete — ready for next set" style={{position:"fixed",inset:0,zIndex:185,background:surface.bgSolid,display:"flex",alignItems:"center",justifyContent:"center",padding:"28px 22px"}}>
       <div className="mobile-shell" style={{textAlign:"center"}}>
         <div style={{fontSize:12,color:accent,fontWeight:600,marginBottom:14}}>Heat Recovered</div>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:54,color:text.primary,letterSpacing:".06em",lineHeight:.92,marginBottom:14}}>READY</div>
@@ -173,7 +173,7 @@ function SummaryStat({ label, value, sub, accent }) {
 export function WorkoutSummary({ summary, accent, onClose }) {
   if (!summary) return null;
   return (
-    <div style={{position:"fixed",inset:0,zIndex:230,background:surface.bgSolid,overflowY:"auto",padding:"calc(28px + env(safe-area-inset-top)) 20px 30px"}}>
+    <div role="dialog" aria-modal="true" aria-label="Workout summary" style={{position:"fixed",inset:0,zIndex:230,background:surface.bgSolid,overflowY:"auto",padding:"calc(28px + env(safe-area-inset-top)) 20px 30px"}}>
       <div className="mobile-shell">
         <div style={{fontSize:12,color:accent,fontWeight:600,marginBottom:10}}>Strike Complete</div>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:48,color:text.primary,letterSpacing:".06em",lineHeight:.92,marginBottom:18}}>FORGE<br/>REPORT</div>

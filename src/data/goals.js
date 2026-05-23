@@ -1,4 +1,4 @@
-import { exerciseId } from "./exercises.js";
+import { exerciseConfigFor, exerciseId } from "./exercises.js";
 
 // ─── GOALS ───────────────────────────────────────────────────────────────────
 // goal.type: "weight" = target lbs (per dumbbell / barbell total)
@@ -26,7 +26,7 @@ function _currentGoalValue(goal, history = [], exConfig = {}, totalSessions = 0)
   const name = goal.exerciseName;
   if (!name) return 0;
   if (goal.type === "reps") {
-    const cfg = exConfig[name];
+    const cfg = exerciseConfigFor(exConfig, name);
     return cfg?.targetReps ?? 0;
   }
   if (goal.type === "weight") {

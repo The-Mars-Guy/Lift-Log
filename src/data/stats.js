@@ -27,6 +27,7 @@ export const DEFAULT_SETTINGS = {
   onboardingDone: false,
   cautiousJoints: [],
   beginnerFormMode: false,
+  simpleMode: false,
   workoutDays: ["Mon", "Wed", "Fri"],
 };
 

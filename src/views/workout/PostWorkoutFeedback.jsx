@@ -10,7 +10,7 @@ export const FEEDBACK_OPTIONS = [
   { key:"pain",     label:"Pain",      icon:"alert",     desc:"Lower target + bias swaps"  },
 ];
 
-export default function PostWorkoutFeedback({ exercises, sessionLogs, getLogKey, exConfig, history, onComplete, accent }) {
+export default function PostWorkoutFeedback({ exercises, sessionLogs, getLogKey, history, onComplete, accent }) {
   const [step, setStep] = useState(0);
   const [feedback, setFeedback] = useState({});
 

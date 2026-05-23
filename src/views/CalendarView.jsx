@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { WORKOUTS, SCHEDULE, DAYS, computeStats, dateStr, todayName } from "../data.js";
+import { WORKOUTS, SCHEDULE, DAYS, computeStats, todayName } from "../data.js";
 import { Heatmap } from "../components/shared.jsx";
 import { fmtDuration } from "../hooks.js";
-import { surface, text, status } from "../theme.js";
+import { isoDate } from "../session.js";
+import { status } from "../theme.js";
 import { Card, Caps, Disp, Pill, Dot } from "../components/Primitives.jsx";
 
-export default function CalendarView({ history, progression, settings, accent, theme = "dark" }) {
+export default function CalendarView({ history, setHistory, setCompleted, progression, settings, accent, theme = "dark" }) {
   const stats = computeStats({ history, progression, settings });
   const [selected, setSelected] = useState(null);
   const ui = makeCalendarTheme(theme, accent);
@@ -109,9 +110,35 @@ export default function CalendarView({ history, progression, settings, accent, t
           </div>
         )}
       </div>
-      {selected&&<SessionDetail session={selected} onClose={()=>setSelected(null)} theme={theme} />}
+      {selected&&<SessionDetail
+        session={selected}
+        onClose={()=>setSelected(null)}
+        onSave={(updated) => {
+          setHistory?.(prev => prev.map(item => sameSession(item, selected) ? updated : item));
+          setSelected(updated);
+        }}
+        onDelete={() => {
+          if (!confirm("Delete this workout session? This cannot be undone.")) return;
+          setHistory?.(prev => prev.filter(item => !sameSession(item, selected)));
+          setCompleted?.(prev => {
+            const next = { ...(prev || {}) };
+            delete next[historyCompletionKey(selected)];
+            return next;
+          });
+          setSelected(null);
+        }}
+        theme={theme}
+      />}
     </div>
   );
+}
+
+function sameSession(a, b) {
+  return (a?.timestamp || 0) === (b?.timestamp || 0) && a?.day === b?.day && a?.workout === b?.workout;
+}
+
+function historyCompletionKey(session) {
+  return `${isoDate(new Date(session.timestamp || Date.now()))}_${session.day}`;
 }
 
 function makeCalendarTheme(theme, accent) {
@@ -223,18 +250,46 @@ function Swatch({ color, label }) {
   );
 }
 
-function SessionDetail({ session, onClose, theme = "dark" }) {
+function SessionDetail({ session, onClose, onSave, onDelete, theme = "dark" }) {
   const color = WORKOUTS[session.workout]?.color || status.good;
   const ui = makeCalendarTheme(theme, color);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(() => JSON.parse(JSON.stringify(session)));
   const totalReps = (session.exercises||[]).reduce((sum, ex)=>sum+(ex.setLog||[]).reduce((s,l)=>s+(l.reps||0),0),0);
+  const updateSetLog = (exerciseIndex, setIndex, key, value) => {
+    setDraft(prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      const log = next.exercises?.[exerciseIndex]?.setLog?.[setIndex];
+      if (!log) return prev;
+      log[key] = key === "pain" ? value : Math.max(Number(value) || 0, 0);
+      return next;
+    });
+  };
+  const save = () => {
+    onSave?.({
+      ...draft,
+      note: draft.note?.trim() || undefined,
+      editedAt: Date.now(),
+    });
+    setEditing(false);
+  };
   return (
     <div style={{position:"fixed",inset:0,zIndex:240,background:ui.light?"#f8fffb":"#050505",overflowY:"auto",padding:"calc(28px + env(safe-area-inset-top)) 20px 30px"}}>
       <div className="mobile-shell">
-        <button onClick={onClose} style={{background:"transparent",border:`1px solid ${ui.border}`,borderRadius:9,color:ui.soft,padding:"10px 13px",fontSize:12,letterSpacing:".08em",marginBottom:22}}>CLOSE</button>
+        <div style={{display:"flex",gap:8,marginBottom:22}}>
+          <button onClick={onClose} style={{background:"transparent",border:`1px solid ${ui.border}`,borderRadius:9,color:ui.soft,padding:"10px 13px",fontSize:12,letterSpacing:".08em"}}>CLOSE</button>
+          {editing ? <button onClick={save} style={{background:color,border:"none",borderRadius:9,color:"#050505",padding:"10px 13px",fontSize:12,fontWeight:800,letterSpacing:".08em"}}>SAVE</button>
+            : <button onClick={()=>setEditing(true)} style={{background:"transparent",border:`1px solid ${color}66`,borderRadius:9,color,padding:"10px 13px",fontSize:12,letterSpacing:".08em"}}>EDIT</button>}
+          {editing && <button onClick={()=>{setDraft(JSON.parse(JSON.stringify(session)));setEditing(false);}} style={{background:"transparent",border:`1px solid ${ui.border}`,borderRadius:9,color:ui.muted,padding:"10px 13px",fontSize:12,letterSpacing:".08em"}}>CANCEL</button>}
+          <button onClick={onDelete} style={{marginLeft:"auto",background:"transparent",border:"1px solid #ff444466",borderRadius:9,color:"#ff7777",padding:"10px 13px",fontSize:12,letterSpacing:".08em"}}>DELETE</button>
+        </div>
         <div style={{fontSize:12,color,fontWeight:600,marginBottom:8}}>{session.date}</div>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:44,color:ui.title,letterSpacing:".06em",lineHeight:.95,marginBottom:8}}>WORKOUT {session.workout}</div>
         <div style={{fontSize:14,color:ui.muted,marginBottom:18}}>{session.day} · {fmtDuration(session.duration||0)} · {totalReps} reps</div>
-        {session.note&&(
+        {editing ? (
+          <textarea value={draft.note || ""} onChange={e=>setDraft(prev=>({...prev,note:e.target.value}))} placeholder="Session note"
+            style={{width:"100%",boxSizing:"border-box",minHeight:84,padding:13,background:ui.card,border:`1px solid ${ui.border}`,borderRadius:10,marginBottom:14,fontSize:13,color:ui.text,lineHeight:1.5,outline:"none"}} />
+        ) : session.note&&(
           <div style={{padding:13,background:ui.card,border:`1px solid ${ui.border}`,borderRadius:10,marginBottom:14,fontSize:13,color:ui.soft,lineHeight:1.5,boxShadow:ui.shadow}}>
             Note: {session.note}
           </div>
@@ -245,14 +300,22 @@ function SessionDetail({ session, onClose, theme = "dark" }) {
           </div>
         )}
         <div style={{display:"grid",gap:10}}>
-          {(session.exercises||[]).map(ex=>(
+          {((editing ? draft : session).exercises||[]).map((ex, exerciseIndex)=>(
             <Card key={ex.name} level={1}>
               <div style={{fontSize:15,color:ui.text,fontWeight:600,marginBottom:8}}>{ex.name}</div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 {(ex.setLog||[]).map((log,i)=>(
-                  <span key={i} style={{fontSize:12,color,background:`${color}15`,border:`1px solid ${color}44`,borderRadius:7,padding:"7px 9px"}}>
-                    S{i+1}: {log.weight}lbs x {log.reps}
-                  </span>
+                  editing ? (
+                    <div key={i} style={{display:"grid",gridTemplateColumns:"auto 72px 72px",gap:6,alignItems:"center",fontSize:12,color:ui.soft,background:`${color}10`,border:`1px solid ${color}33`,borderRadius:7,padding:"7px 9px"}}>
+                      <span>S{i+1}</span>
+                      <input value={log.weight ?? 0} type="number" min="0" step="any" onChange={e=>updateSetLog(exerciseIndex,i,"weight",e.target.value)} aria-label={`${ex.name} set ${i+1} weight`} style={{width:"100%",boxSizing:"border-box",background:ui.light?"#fff":"#070707",border:`1px solid ${ui.border}`,borderRadius:6,color:ui.text,padding:"7px 6px"}} />
+                      <input value={log.reps ?? 0} type="number" min="0" step="1" onChange={e=>updateSetLog(exerciseIndex,i,"reps",e.target.value)} aria-label={`${ex.name} set ${i+1} reps`} style={{width:"100%",boxSizing:"border-box",background:ui.light?"#fff":"#070707",border:`1px solid ${ui.border}`,borderRadius:6,color:ui.text,padding:"7px 6px"}} />
+                    </div>
+                  ) : (
+                    <span key={i} style={{fontSize:12,color,background:`${color}15`,border:`1px solid ${color}44`,borderRadius:7,padding:"7px 9px"}}>
+                      S{i+1}: {log.weight}lbs x {log.reps}
+                    </span>
+                  )
                 ))}
               </div>
             </Card>

@@ -16,6 +16,7 @@ function getCtx() {
   return ctx;
 }
 
+// eslint-disable-next-line no-unused-vars
 function tone({ freq, duration = 0.15, type = "sine", gain = 0.15, attack = 0.005, release = 0.1 }) {
   const c = getCtx(); if (!c) return;
   const osc = c.createOscillator();

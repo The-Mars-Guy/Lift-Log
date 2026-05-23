@@ -3,10 +3,10 @@
 // Settings detail accessible via gear button → onSettings()
 
 import { useMemo, useState } from "react";
-import { ACHIEVEMENTS, DEFAULT_GOALS, goalProgress, makeGoal, mesocyclePhase } from "../data.js";
+import { ACHIEVEMENTS, DEFAULT_GOALS, goalProgress, makeGoal } from "../data.js";
 import { FULL_EXERCISE_LIBRARY as EXERCISE_LIBRARY } from "../data/exerciseLibrary.js";
 import { buildT } from "../theme.js";
-import { Card, Caps, Bar, Disp, Pill, Dot } from "../components/Primitives.jsx";
+import { Caps, Bar, Disp } from "../components/Primitives.jsx";
 import { Icon } from "../components/Icons.jsx";
 
 const GOAL_LABELS = {
@@ -22,7 +22,7 @@ const EQUIP_LABELS = {
 };
 
 export default function ProfileView({
-  userProfile  = {},
+  _userProfile = {},
   settings     = {},
   history      = [],
   achievements = [],

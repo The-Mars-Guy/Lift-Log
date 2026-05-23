@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BENCHMARK_TESTS_V2, WORKOUTS, assessmentTargetForExercise, assessmentTargetForProfile, benchmarkEffort, benchmarkModeForProfile, normativeGrade, profileRisk, exerciseFolder } from "../../data.js";
+import { BENCHMARK_TESTS_V2, WORKOUTS, assessmentTargetForExercise, benchmarkEffort, benchmarkModeForProfile, normativeGrade, profileRisk, exerciseFolder } from "../../data.js";
 import { ExerciseAnimation } from "../../components/shared.jsx";
 
 export const ASSESSMENT_EXERCISES = [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises];

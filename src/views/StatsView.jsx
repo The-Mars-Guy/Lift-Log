@@ -13,21 +13,23 @@ function IconBadge({ name, color }) {
 
 export default function StatsView({
   history, progression, settings, accent,
-  exConfig = {}, customRoutine,
-  // kept in signature for compat, not used
-  xp, level, achievements, checkIns, bodyMetrics, setBodyMetrics, userProfile, goals,
+  customRoutine,
+  // eslint-disable-next-line no-unused-vars -- kept in signature for caller compat
+  exConfig, xp, level, achievements, checkIns, bodyMetrics, setBodyMetrics, userProfile, goals,
 }) {
   const [range, setRange] = useState("12w");
 
   const stats   = computeStats({ history, progression, settings });
   const records = computePersonalRecords({ history });
 
-  const customWeekExercises = customRoutine?.enabled ? allRoutineExercises(customRoutine, { exerciseLibrary: FULL_EXERCISE_LIBRARY }) : [];
-  const allExercises = [
-    ...WORKOUTS.A.exercises,
-    ...WORKOUTS.B.exercises,
-    ...customWeekExercises,
-  ];
+  const customWeekExercises = useMemo(
+    () => customRoutine?.enabled ? allRoutineExercises(customRoutine, { exerciseLibrary: FULL_EXERCISE_LIBRARY }) : [],
+    [customRoutine]
+  );
+  const allExercises = useMemo(
+    () => [...WORKOUTS.A.exercises, ...WORKOUTS.B.exercises, ...customWeekExercises],
+    [customWeekExercises]
+  );
 
   // ── Week boundaries ──────────────────────────────────────────
   const now = new Date();
@@ -37,11 +39,11 @@ export default function StatsView({
   const prevMon = new Date(mon);
   prevMon.setDate(mon.getDate() - 7);
 
-  const weekSessions     = useMemo(() => history.filter(h => (h.timestamp || 0) >= mon.getTime()), [history]);
+  const weekSessions     = useMemo(() => history.filter(h => (h.timestamp || 0) >= mon.getTime()), [history]); // eslint-disable-line react-hooks/exhaustive-deps
   const prevWeekSessions = useMemo(() => history.filter(h => {
     const t = h.timestamp || 0;
     return t >= prevMon.getTime() && t < mon.getTime();
-  }), [history]);
+  }), [history]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Volume helpers ───────────────────────────────────────────
   function sessionVol(h) {
@@ -54,9 +56,9 @@ export default function StatsView({
     }, 0);
   }
 
-  const weekVolume     = useMemo(() => weekSessions.reduce((s, h) => s + sessionVol(h), 0), [weekSessions]);
-  const prevWeekVolume = useMemo(() => prevWeekSessions.reduce((s, h) => s + sessionVol(h), 0), [prevWeekSessions]);
-  const totalVolume    = useMemo(() => history.reduce((s, h) => s + sessionVol(h), 0), [history]);
+  const weekVolume     = useMemo(() => weekSessions.reduce((s, h) => s + sessionVol(h), 0), [weekSessions]); // eslint-disable-line react-hooks/exhaustive-deps
+  const prevWeekVolume = useMemo(() => prevWeekSessions.reduce((s, h) => s + sessionVol(h), 0), [prevWeekSessions]); // eslint-disable-line react-hooks/exhaustive-deps
+  const totalVolume    = useMemo(() => history.reduce((s, h) => s + sessionVol(h), 0), [history]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const weekVolumeDelta = prevWeekVolume > 0
     ? Math.round(((weekVolume - prevWeekVolume) / prevWeekVolume) * 100)
@@ -74,7 +76,7 @@ export default function StatsView({
       const ws = history.filter(h => isoWeek(new Date(h.timestamp)) === w);
       return ws.reduce((s, h) => s + sessionVol(h), 0);
     });
-  }, [history, progression, settings.dumbbellWeight]);
+  }, [history, progression, settings.dumbbellWeight]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Week sets + reps ─────────────────────────────────────────
   const { weekSets, weekReps } = useMemo(() => weekSessions.reduce((acc, h) => {
@@ -93,7 +95,7 @@ export default function StatsView({
       }
     }
     return acc;
-  }, { weekSets: 0, weekReps: 0 }), [weekSessions]);
+  }, { weekSets: 0, weekReps: 0 }), [weekSessions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Hero values by range ─────────────────────────────────────
   const twelveWeekStart = new Date(now);

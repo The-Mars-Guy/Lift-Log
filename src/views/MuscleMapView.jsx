@@ -2,10 +2,9 @@ import { useState } from "react";
 import { WORKOUTS, MUSCLE_LABELS, customRoutineWorkout } from "../data.js";
 import { FULL_EXERCISE_LIBRARY } from "../data/exerciseLibrary.js";
 import MuscleDiagram from "../components/MuscleDiagram.jsx";
-import { muscleRecoveryStats, latestMuscleSoreness } from "../coach.js";
-import { surface, text, status } from "../theme.js";
-import { buildT } from "../theme.js";
-import { Card, Caps, Bar, Pill, Dot } from "../components/Primitives.jsx";
+import { latestMuscleSoreness } from "../coach.js";
+import { status } from "../theme.js";
+import { Caps, Bar, Pill, Dot } from "../components/Primitives.jsx";
 
 // Research-backed per-muscle recovery baselines (hours)
 const MUSCLE_BASE_RECOVERY_HOURS = {
@@ -201,7 +200,7 @@ export default function MuscleMapView({ history, accent, checkIns = [], setCheck
 
 // ─── Muscle row ───────────────────────────────────────────────────────────────
 
-function MuscleRow({ row, avg, currentSoreness, onSoreness, accent, lineSep, isLast }) {
+function MuscleRow({ row, _avg, currentSoreness, onSoreness, _accent, lineSep, isLast }) {
   const recovery = row.recoveryHours
     ? row.recoveredPct >= 100
       ? "Recovered"
@@ -211,8 +210,6 @@ function MuscleRow({ row, avg, currentSoreness, onSoreness, accent, lineSep, isL
     ? `hit ${row.hoursSince < 1 ? `${Math.round(row.hoursSince * 60)}m` : `${Math.round(row.hoursSince)}h`} ago`
     : "not yet hit";
   const readinessColor = row.readiness === "Fatigued" ? status.caution : row.readiness === "Recovering" ? status.warn : status.good;
-  const loadPct = Math.round((row.recentPoints / Math.max(row.recentPoints, 1)) * 100);
-
   return (
     <div style={{
       padding:"12px 16px",
@@ -254,13 +251,6 @@ function MuscleRow({ row, avg, currentSoreness, onSoreness, accent, lineSep, isL
 }
 
 // ─── Data helpers (unchanged logic) ──────────────────────────────────────────
-
-function formatHours(hours) {
-  if (!hours && hours !== 0) return "—";
-  if (hours < 1)  return `${Math.round(hours * 60)}m`;
-  if (hours < 48) return `${Math.round(hours)}h`;
-  return `${Math.round(hours / 24 * 10) / 10}d`;
-}
 
 export function buildMuscleStatus({ history, exercises, soreness = {} }) {
   const now      = Date.now();

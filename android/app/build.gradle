@@ -1,0 +1,77 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace = "com.gymforged.app"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.gymforged.app"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 2
+        versionName "2.0.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        release {
+            // Values come from env vars (CI) or local keystore.properties file.
+            // See scripts/create-keystore.sh for keystore creation instructions.
+            def props = new Properties()
+            def propsFile = rootProject.file('keystore.properties')
+            if (propsFile.exists()) props.load(propsFile.newDataInputStream())
+
+            storeFile     file(System.getenv('KEYSTORE_PATH')     ?: props.getProperty('storeFile',     'keystore.jks'))
+            storePassword      System.getenv('KEYSTORE_PASSWORD') ?: props.getProperty('storePassword', '')
+            keyAlias           System.getenv('KEY_ALIAS')         ?: props.getProperty('keyAlias',      'gym-forged')
+            keyPassword        System.getenv('KEY_PASSWORD')      ?: props.getProperty('keyPassword',   '')
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // signingConfig only applied when KEYSTORE_PATH env var or keystore.properties present
+            if (System.getenv('KEYSTORE_PATH') || rootProject.file('keystore.properties').exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
