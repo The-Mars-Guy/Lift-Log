@@ -1,0 +1,1 @@
+import{aq as n,a8 as i}from"./index-BQc1OedL.js";import{E as r}from"./exercise-db-DusN7tRR.js";const f=[...n,...r];function o(e){return n.find(E=>E.id===e)||n.find(E=>i(E.name)===e)||r.find(E=>E.id===e)||r.find(E=>i(E.name)===e)}export{f as FULL_EXERCISE_LIBRARY,o as getFullExerciseById};
