@@ -24,7 +24,7 @@ android {
             def propsFile = rootProject.file('keystore.properties')
             if (propsFile.exists()) props.load(propsFile.newDataInputStream())
 
-            storeFile     file(System.getenv('KEYSTORE_PATH')     ?: props.getProperty('storeFile',     'keystore.jks'))
+            storeFile     rootProject.file(System.getenv('KEYSTORE_PATH') ?: props.getProperty('storeFile', 'keystore.jks'))
             storePassword      System.getenv('KEYSTORE_PASSWORD') ?: props.getProperty('storePassword', '')
             keyAlias           System.getenv('KEY_ALIAS')         ?: props.getProperty('keyAlias',      'gym-forged')
             keyPassword        System.getenv('KEY_PASSWORD')      ?: props.getProperty('keyPassword',   '')
